@@ -652,7 +652,7 @@
                     dy *= 0.707;
                 }
 
-                const speed = i === itPlayer ? SPEED * 1.1 : SPEED;
+                const speed = (i === 0 && p1GodMode) ? SPEED * 2 : (i === itPlayer ? SPEED * 1.1 : SPEED);
 
                 // Move X
                 let newX = players[i].x + dx * speed;
@@ -680,6 +680,9 @@
             if (now - lastTagTime > TAG_COOLDOWN) {
                 for (let i = 0; i < numPlayers; i++) {
                     if (i === itPlayer) continue;
+                    // P1 can't be tagged in god mode
+                    if (i === 0 && p1GodMode) continue;
+
                     const dx = (players[itPlayer].x + PLAYER_SIZE/2) - (players[i].x + PLAYER_SIZE/2);
                     const dy = (players[itPlayer].y + PLAYER_SIZE/2) - (players[i].y + PLAYER_SIZE/2);
                     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -719,12 +722,36 @@
             document.getElementById('menu').style.display = 'flex';
         }
 
-        // Input
+        // Secret code system (type "qeqqqeq" to activate P1 god mode)
+        let secretBuffer = '';
+        const SECRET_CODE = 'qeqqqeq';
+        let p1GodMode = false;
+
         document.addEventListener('keydown', (e) => {
             keys[e.key] = true;
             keys[e.key.toLowerCase()] = true;
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
                 e.preventDefault();
+            }
+
+            // Secret code detection
+            if (gameRunning) {
+                secretBuffer += e.key.toLowerCase();
+                if (secretBuffer.length > SECRET_CODE.length) {
+                    secretBuffer = secretBuffer.slice(-SECRET_CODE.length);
+                }
+                if (secretBuffer === SECRET_CODE) {
+                    p1GodMode = !p1GodMode;
+                    secretBuffer = '';
+                    if (p1GodMode) {
+                        players[0].el.style.boxShadow = '0 0 25px 10px rgba(255, 215, 0, 0.8)';
+                        players[0].el.style.border = '3px solid gold';
+                    } else {
+                        players[0].el.style.boxShadow = '';
+                        players[0].el.style.border = '';
+                        updateItDisplay();
+                    }
+                }
             }
         });
 
