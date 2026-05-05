@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tag - PatGames</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0f;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            gap: 20px;
+        }
+
+        #menu h1 {
+            font-size: 4rem;
+            background: linear-gradient(135deg, #ff006a, #00f0ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+
+        #menu .subtitle {
+            color: #888;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .menu-btn {
+            padding: 14px 40px;
+            font-size: 1.2rem;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e, #2a2a4a);
+            border: 2px solid #00f0ff;
+            color: #00f0ff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .menu-btn:hover {
+            background: #00f0ff;
+            color: #0a0a0f;
+            transform: scale(1.05);
+        }
+
+        .player-select {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .player-select button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            border: 2px solid #555;
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .player-select button.active {
+            border-color: #00ff88;
+            color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .player-select button:hover {
+            border-color: #00ff88;
+        }
+
+        #game {
+            display: none;
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #arena {
+            width: 100%;
+            height: 100%;
+            background: #0d0d1a;
+            border: 3px solid #1a1a2e;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Grid lines */
+        #arena::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .player {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            transition: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #000;
+            z-index: 10;
+        }
+
+        .player.it {
+            box-shadow: 0 0 20px 8px rgba(255, 0, 0, 0.6);
+            animation: pulse 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.15); }
+        }
+
+        .player-label {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: #fff;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #hud .timer {
+            font-size: 2rem;
+            color: #00f0ff;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        #hud .it-indicator {
+            font-size: 1rem;
+            color: #ff006a;
+            background: rgba(255, 0, 106, 0.15);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid #ff006a;
+        }
+
+        #scoreboard {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .score-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            background: rgba(0,0,0,0.6);
+            padding: 6px 12px;
+            border-radius: 8px;
+        }
+
+        .score-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+        }
+
+        #controls-info {
+            position: absolute;
+            bottom: 50px;
+            left: 10px;
+            font-size: 0.7rem;
+            color: #555;
+            z-index: 100;
+            pointer-events: none;
+            line-height: 1.6;
+        }
+
+        #gameover {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 200;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        #gameover h2 {
+            font-size: 2.5rem;
+            color: #00ff88;
+        }
+
+        #gameover .results {
+            font-size: 1.2rem;
+            color: #ccc;
+            text-align: center;
+            line-height: 2;
+        }
+
+        .back-btn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            border: 2px solid #00f0ff;
+            color: #00f0ff;
+            border-radius: 8px;
+            cursor: pointer;
+            pointer-events: all;
+        }
+
+        .back-btn:hover {
+            background: #00f0ff;
+            color: #0a0a0f;
+        }
+    </style>
+</head>
+<body>
+    <div id="menu">
+        <h1>TAG</h1>
+        <p class="subtitle">Local Multiplayer — Chase & Evade!</p>
+        <p style="color:#666; font-size:0.85rem;">Select number of players:</p>
+        <div class="player-select">
+            <button onclick="setPlayers(2)">2 Players</button>
+            <button onclick="setPlayers(3)">3 Players</button>
+            <button onclick="setPlayers(4)" class="active">4 Players</button>
+        </div>
+        <button class="menu-btn" onclick="startGame()">START GAME</button>
+        <div style="margin-top:30px; color:#666; font-size:0.75rem; text-align:center; line-height:2;">
+            <div><span style="color:#ff006a">P1:</span> W A S D</div>
+            <div><span style="color:#00f0ff">P2:</span> I J K L</div>
+            <div><span style="color:#00ff88">P3:</span> ↑ ← ↓ →</div>
+            <div><span style="color:#ffcc00">P4:</span> G V B N</div>
+        </div>
+    </div>
+
+    <div id="game">
+        <div id="arena"></div>
+        <div id="hud">
+            <div class="timer" id="timer">60</div>
+            <div class="it-indicator" id="itIndicator">P1 is IT!</div>
+        </div>
+        <div id="scoreboard"></div>
+        <div id="controls-info">
+            P1: WASD | P2: IJKL | P3: Arrows | P4: GVBN
+        </div>
+        <div id="gameover">
+            <h2>GAME OVER!</h2>
+            <div class="results" id="results"></div>
+            <button class="back-btn" onclick="backToMenu()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        const PLAYER_COLORS = ['#ff006a', '#00f0ff', '#00ff88', '#ffcc00'];
+        const PLAYER_NAMES = ['P1', 'P2', 'P3', 'P4'];
+        const SPEED = 4.5;
+        const TAG_COOLDOWN = 1000; // 1 second immunity after being tagged
+        const GAME_DURATION = 60; // seconds
+
+        const CONTROLS = [
+            { up: 'w', down: 's', left: 'a', right: 'd' },
+            { up: 'i', down: 'k', left: 'j', right: 'l' },
+            { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' },
+            { up: 'g', down: 'b', left: 'v', right: 'n' }
+        ];
+
+        let numPlayers = 4;
+        let players = [];
+        let itPlayer = 0;
+        let gameRunning = false;
+        let timeLeft = GAME_DURATION;
+        let timerInterval;
+        let keys = {};
+        let lastTagTime = 0;
+        let scores = []; // time spent as "it" (lower is better)
+
+        function setPlayers(n) {
+            numPlayers = n;
+            document.querySelectorAll('.player-select button').forEach((btn, i) => {
+                btn.classList.toggle('active', i === n - 2);
+            });
+        }
+
+        function startGame() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('game').style.display = 'block';
+            document.getElementById('gameover').style.display = 'none';
+
+            const arena = document.getElementById('arena');
+            arena.innerHTML = '';
+
+            players = [];
+            scores = new Array(numPlayers).fill(0);
+            timeLeft = GAME_DURATION;
+            lastTagTime = 0;
+
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+
+            // Spawn positions (corners)
+            const spawns = [
+                { x: 100, y: 100 },
+                { x: w - 140, y: 100 },
+                { x: 100, y: h - 140 },
+                { x: w - 140, y: h - 140 }
+            ];
+
+            for (let i = 0; i < numPlayers; i++) {
+                const el = document.createElement('div');
+                el.className = 'player';
+                el.id = `player${i}`;
+                el.style.background = PLAYER_COLORS[i];
+                el.innerHTML = `<span class="player-label">${PLAYER_NAMES[i]}</span>${i + 1}`;
+                el.style.left = spawns[i].x + 'px';
+                el.style.top = spawns[i].y + 'px';
+                arena.appendChild(el);
+
+                players.push({
+                    el,
+                    x: spawns[i].x,
+                    y: spawns[i].y,
+                    vx: 0,
+                    vy: 0
+                });
+            }
+
+            // Random "it" player
+            itPlayer = Math.floor(Math.random() * numPlayers);
+            updateItDisplay();
+
+            // Build scoreboard
+            const sb = document.getElementById('scoreboard');
+            sb.innerHTML = '';
+            for (let i = 0; i < numPlayers; i++) {
+                const item = document.createElement('div');
+                item.className = 'score-item';
+                item.innerHTML = `<div class="score-dot" style="background:${PLAYER_COLORS[i]}"></div><span id="score${i}">${PLAYER_NAMES[i]}: 0.0s</span>`;
+                sb.appendChild(item);
+            }
+
+            gameRunning = true;
+            document.getElementById('timer').textContent = timeLeft;
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateItDisplay() {
+            players.forEach((p, i) => {
+                p.el.classList.toggle('it', i === itPlayer);
+            });
+            document.getElementById('itIndicator').textContent = `${PLAYER_NAMES[itPlayer]} is IT!`;
+            document.getElementById('itIndicator').style.borderColor = PLAYER_COLORS[itPlayer];
+            document.getElementById('itIndicator').style.color = PLAYER_COLORS[itPlayer];
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+
+            // Update scores (it player accumulates time)
+            scores[itPlayer] += 1 / 60;
+            for (let i = 0; i < numPlayers; i++) {
+                document.getElementById(`score${i}`).textContent = `${PLAYER_NAMES[i]}: ${scores[i].toFixed(1)}s`;
+            }
+
+            // Move players
+            for (let i = 0; i < numPlayers; i++) {
+                const c = CONTROLS[i];
+                let dx = 0, dy = 0;
+
+                if (keys[c.left]) dx -= 1;
+                if (keys[c.right]) dx += 1;
+                if (keys[c.up]) dy -= 1;
+                if (keys[c.down]) dy += 1;
+
+                // Normalize diagonal
+                if (dx !== 0 && dy !== 0) {
+                    dx *= 0.707;
+                    dy *= 0.707;
+                }
+
+                // IT player is slightly faster
+                const speed = i === itPlayer ? SPEED * 1.1 : SPEED;
+
+                players[i].x += dx * speed;
+                players[i].y += dy * speed;
+
+                // Bounds
+                players[i].x = Math.max(0, Math.min(w - 36, players[i].x));
+                players[i].y = Math.max(0, Math.min(h - 36, players[i].y));
+
+                players[i].el.style.left = players[i].x + 'px';
+                players[i].el.style.top = players[i].y + 'px';
+            }
+
+            // Check tag collisions
+            const now = Date.now();
+            if (now - lastTagTime > TAG_COOLDOWN) {
+                for (let i = 0; i < numPlayers; i++) {
+                    if (i === itPlayer) continue;
+                    const dx = players[itPlayer].x - players[i].x;
+                    const dy = players[itPlayer].y - players[i].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 34) {
+                        // Tagged!
+                        itPlayer = i;
+                        lastTagTime = now;
+                        updateItDisplay();
+                        break;
+                    }
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+
+            // Sort players by score (lowest time as IT wins)
+            const ranked = players.map((_, i) => i).sort((a, b) => scores[a] - scores[b]);
+
+            let html = '';
+            ranked.forEach((idx, rank) => {
+                const medal = rank === 0 ? '👑 ' : '';
+                html += `<div style="color:${PLAYER_COLORS[idx]}">${medal}${rank + 1}. ${PLAYER_NAMES[idx]} — ${scores[idx].toFixed(1)}s as IT</div>`;
+            });
+
+            document.getElementById('results').innerHTML = html;
+            document.getElementById('gameover').style.display = 'flex';
+        }
+
+        function backToMenu() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('menu').style.display = 'flex';
+        }
+
+        // Input handling
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            keys[e.key.toLowerCase()] = true;
+            // Prevent arrow keys from scrolling
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+            keys[e.key.toLowerCase()] = false;
+        });
+    </script>
+</body>
+</html>
