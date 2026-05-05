@@ -438,22 +438,41 @@
 
         function generateTeleporters() {
             teleporters = [];
+            spawnTeleporterPair();
+        }
+
+        function spawnTeleporterPair() {
             const w = window.innerWidth;
             const h = window.innerHeight;
             const margin = 100;
 
-            // 2 pairs of teleporters (4 total portals)
-            for (let pair = 0; pair < 2; pair++) {
-                // Place two ends far from each other
-                const x1 = margin + Math.random() * (w / 2 - margin * 2);
-                const y1 = margin + Math.random() * (h - margin * 2);
-                const x2 = w / 2 + Math.random() * (w / 2 - margin * 2);
-                const y2 = margin + Math.random() * (h - margin * 2);
+            const x1 = margin + Math.random() * (w / 2 - margin * 2);
+            const y1 = margin + Math.random() * (h - margin * 2);
+            const x2 = w / 2 + Math.random() * (w / 2 - margin * 2);
+            const y2 = margin + Math.random() * (h - margin * 2);
 
-                teleporters.push({ x: x1, y: y1, pairId: pair, used: false, el: null });
-                teleporters.push({ x: x2, y: y2, pairId: pair, used: false, el: null });
-            }
-            return teleporters;
+            const arena = document.getElementById('arena');
+
+            const tp1 = { x: x1, y: y1, pairId: 0, used: false, el: null };
+            const tp2 = { x: x2, y: y2, pairId: 0, used: false, el: null };
+
+            const el1 = document.createElement('div');
+            el1.className = 'teleporter pair-a';
+            el1.style.left = x1 + 'px';
+            el1.style.top = y1 + 'px';
+            el1.textContent = '◉';
+            arena.appendChild(el1);
+            tp1.el = el1;
+
+            const el2 = document.createElement('div');
+            el2.className = 'teleporter pair-a';
+            el2.style.left = x2 + 'px';
+            el2.style.top = y2 + 'px';
+            el2.textContent = '◉';
+            arena.appendChild(el2);
+            tp2.el = el2;
+
+            teleporters = [tp1, tp2];
         }
 
         function renderWalls(arena) {
@@ -469,15 +488,7 @@
         }
 
         function renderTeleporters(arena) {
-            teleporters.forEach((tp, i) => {
-                const el = document.createElement('div');
-                el.className = `teleporter pair-${tp.pairId === 0 ? 'a' : 'b'}`;
-                el.style.left = tp.x + 'px';
-                el.style.top = tp.y + 'px';
-                el.textContent = '◉';
-                arena.appendChild(el);
-                tp.el = el;
-            });
+            // Teleporters are now spawned dynamically via spawnTeleporterPair()
         }
 
         function collidesWithWall(x, y, size) {
@@ -506,18 +517,24 @@
                 const dist = Math.sqrt((px - tpCx) ** 2 + (py - tpCy) ** 2);
 
                 if (dist < 28) {
-                    // Find the paired teleporter
-                    const partner = teleporters.find(t => t.pairId === tp.pairId && t !== tp && !t.used);
+                    const partner = teleporters.find(t => t !== tp && !t.used);
                     if (partner) {
                         // Teleport player to partner
                         p.x = partner.x + TP_SIZE / 2 - PLAYER_SIZE / 2;
                         p.y = partner.y + TP_SIZE / 2 - PLAYER_SIZE / 2;
 
-                        // Disable BOTH teleporters in the pair
+                        // Remove both portals completely
                         tp.used = true;
                         partner.used = true;
-                        tp.el.classList.add('used');
-                        partner.el.classList.add('used');
+                        tp.el.remove();
+                        partner.el.remove();
+
+                        // Spawn a new pair after 5 seconds
+                        if (gameRunning) {
+                            setTimeout(() => {
+                                if (gameRunning) spawnTeleporterPair();
+                            }, 5000);
+                        }
                         return;
                     }
                 }
