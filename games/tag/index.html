@@ -146,9 +146,23 @@
             animation: pulse 0.5s ease-in-out infinite alternate;
         }
 
+        .player.invincible {
+            box-shadow: 0 0 18px 6px rgba(0, 200, 255, 0.7) !important;
+            animation: shieldPulse 0.4s ease-in-out infinite alternate !important;
+        }
+
+        .player.speedy {
+            filter: brightness(1.5);
+        }
+
         @keyframes pulse {
             from { transform: scale(1); }
             to { transform: scale(1.15); }
+        }
+
+        @keyframes shieldPulse {
+            from { transform: scale(1); filter: brightness(1); }
+            to { transform: scale(1.1); filter: brightness(1.4); }
         }
 
         .player-label {
@@ -181,7 +195,6 @@
             justify-content: center;
             font-size: 18px;
             animation: tpGlow 1.5s ease-in-out infinite alternate;
-            cursor: default;
         }
 
         .teleporter.pair-a {
@@ -190,22 +203,46 @@
             box-shadow: 0 0 12px rgba(180, 0, 255, 0.5);
         }
 
-        .teleporter.pair-b {
-            background: radial-gradient(circle, rgba(255, 150, 0, 0.6), rgba(255, 150, 0, 0.1));
-            border: 2px solid #ff9600;
-            box-shadow: 0 0 12px rgba(255, 150, 0, 0.5);
-        }
-
-        .teleporter.used {
-            opacity: 0.2;
-            border-color: #333;
-            box-shadow: none;
-            animation: none;
-        }
-
         @keyframes tpGlow {
             from { filter: brightness(0.8); }
             to { filter: brightness(1.3); }
+        }
+
+        .powerup {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            z-index: 7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            animation: powerFloat 1s ease-in-out infinite alternate;
+        }
+
+        .powerup.speed {
+            background: radial-gradient(circle, rgba(0, 255, 100, 0.7), rgba(0, 255, 100, 0.1));
+            border: 2px solid #00ff64;
+            box-shadow: 0 0 10px rgba(0, 255, 100, 0.5);
+        }
+
+        .powerup.shield {
+            background: radial-gradient(circle, rgba(0, 180, 255, 0.7), rgba(0, 180, 255, 0.1));
+            border: 2px solid #00b4ff;
+            box-shadow: 0 0 10px rgba(0, 180, 255, 0.5);
+        }
+
+        .powerup.tagger {
+            background: radial-gradient(circle, rgba(255, 0, 0, 0.7), rgba(255, 0, 0, 0.1));
+            border: 2px solid #ff0000;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            animation: powerFloat 0.6s ease-in-out infinite alternate;
+        }
+
+        @keyframes powerFloat {
+            from { transform: translateY(0); }
+            to { transform: translateY(-4px); }
         }
 
         #hud {
@@ -233,6 +270,17 @@
             padding: 6px 14px;
             border-radius: 20px;
             border: 1px solid #ff006a;
+        }
+
+        #powerup-status {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            z-index: 100;
+            pointer-events: none;
+            font-size: 0.75rem;
+            text-align: right;
+            line-height: 1.8;
         }
 
         #scoreboard {
@@ -358,6 +406,7 @@
             <div class="timer" id="timer">60</div>
             <div class="it-indicator" id="itIndicator">P1 is IT!</div>
         </div>
+        <div id="powerup-status"></div>
         <div id="scoreboard"></div>
         <div id="controls-info">
             P1: WASD | P2: IJKL | P3: Arrows | P4: GVBN
@@ -376,6 +425,7 @@
         const TAG_COOLDOWN = 1000;
         const PLAYER_SIZE = 36;
         const TP_SIZE = 40;
+        const POWERUP_SIZE = 30;
 
         const CONTROLS = [
             { up: 'w', down: 's', left: 'a', right: 'd' },
@@ -388,14 +438,20 @@
         let gameDuration = 60;
         let players = [];
         let walls = [];
-        let teleporters = []; // [{x,y,pairId,used,el}, ...]
+        let teleporters = [];
+        let powerups = []; // {x, y, type, el}
         let itPlayer = 0;
+        let previousIt = -1; // Track previous tagger for no-tagback
         let gameRunning = false;
         let timeLeft = 60;
         let timerInterval;
+        let powerupInterval;
         let keys = {};
         let lastTagTime = 0;
         let scores = [];
+
+        // Player power states
+        let playerBuffs = []; // [{speed: false, speedTimer: 0, invincible: false, invTimer: 0}, ...]
 
         function setPlayers(n) {
             numPlayers = n;
@@ -404,38 +460,57 @@
             });
         }
 
+        // ── WALL GENERATION (no overlaps) ──
+        function wallsOverlap(a, b) {
+            return a.x < b.x + b.width + 10 &&
+                   a.x + a.width + 10 > b.x &&
+                   a.y < b.y + b.height + 10 &&
+                   a.y + a.height + 10 > b.y;
+        }
+
         function generateWalls() {
             walls = [];
             const w = window.innerWidth;
             const h = window.innerHeight;
-            const margin = 80;
-
-            // Generate 6-10 random walls
+            const margin = 100;
             const numWalls = 6 + Math.floor(Math.random() * 5);
+            let attempts = 0;
 
-            for (let i = 0; i < numWalls; i++) {
+            while (walls.length < numWalls && attempts < 200) {
+                attempts++;
                 const isHorizontal = Math.random() > 0.5;
                 let wall;
                 if (isHorizontal) {
                     wall = {
-                        x: margin + Math.random() * (w - margin * 3),
-                        y: margin + Math.random() * (h - margin * 3),
+                        x: margin + Math.random() * (w - margin * 2 - 200),
+                        y: margin + Math.random() * (h - margin * 2 - 12),
                         width: 80 + Math.random() * 150,
                         height: 12
                     };
                 } else {
                     wall = {
-                        x: margin + Math.random() * (w - margin * 3),
-                        y: margin + Math.random() * (h - margin * 3),
+                        x: margin + Math.random() * (w - margin * 2 - 12),
+                        y: margin + Math.random() * (h - margin * 2 - 200),
                         width: 12,
                         height: 80 + Math.random() * 150
                     };
                 }
-                walls.push(wall);
+
+                // Check overlap with existing walls
+                let overlaps = false;
+                for (const existing of walls) {
+                    if (wallsOverlap(wall, existing)) {
+                        overlaps = true;
+                        break;
+                    }
+                }
+                if (!overlaps) {
+                    walls.push(wall);
+                }
             }
-            return walls;
         }
 
+        // ── TELEPORTERS ──
         function generateTeleporters() {
             teleporters = [];
             spawnTeleporterPair();
@@ -453,8 +528,8 @@
 
             const arena = document.getElementById('arena');
 
-            const tp1 = { x: x1, y: y1, pairId: 0, used: false, el: null };
-            const tp2 = { x: x2, y: y2, pairId: 0, used: false, el: null };
+            const tp1 = { x: x1, y: y1, used: false, el: null };
+            const tp2 = { x: x2, y: y2, used: false, el: null };
 
             const el1 = document.createElement('div');
             el1.className = 'teleporter pair-a';
@@ -487,10 +562,6 @@
             });
         }
 
-        function renderTeleporters(arena) {
-            // Teleporters are now spawned dynamically via spawnTeleporterPair()
-        }
-
         function collidesWithWall(x, y, size) {
             for (const wall of walls) {
                 if (x < wall.x + wall.width &&
@@ -519,17 +590,14 @@
                 if (dist < 28) {
                     const partner = teleporters.find(t => t !== tp && !t.used);
                     if (partner) {
-                        // Teleport player to partner
                         p.x = partner.x + TP_SIZE / 2 - PLAYER_SIZE / 2;
                         p.y = partner.y + TP_SIZE / 2 - PLAYER_SIZE / 2;
 
-                        // Remove both portals completely
                         tp.used = true;
                         partner.used = true;
                         tp.el.remove();
                         partner.el.remove();
 
-                        // Spawn a new pair after 5 seconds
                         if (gameRunning) {
                             setTimeout(() => {
                                 if (gameRunning) spawnTeleporterPair();
@@ -541,6 +609,112 @@
             }
         }
 
+        // ── POWERUPS ──
+        function spawnPowerup() {
+            if (!gameRunning) return;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const margin = 80;
+
+            // Decide type: speed (40%), shield/invincibility (40%), tagger-swap (20% but very rare spawn)
+            const roll = Math.random();
+            let type;
+            if (roll < 0.4) type = 'speed';
+            else if (roll < 0.8) type = 'shield';
+            else type = 'tagger'; // rare
+
+            const x = margin + Math.random() * (w - margin * 2);
+            const y = margin + Math.random() * (h - margin * 2);
+
+            const arena = document.getElementById('arena');
+            const el = document.createElement('div');
+            el.className = `powerup ${type}`;
+
+            if (type === 'speed') el.textContent = '⚡';
+            else if (type === 'shield') el.textContent = '🛡️';
+            else el.textContent = '💀';
+
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            arena.appendChild(el);
+
+            powerups.push({ x, y, type, el });
+
+            // Powerup disappears after 8 seconds if not picked up
+            setTimeout(() => {
+                const idx = powerups.findIndex(p => p.el === el);
+                if (idx !== -1) {
+                    powerups[idx].el.remove();
+                    powerups.splice(idx, 1);
+                }
+            }, 8000);
+        }
+
+        function checkPowerupPickup(playerIdx) {
+            const p = players[playerIdx];
+            const px = p.x + PLAYER_SIZE / 2;
+            const py = p.y + PLAYER_SIZE / 2;
+
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const pu = powerups[i];
+                const dx = px - (pu.x + POWERUP_SIZE / 2);
+                const dy = py - (pu.y + POWERUP_SIZE / 2);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 30) {
+                    // Tagger powerup: only non-IT players can pick it up
+                    if (pu.type === 'tagger') {
+                        if (playerIdx === itPlayer) continue; // IT can't pick up tagger powerup
+                        // Instantly make the picker become IT (swap roles — hurts them!)
+                        // Actually: this gives to someone NOT it — it forces THEM to be it
+                        // Re-reading: "one for the tagger to use but give to someone that's not it"
+                        // This means: it helps the tagger — it makes a random non-it person become it
+                        // But only non-it can pick it up... Let me re-read:
+                        // "one for the tagger to use but very rare to come up and its give to someone thats not it"
+                        // = A powerup that only non-IT players can pick up, and it's for the tagger's benefit
+                        // = When a non-IT player picks it up, THEY become IT (bad for them, helps tagger)
+                        previousIt = itPlayer;
+                        itPlayer = playerIdx;
+                        lastTagTime = Date.now();
+                        updateItDisplay();
+                    } else if (pu.type === 'speed') {
+                        playerBuffs[playerIdx].speed = true;
+                        players[playerIdx].el.classList.add('speedy');
+                        setTimeout(() => {
+                            playerBuffs[playerIdx].speed = false;
+                            players[playerIdx].el.classList.remove('speedy');
+                        }, 4000);
+                    } else if (pu.type === 'shield') {
+                        if (playerIdx === itPlayer) continue; // IT can't use shield
+                        playerBuffs[playerIdx].invincible = true;
+                        players[playerIdx].el.classList.add('invincible');
+                        setTimeout(() => {
+                            playerBuffs[playerIdx].invincible = false;
+                            players[playerIdx].el.classList.remove('invincible');
+                        }, 3000);
+                    }
+
+                    pu.el.remove();
+                    powerups.splice(i, 1);
+                    break;
+                }
+            }
+        }
+
+        function updatePowerupStatus() {
+            let html = '';
+            for (let i = 0; i < numPlayers; i++) {
+                const buffs = [];
+                if (playerBuffs[i].speed) buffs.push('⚡');
+                if (playerBuffs[i].invincible) buffs.push('🛡️');
+                if (buffs.length > 0) {
+                    html += `<div style="color:${PLAYER_COLORS[i]}">${PLAYER_NAMES[i]}: ${buffs.join(' ')}</div>`;
+                }
+            }
+            document.getElementById('powerup-status').innerHTML = html;
+        }
+
+        // ── GAME START ──
         function startGame() {
             gameDuration = parseInt(document.getElementById('timeInput').value) || 60;
             gameDuration = Math.max(10, Math.min(300, gameDuration));
@@ -553,20 +727,24 @@
             arena.innerHTML = '';
 
             players = [];
+            powerups = [];
             scores = new Array(numPlayers).fill(0);
+            playerBuffs = [];
+            for (let i = 0; i < numPlayers; i++) {
+                playerBuffs.push({ speed: false, invincible: false });
+            }
             timeLeft = gameDuration;
             lastTagTime = 0;
+            previousIt = -1;
+            p1GodMode = false;
 
             const w = window.innerWidth;
             const h = window.innerHeight;
 
-            // Generate map
             generateWalls();
             generateTeleporters();
             renderWalls(arena);
-            renderTeleporters(arena);
 
-            // Spawn positions (corners)
             const spawns = [
                 { x: 50, y: 50 },
                 { x: w - 90, y: 50 },
@@ -592,9 +770,9 @@
             }
 
             itPlayer = Math.floor(Math.random() * numPlayers);
+            previousIt = -1;
             updateItDisplay();
 
-            // Scoreboard
             const sb = document.getElementById('scoreboard');
             sb.innerHTML = '';
             for (let i = 0; i < numPlayers; i++) {
@@ -613,31 +791,40 @@
                 if (timeLeft <= 0) endGame();
             }, 1000);
 
+            // Spawn powerups every 5-8 seconds (tagger powerup is rarer due to type roll)
+            powerupInterval = setInterval(() => {
+                if (gameRunning && Math.random() < 0.7) spawnPowerup();
+            }, 5000);
+
             requestAnimationFrame(gameLoop);
         }
 
         function updateItDisplay() {
             players.forEach((p, i) => {
-                p.el.classList.toggle('it', i === itPlayer);
+                if (i === itPlayer) {
+                    p.el.classList.add('it');
+                } else {
+                    p.el.classList.remove('it');
+                }
             });
             document.getElementById('itIndicator').textContent = `${PLAYER_NAMES[itPlayer]} is IT!`;
             document.getElementById('itIndicator').style.borderColor = PLAYER_COLORS[itPlayer];
             document.getElementById('itIndicator').style.color = PLAYER_COLORS[itPlayer];
         }
 
+        // ── GAME LOOP ──
         function gameLoop() {
             if (!gameRunning) return;
 
             const w = window.innerWidth;
             const h = window.innerHeight;
 
-            // Accumulate IT time
             scores[itPlayer] += 1 / 60;
             for (let i = 0; i < numPlayers; i++) {
                 document.getElementById(`score${i}`).textContent = `${PLAYER_NAMES[i]}: ${scores[i].toFixed(1)}s`;
             }
 
-            // Move players with wall collision
+            // Move players
             for (let i = 0; i < numPlayers; i++) {
                 const c = CONTROLS[i];
                 let dx = 0, dy = 0;
@@ -652,16 +839,16 @@
                     dy *= 0.707;
                 }
 
-                const speed = (i === 0 && p1GodMode) ? SPEED * 2 : (i === itPlayer ? SPEED * 1.1 : SPEED);
+                let speed = i === itPlayer ? SPEED * 1.1 : SPEED;
+                if (playerBuffs[i].speed) speed *= 1.6;
+                if (i === 0 && p1GodMode) speed = SPEED * 2;
 
-                // Move X
                 let newX = players[i].x + dx * speed;
                 newX = Math.max(0, Math.min(w - PLAYER_SIZE, newX));
                 if (!collidesWithWall(newX, players[i].y, PLAYER_SIZE)) {
                     players[i].x = newX;
                 }
 
-                // Move Y
                 let newY = players[i].y + dy * speed;
                 newY = Math.max(0, Math.min(h - PLAYER_SIZE, newY));
                 if (!collidesWithWall(players[i].x, newY, PLAYER_SIZE)) {
@@ -671,23 +858,34 @@
                 players[i].el.style.left = players[i].x + 'px';
                 players[i].el.style.top = players[i].y + 'px';
 
-                // Check teleporters
                 checkTeleport(i);
+                checkPowerupPickup(i);
             }
 
-            // Tag collision
+            // Tag collision with no-tagback rules
             const now = Date.now();
             if (now - lastTagTime > TAG_COOLDOWN) {
                 for (let i = 0; i < numPlayers; i++) {
                     if (i === itPlayer) continue;
-                    // P1 can't be tagged in god mode
+
+                    // P1 god mode = can't be tagged
                     if (i === 0 && p1GodMode) continue;
 
-                    const dx = (players[itPlayer].x + PLAYER_SIZE/2) - (players[i].x + PLAYER_SIZE/2);
-                    const dy = (players[itPlayer].y + PLAYER_SIZE/2) - (players[i].y + PLAYER_SIZE/2);
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    // Invincibility powerup
+                    if (playerBuffs[i].invincible) continue;
+
+                    // No tag-back rules:
+                    // 4 players: no tag-backs at all
+                    // 3 players: no tag-backs at all  
+                    // 2 players: tag-backs allowed (only option)
+                    if (numPlayers >= 3 && i === previousIt) continue;
+
+                    const ddx = (players[itPlayer].x + PLAYER_SIZE/2) - (players[i].x + PLAYER_SIZE/2);
+                    const ddy = (players[itPlayer].y + PLAYER_SIZE/2) - (players[i].y + PLAYER_SIZE/2);
+                    const dist = Math.sqrt(ddx * ddx + ddy * ddy);
 
                     if (dist < PLAYER_SIZE) {
+                        previousIt = itPlayer;
                         itPlayer = i;
                         lastTagTime = now;
                         updateItDisplay();
@@ -696,12 +894,14 @@
                 }
             }
 
+            updatePowerupStatus();
             requestAnimationFrame(gameLoop);
         }
 
         function endGame() {
             gameRunning = false;
             clearInterval(timerInterval);
+            clearInterval(powerupInterval);
 
             const ranked = players.map((_, i) => i).sort((a, b) => scores[a] - scores[b]);
 
@@ -718,11 +918,12 @@
         function backToMenu() {
             gameRunning = false;
             clearInterval(timerInterval);
+            clearInterval(powerupInterval);
             document.getElementById('game').style.display = 'none';
             document.getElementById('menu').style.display = 'flex';
         }
 
-        // Secret code system (type "qeqqqeq" to activate P1 god mode)
+        // ── SECRET CODE (qeqqqeq) ──
         let secretBuffer = '';
         const SECRET_CODE = 'qeqqqeq';
         let p1GodMode = false;
@@ -734,7 +935,6 @@
                 e.preventDefault();
             }
 
-            // Secret code detection
             if (gameRunning) {
                 secretBuffer += e.key.toLowerCase();
                 if (secretBuffer.length > SECRET_CODE.length) {
