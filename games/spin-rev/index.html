@@ -1,0 +1,2365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPIN REV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;border:0}
+body{background:#0a0a0f;color:#e0ffe0;font-family:'VT323',monospace;overflow-x:hidden;min-height:100vh;user-select:none;-webkit-user-select:none}
+.game-root{min-height:100vh;position:relative;background:radial-gradient(ellipse at 20% 50%,rgba(0,255,204,.04) 0%,transparent 50%),radial-gradient(ellipse at 80% 50%,rgba(255,0,170,.03) 0%,transparent 50%),linear-gradient(180deg,#0a0a0f 0%,#0d0d18 100%)}
+.game-root.shake{animation:screen-shake .1s ease-out}
+@keyframes screen-shake{0%,100%{transform:translate(0)}25%{transform:translate(-2px,1px)}50%{transform:translate(2px,-1px)}75%{transform:translate(-1px,2px)}}
+.scanlines{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px)}
+.vignette{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99;background:radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,.4) 100%)}
+
+/* TOP BAR */
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:rgba(10,10,15,.97);border-bottom:1px solid #1a1a28;position:sticky;top:0;z-index:50;backdrop-filter:blur(8px);gap:10px;flex-wrap:wrap}
+.top-bar-left{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.game-title{font-family:'Press Start 2P',cursive;font-size:14px;letter-spacing:2px;display:flex;gap:4px}
+.title-spin{color:#00ffcc;text-shadow:0 0 10px rgba(0,255,204,.5);animation:title-flicker 4s ease-in-out infinite}
+.title-rev{color:#ff00aa;text-shadow:0 0 10px rgba(255,0,170,.5)}
+@keyframes title-flicker{0%,95%,100%{opacity:1}96%{opacity:.7}98%{opacity:.85}}
+.prestige-badge{font-family:'Press Start 2P',cursive;font-size:7px;color:#ffcc00;background:rgba(255,204,0,.1);border:1px solid rgba(255,204,0,.3);padding:3px 6px;border-radius:2px;display:none;animation:badge-pulse 2s ease-in-out infinite}
+.prestige-badge.visible{display:inline-block}
+@keyframes badge-pulse{0%,100%{box-shadow:0 0 4px rgba(255,204,0,.2)}50%{box-shadow:0 0 12px rgba(255,204,0,.4)}}
+.top-bar-center{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.currency-pill{display:flex;align-items:baseline;gap:6px;padding:5px 12px;border-radius:2px;position:relative;overflow:hidden;border:1px solid}
+.rev-pill{background:rgba(255,204,0,.05);border-color:rgba(255,204,0,.15)}
+.rev-pill::before{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,204,0,.06),transparent);animation:rev-shimmer 3s linear infinite}
+@keyframes rev-shimmer{0%{left:-100%}100%{left:200%}}
+.token-pill{background:rgba(255,0,170,.05);border-color:rgba(255,0,170,.15)}
+.flux-pill{background:rgba(0,170,255,.05);border-color:rgba(0,170,255,.15)}
+.cur-amount{font-family:'Press Start 2P',cursive;font-size:13px;text-shadow:0 0 8px currentColor}
+.cur-label{font-family:'Press Start 2P',cursive;font-size:7px;opacity:.5}
+.rev-pill .cur-amount{color:#ffcc00}
+.token-pill .cur-amount{color:#ff00aa}
+.flux-pill .cur-amount{color:#00aaff}
+.top-bar-right{display:flex;gap:12px}
+.stat-mini{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.stat-mini-label{font-size:10px;color:#4a6a4a;letter-spacing:1px}
+.stat-mini-value{font-family:'Press Start 2P',cursive;font-size:10px;color:#00ffcc;text-shadow:0 0 6px rgba(0,255,204,.3)}
+
+/* MAIN LAYOUT */
+.game-main{display:flex;gap:10px;padding:12px 14px 20px;max-width:1700px;margin:0 auto;min-height:calc(100vh - 55px)}
+.spinners-section{flex:1;min-width:0}
+.side-panel{width:360px;flex-shrink:0;display:flex;flex-direction:column}
+.section-title{font-family:'Press Start 2P',cursive;font-size:10px;color:#5a7a5a;margin-bottom:8px;letter-spacing:2px;display:flex;align-items:center;gap:8px}
+.section-subtitle{font-family:'VT323',monospace;font-size:17px;color:#3a5a3a;letter-spacing:0;margin-left:6px}
+
+/* SPINNERS GRID */
+.spinners-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}
+.spinner-card{background:rgba(14,14,22,.95);border:1px solid #181828;border-radius:4px;padding:6px 5px 5px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:border-color .12s,box-shadow .12s,transform .08s;position:relative}
+.spinner-card.active:hover{border-color:var(--glow);box-shadow:0 0 10px color-mix(in srgb,var(--glow) 15%,transparent)}
+.spinner-card.active:active,.spinner-card.click-pulse{transform:scale(.93);box-shadow:0 0 18px color-mix(in srgb,var(--glow) 28%,transparent)}
+.spinner-card.auto-spinning{border-color:color-mix(in srgb,var(--glow) 22%,#181828)}
+.spinner-card.chained{border-color:color-mix(in srgb,var(--glow) 40%,#181828);box-shadow:0 0 6px color-mix(in srgb,var(--glow) 12%,transparent)}
+.spinner-card.locked{cursor:default;opacity:.38}
+.spinner-card.locked:hover{opacity:.55}
+.spinner-visual{width:52px;height:52px;position:relative}
+.spinner-visual svg{width:100%;height:100%}
+.locked-visual{opacity:.5}
+.auto-badge{position:absolute;top:-2px;right:-5px;font-family:'Press Start 2P',cursive;font-size:4px;padding:2px 3px;background:rgba(0,0,0,.9);border:1px solid;border-radius:2px;animation:auto-glow 1.5s ease-in-out infinite}
+.chain-badge{position:absolute;top:-2px;left:-5px;font-family:'Press Start 2P',cursive;font-size:4px;padding:2px 3px;background:rgba(0,0,0,.9);border:1px solid #ffcc00;color:#ffcc00;border-radius:2px}
+@keyframes auto-glow{0%,100%{opacity:.7}50%{opacity:1;box-shadow:0 0 5px currentColor}}
+.speed-bar{position:absolute;bottom:-1px;left:8%;width:84%;height:2px;background:rgba(255,255,255,.04);border-radius:1px;overflow:hidden}
+.speed-bar-fill{height:100%;border-radius:1px;transition:width .1s linear}
+.spinner-info{display:flex;justify-content:space-between;width:100%;align-items:center;padding:0 1px}
+.spinner-name{font-family:'Press Start 2P',cursive;font-size:5px;letter-spacing:.3px}
+.spinner-rev{font-size:12px;color:#5a7a5a}
+.unlock-btn,.upgrade-spinner-btn{width:100%;padding:4px 3px;font-family:'VT323',monospace;font-size:13px;border:1px solid;border-radius:2px;cursor:pointer;transition:all .12s;text-align:center;background:transparent}
+.unlock-btn{background:rgba(255,204,0,.07);border-color:rgba(255,204,0,.22);color:#ffcc00}
+.unlock-btn.affordable:hover{background:rgba(255,204,0,.14);box-shadow:0 0 8px rgba(255,204,0,.18)}
+.upgrade-spinner-btn{background:color-mix(in srgb,var(--btn-color) 7%,transparent);border-color:color-mix(in srgb,var(--btn-color) 22%,transparent);color:var(--btn-color)}
+.upgrade-spinner-btn.affordable:hover{background:color-mix(in srgb,var(--btn-color) 14%,transparent)}
+.too-expensive{opacity:.28;cursor:not-allowed!important}
+
+/* COMBO METER */
+.combo-meter{position:fixed;top:62px;left:16px;z-index:55;opacity:0;transition:opacity .3s;pointer-events:none}
+.combo-meter.active{opacity:1}
+.combo-inner{background:rgba(10,10,18,.95);border:1px solid #ff6633;border-radius:4px;padding:6px 12px;text-align:center}
+.combo-count{font-family:'Press Start 2P',cursive;font-size:14px;color:#ff6633;text-shadow:0 0 10px rgba(255,102,51,.5)}
+.combo-mult{font-family:'VT323',monospace;font-size:14px;color:#ffaa00;margin-top:2px}
+.combo-bar{width:80px;height:3px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:4px;overflow:hidden}
+.combo-bar-fill{height:100%;background:linear-gradient(90deg,#ff6633,#ffaa00);border-radius:2px;transition:width .1s linear}
+
+/* TABS */
+.tab-bar{display:grid;grid-template-columns:repeat(7,1fr)}
+.tab-btn{padding:8px 4px;font-family:'Press Start 2P',cursive;font-size:5.5px;letter-spacing:.3px;color:#8aff8a;background:rgba(15,15,25,.9);border:1px solid #2a2a40;cursor:pointer;transition:all .12s;white-space:nowrap;text-align:center;text-shadow:0 0 4px rgba(138,255,138,.2)}
+.tab-btn:first-child{border-radius:4px 0 0 0}
+.tab-btn:last-child{border-radius:0 4px 0 0}
+.tab-btn.active{color:#00ffcc;background:rgba(0,255,204,.08);border-bottom-color:transparent;text-shadow:0 0 12px rgba(0,255,204,.6);border-color:#00ffcc44;box-shadow:0 -2px 10px rgba(0,255,204,.15)}
+.tab-btn:hover:not(.active){color:#bbffbb;text-shadow:0 0 6px rgba(187,255,187,.3);background:rgba(20,20,35,.95)}
+.tab-btn.tab-locked{opacity:.25;cursor:not-allowed;color:#3a5a3a}
+.tab-btn.tab-locked:hover{color:#3a5a3a;text-shadow:none;background:rgba(10,10,16,.8)}
+.panel-content{flex:1;overflow-y:auto;max-height:calc(100vh - 130px)}
+
+/* PANELS common */
+.panel{background:rgba(14,14,22,.95);border:1px solid #181828;border-top:none;border-radius:0 0 4px 4px;padding:12px;display:none}
+.panel.visible{display:block}
+.panel-title{font-family:'Press Start 2P',cursive;font-size:9px;margin-bottom:8px;letter-spacing:1px}
+.panel-expl{font-size:15px;color:#4a6a4a;line-height:1.4;margin-bottom:12px;padding:7px 9px;border-left:2px solid;background:rgba(255,255,255,.01)}
+
+/* UPGRADE SHOP */
+.shop-title{font-family:'Press Start 2P',cursive;font-size:9px;color:#5a7a5a;margin-bottom:10px;letter-spacing:1px}
+.upgrade-section-label{font-family:'Press Start 2P',cursive;font-size:6px;color:#3a5a3a;letter-spacing:1px;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid #181828}
+.upgrade-list{display:flex;flex-direction:column;gap:5px}
+.upgrade-row{display:flex;align-items:center;gap:7px;padding:7px 9px;background:rgba(24,24,40,.5);border:1px solid #1a1a2a;border-radius:3px;cursor:pointer;transition:all .12s;text-align:left;width:100%;color:#e0ffe0}
+.upgrade-row.affordable:hover{border-color:var(--row-color);background:color-mix(in srgb,var(--row-color) 6%,rgba(24,24,40,.5));box-shadow:0 0 8px color-mix(in srgb,var(--row-color) 10%,transparent)}
+.upgrade-row.too-expensive{opacity:.32;cursor:not-allowed}
+.upgrade-row.maxed{opacity:.5;cursor:not-allowed;border-color:#2a2a1a}
+.upgrade-row.mechanic-change{border-left:3px solid var(--row-color)}
+.upg-icon{font-family:'Press Start 2P',cursive;font-size:9px;width:28px;text-align:center;flex-shrink:0;text-shadow:0 0 5px currentColor}
+.upg-details{flex:1;min-width:0}
+.upg-name{font-family:'Press Start 2P',cursive;font-size:6px;letter-spacing:.3px;margin-bottom:2px}
+.upg-desc{font-size:13px;color:#4a6a4a}
+.upg-meta{text-align:right;flex-shrink:0}
+.upg-level{font-family:'Press Start 2P',cursive;font-size:6px;color:#4a6a4a;margin-bottom:1px}
+.upg-cost{font-size:14px;color:#ffcc00;white-space:nowrap}
+
+/* PRESTIGE TAB */
+.prestige-stats{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.prestige-stat{flex:1;min-width:70px;background:rgba(24,24,40,.5);border:1px solid #1a1a2a;border-radius:3px;padding:9px 5px;text-align:center;display:flex;flex-direction:column;gap:3px}
+.ps-label{font-size:10px;color:#4a6a4a;letter-spacing:1px}
+.ps-value{font-family:'Press Start 2P',cursive;font-size:11px}
+.pv-tier{color:#ff00aa;text-shadow:0 0 8px rgba(255,0,170,.3)}
+.pv-mult{color:#ffcc00;text-shadow:0 0 8px rgba(255,204,0,.3)}
+.pv-tok{color:#00ffcc;text-shadow:0 0 8px rgba(0,255,204,.3)}
+.pv-flux{color:#00aaff;text-shadow:0 0 8px rgba(0,170,255,.3)}
+.prestige-progress{margin-bottom:12px}
+.prestige-progress-label{display:flex;justify-content:space-between;font-size:13px;color:#4a6a4a;margin-bottom:3px}
+.prestige-progress-label span:last-child{color:#ffcc00}
+.prestige-progress-bar{height:6px;background:rgba(24,24,40,.8);border:1px solid #1a1a2a;border-radius:3px;overflow:hidden}
+.prestige-progress-fill{height:100%;background:linear-gradient(90deg,#ff00aa,#ff44cc);box-shadow:0 0 8px rgba(255,0,170,.4);border-radius:3px;transition:width .3s}
+.prestige-btn{width:100%;padding:11px 12px;font-family:'Press Start 2P',cursive;font-size:8px;letter-spacing:.4px;border:2px solid;border-radius:3px;cursor:pointer;transition:all .2s;background:transparent}
+.prestige-btn.ready{background:rgba(255,0,170,.1);border-color:#ff00aa;color:#ff00aa;text-shadow:0 0 10px rgba(255,0,170,.4);animation:prestige-pulse 2s ease-in-out infinite}
+.prestige-btn.ready:hover{background:rgba(255,0,170,.2);box-shadow:0 0 22px rgba(255,0,170,.3)}
+.prestige-btn.confirming{background:rgba(255,51,68,.15);border-color:#ff3344;color:#ff3344;animation:confirm-blink .5s ease-in-out infinite}
+.prestige-btn.not-ready{background:rgba(24,24,40,.5);border-color:#1a1a2a;color:#3a5a3a;cursor:not-allowed}
+@keyframes prestige-pulse{0%,100%{box-shadow:0 0 4px rgba(255,0,170,.15)}50%{box-shadow:0 0 16px rgba(255,0,170,.3)}}
+@keyframes confirm-blink{0%,100%{opacity:1}50%{opacity:.7}}
+.prestige-warning{text-align:center;margin-top:7px;font-size:14px;color:#ff6666}
+.prestige-perks{margin-top:14px}
+.perk-row{display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(24,24,40,.4);border:1px solid #1a1a2a;border-radius:3px;margin-bottom:4px}
+.perk-row.unlocked{border-color:#00ffcc40;background:rgba(0,255,204,.03)}
+.perk-row.locked{opacity:.4}
+.perk-icon{font-size:16px;flex-shrink:0}
+.perk-info{flex:1}
+.perk-name{font-family:'Press Start 2P',cursive;font-size:6px;color:#00ffcc;margin-bottom:2px}
+.perk-desc{font-size:12px;color:#5a7a5a}
+.perk-tier{font-family:'Press Start 2P',cursive;font-size:5px;color:#ff00aa;flex-shrink:0}
+
+/* SKILL TREE */
+.tree-canvas{position:relative;width:100%;margin-bottom:14px}
+.tree-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.tree-svg line{stroke-width:2;stroke-linecap:round}
+.tree-svg line.line-locked{stroke:#1a2a3a;opacity:.35}
+.tree-svg line.line-unlocked{filter:drop-shadow(0 0 4px var(--line-color));opacity:.9}
+.tree-node{position:absolute;width:56px;height:56px;background:rgba(14,14,24,.95);border:2px solid #1a2a3a;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;z-index:1;transform:translate(-50%,-50%)}
+.tree-node:hover{z-index:5}
+.tree-node.tn-available{border-color:var(--nd-color);box-shadow:0 0 8px color-mix(in srgb,var(--nd-color) 20%,transparent)}
+.tree-node.tn-available:hover{box-shadow:0 0 16px color-mix(in srgb,var(--nd-color) 35%,transparent);transform:translate(-50%,-50%) scale(1.08)}
+.tree-node.tn-owned{border-color:var(--nd-color);background:color-mix(in srgb,var(--nd-color) 12%,rgba(14,14,24,.95));box-shadow:0 0 10px color-mix(in srgb,var(--nd-color) 18%,transparent)}
+.tree-node.tn-maxed{border-color:#ffcc00;background:rgba(40,35,10,.9);box-shadow:0 0 10px rgba(255,204,0,.15)}
+.tree-node.tn-locked{opacity:.3;cursor:not-allowed;border-style:dashed}
+.tn-icon{font-size:18px;line-height:1}
+.tn-label{font-family:'Press Start 2P',cursive;font-size:4px;color:var(--nd-color);letter-spacing:.3px;margin-top:2px;text-align:center;line-height:1.2;max-width:50px;overflow:hidden}
+.tn-lv{font-family:'Press Start 2P',cursive;font-size:4px;color:#4a6a4a;margin-top:1px}
+.tn-maxed-lv{color:#ffcc00}
+.tree-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:rgba(10,10,18,.97);border:1px solid var(--nd-color);border-radius:4px;padding:8px 10px;z-index:20;width:160px;pointer-events:none;box-shadow:0 0 14px rgba(0,0,0,.6)}
+.tree-node:hover .tree-tooltip{display:block}
+.tt-name{font-family:'Press Start 2P',cursive;font-size:6px;color:var(--nd-color);margin-bottom:4px;letter-spacing:.3px}
+.tt-desc{font-size:13px;color:#5a7a5a;line-height:1.3;margin-bottom:4px}
+.tt-footer{display:flex;justify-content:space-between;align-items:center}
+.tt-level{font-family:'Press Start 2P',cursive;font-size:5px;color:#4a6a4a}
+.tt-cost{font-family:'Press Start 2P',cursive;font-size:6px;color:#ff00aa}
+
+/* GATE NODE */
+.gate-node{background:rgba(255,170,0,.05);border:2px solid rgba(255,170,0,.2);border-radius:6px;padding:12px;margin-top:16px;text-align:center;cursor:pointer;transition:all .2s}
+.gate-node.gate-locked{border-style:dashed;opacity:.6}
+.gate-node.gate-locked:hover{opacity:.8;border-color:rgba(255,170,0,.4)}
+.gate-node.gate-ready{border-color:#ffaa00;animation:gate-glow 2s ease-in-out infinite}
+.gate-node.gate-unlocked{border-color:#44ff44;background:rgba(68,255,68,.05);cursor:default}
+@keyframes gate-glow{0%,100%{box-shadow:0 0 4px rgba(255,170,0,.15)}50%{box-shadow:0 0 18px rgba(255,170,0,.35)}}
+.gate-icon{font-size:28px;margin-bottom:4px}
+.gate-title{font-family:'Press Start 2P',cursive;font-size:8px;color:#ffaa00;margin-bottom:4px;letter-spacing:1px}
+.gate-desc{font-size:14px;color:#5a7a5a}
+.gate-cost{font-family:'Press Start 2P',cursive;font-size:9px;color:#ff00aa;margin-top:6px}
+
+/* ASCENSION TAB (FLUX) */
+.asc-upgrade-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,170,255,.03);border:1px solid rgba(0,170,255,.12);border-radius:4px;cursor:pointer;transition:all .15s;margin-bottom:5px}
+.asc-upgrade-row.affordable:hover{border-color:#00aaff;box-shadow:0 0 10px rgba(0,170,255,.15)}
+.asc-upgrade-row.too-expensive{opacity:.3;cursor:not-allowed}
+.asc-upgrade-row.maxed{opacity:.5;cursor:not-allowed;border-color:#1a1a2a}
+.asc-icon{font-size:20px;flex-shrink:0}
+.asc-details{flex:1}
+.asc-name{font-family:'Press Start 2P',cursive;font-size:6px;color:#00aaff;margin-bottom:2px}
+.asc-desc{font-size:13px;color:#4a6a4a}
+.asc-meta{text-align:right}
+.asc-level{font-family:'Press Start 2P',cursive;font-size:5px;color:#4a6a4a;margin-bottom:2px}
+.asc-cost{font-family:'Press Start 2P',cursive;font-size:8px;color:#00aaff}
+
+/* ANIMALS */
+.animals-summary{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.animal-summary-stat{flex:1;min-width:80px;background:rgba(24,24,40,.5);border:1px solid #1a1a2a;border-radius:3px;padding:7px 5px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.as-label{font-size:10px;color:#4a6a4a;letter-spacing:1px}
+.as-value{font-family:'Press Start 2P',cursive;font-size:10px;color:#ffaa00;text-shadow:0 0 6px rgba(255,170,0,.3)}
+.animal-grid{display:grid;grid-template-columns:1fr;gap:6px}
+.animal-card{background:rgba(24,24,40,.6);border:1px solid #1a1a2a;border-radius:5px;padding:10px;transition:all .15s;position:relative;display:flex;gap:10px;align-items:center}
+.animal-card.owned{border-color:var(--an-color);background:color-mix(in srgb,var(--an-color) 6%,rgba(24,24,40,.6))}
+.animal-card:hover{border-color:var(--an-color);box-shadow:0 0 8px color-mix(in srgb,var(--an-color) 12%,transparent)}
+.animal-card.card-locked{opacity:.35}
+.animal-card.card-locked:hover{opacity:.5}
+.an-emoji{font-size:30px;flex-shrink:0;width:42px;text-align:center;filter:drop-shadow(0 0 4px var(--an-color))}
+.an-details{flex:1;min-width:0}
+.an-header{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.an-name{font-family:'Press Start 2P',cursive;font-size:7px;color:var(--an-color);letter-spacing:.3px}
+.an-rarity{font-family:'Press Start 2P',cursive;font-size:5px;padding:2px 4px;border-radius:2px;border:1px solid}
+.rarity-common{color:#44ff44;border-color:#44ff4440;background:#44ff4410}
+.rarity-uncommon{color:#00aaff;border-color:#00aaff40;background:#00aaff10}
+.rarity-rare{color:#aa44ff;border-color:#aa44ff40;background:#aa44ff10}
+.rarity-epic{color:#ff6633;border-color:#ff663340;background:#ff663310}
+.rarity-legendary{color:#ffaa00;border-color:#ffaa0040;background:#ffaa0010}
+.rarity-mythic{color:#ff00aa;border-color:#ff00aa40;background:#ff00aa10}
+.an-bonus{font-size:13px;color:#5a7a5a;line-height:1.3;margin-bottom:4px}
+.an-level-bar{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.an-level{font-family:'Press Start 2P',cursive;font-size:6px;color:#4a6a4a}
+.an-xp-bar{flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.an-xp-fill{height:100%;border-radius:2px;transition:width .2s}
+.an-actions{display:flex;gap:5px;flex-shrink:0;flex-direction:column;align-items:stretch}
+.an-buy-btn,.an-lvl-btn{font-family:'VT323',monospace;font-size:13px;padding:4px 8px;border:1px solid;border-radius:2px;cursor:pointer;transition:all .12s;background:transparent;text-align:center;white-space:nowrap}
+.an-buy-btn{border-color:rgba(255,204,0,.3);color:#ffcc00;background:rgba(255,204,0,.06)}
+.an-buy-btn:hover:not(:disabled){background:rgba(255,204,0,.14);box-shadow:0 0 6px rgba(255,204,0,.2)}
+.an-buy-btn:disabled{opacity:.3;cursor:not-allowed}
+.an-lvl-btn{border-color:rgba(0,255,204,.3);color:#00ffcc;background:rgba(0,255,204,.06)}
+.an-lvl-btn:hover:not(:disabled){background:rgba(0,255,204,.14);box-shadow:0 0 6px rgba(0,255,204,.2)}
+.an-lvl-btn:disabled{opacity:.3;cursor:not-allowed}
+.an-owned-badge{position:absolute;top:6px;right:8px;font-family:'Press Start 2P',cursive;font-size:5px;color:var(--an-color);opacity:.6}
+
+/* STATS */
+.stats-grid{display:flex;flex-direction:column;gap:5px}
+.stat-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(24,24,40,.5);border:1px solid #1a1a2a;border-radius:3px}
+.stat-item-label{font-size:13px;color:#4a6a4a;letter-spacing:1px}
+.stat-item-value{font-family:'Press Start 2P',cursive;font-size:10px}
+
+/* MILESTONE TOAST */
+.milestone-toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:300;background:rgba(10,10,18,.98);border:2px solid #ffcc00;border-radius:8px;padding:20px 32px;text-align:center;animation:milestone-pop 2s ease-out forwards;pointer-events:none}
+@keyframes milestone-pop{0%{transform:translate(-50%,-50%) scale(0);opacity:0}15%{transform:translate(-50%,-50%) scale(1.1);opacity:1}25%{transform:translate(-50%,-50%) scale(1)}80%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(-50%,-50%) scale(.8);opacity:0}}
+.milestone-icon{font-size:36px;margin-bottom:6px}
+.milestone-text{font-family:'Press Start 2P',cursive;font-size:10px;color:#ffcc00;text-shadow:0 0 12px rgba(255,204,0,.5)}
+.milestone-sub{font-size:14px;color:#5a7a5a;margin-top:6px}
+
+/* FX */
+.click-effect{position:fixed;pointer-events:none;font-family:'Press Start 2P',cursive;font-size:11px;color:#ffcc00;text-shadow:0 0 8px rgba(255,204,0,.6);z-index:200;animation:float-up .9s ease-out forwards;transform:translateX(-50%)}
+.click-effect.crit{font-size:16px;color:#ff4444;text-shadow:0 0 12px rgba(255,68,68,.8)}
+.click-effect.combo{color:#ff6633;text-shadow:0 0 10px rgba(255,102,51,.6)}
+@keyframes float-up{0%{opacity:1;transform:translateX(-50%) translateY(0) scale(.8)}30%{transform:translateX(-50%) translateY(-18px) scale(1.1)}100%{opacity:0;transform:translateX(-50%) translateY(-65px) scale(.9)}}
+.flash-container{position:fixed;top:58px;right:16px;z-index:150;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+.purchase-flash{font-family:'Press Start 2P',cursive;font-size:7px;padding:7px 12px;background:rgba(10,10,15,.96);border:1px solid;border-radius:3px;animation:flash-in 1.2s ease-out forwards;text-shadow:0 0 5px currentColor;letter-spacing:.5px}
+@keyframes flash-in{0%{opacity:0;transform:translateX(28px)}15%{opacity:1;transform:translateX(0)}80%{opacity:1}100%{opacity:0;transform:translateX(8px)}}
+.prestige-flash-overlay{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:250;animation:pfanim 1.6s ease-out forwards}
+@keyframes pfanim{0%{background:rgba(255,0,170,.35)}50%{background:rgba(255,0,170,.08)}100%{background:transparent}}
+.offline-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center}
+.offline-popup{background:rgba(14,14,22,.98);border:2px solid #00ffcc;border-radius:6px;padding:28px 36px;text-align:center;max-width:380px;box-shadow:0 0 40px rgba(0,255,204,.15)}
+.offline-icon{font-size:36px;margin-bottom:10px}
+.offline-title{font-family:'Press Start 2P',cursive;font-size:13px;color:#00ffcc;margin-bottom:8px}
+.offline-desc{font-size:17px;color:#5a7a5a;margin-bottom:12px}
+.offline-amount{font-family:'Press Start 2P',cursive;font-size:20px;color:#ffcc00;text-shadow:0 0 12px rgba(255,204,0,.5);margin-bottom:18px}
+.offline-btn{font-family:'Press Start 2P',cursive;font-size:9px;padding:11px 22px;background:rgba(0,255,204,.1);border:2px solid #00ffcc;color:#00ffcc;border-radius:3px;cursor:pointer;transition:all .2s}
+.offline-btn:hover{background:rgba(0,255,204,.2);box-shadow:0 0 18px rgba(0,255,204,.3)}
+
+/* AUTH OVERLAY */
+.auth-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:400;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.auth-box{background:rgba(10,10,18,.98);border:2px solid #00ffcc;border-radius:8px;padding:28px 32px;width:360px;max-width:90vw;box-shadow:0 0 50px rgba(0,255,204,.15)}
+.auth-title{font-family:'Press Start 2P',cursive;font-size:12px;color:#00ffcc;text-shadow:0 0 12px rgba(0,255,204,.5);text-align:center;margin-bottom:6px}
+.auth-subtitle{font-size:14px;color:#4a6a4a;text-align:center;margin-bottom:18px}
+.auth-tabs{display:flex;gap:0;margin-bottom:16px}
+.auth-tab{flex:1;padding:8px;font-family:'Press Start 2P',cursive;font-size:7px;text-align:center;cursor:pointer;background:rgba(24,24,40,.5);border:1px solid #1a1a2a;color:#4a6a4a;transition:all .15s}
+.auth-tab:first-child{border-radius:4px 0 0 4px}
+.auth-tab:last-child{border-radius:0 4px 4px 0}
+.auth-tab.active{color:#00ffcc;background:rgba(0,255,204,.08);border-color:#00ffcc44;text-shadow:0 0 8px rgba(0,255,204,.4)}
+.auth-field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.auth-field label{font-family:'Press Start 2P',cursive;font-size:5px;color:#5a7a5a;letter-spacing:1px}
+.auth-field input{background:#0a0a14;border:1px solid #2a2a40;color:#e0ffe0;padding:10px 12px;border-radius:3px;font-family:'VT323',monospace;font-size:16px;transition:border-color .15s}
+.auth-field input:focus{outline:none;border-color:#00ffcc;box-shadow:0 0 8px rgba(0,255,204,.15)}
+.auth-submit{width:100%;padding:12px;font-family:'Press Start 2P',cursive;font-size:8px;background:rgba(0,255,204,.1);border:2px solid #00ffcc;color:#00ffcc;border-radius:4px;cursor:pointer;transition:all .2s;margin-top:4px}
+.auth-submit:hover{background:rgba(0,255,204,.2);box-shadow:0 0 16px rgba(0,255,204,.3)}
+.auth-submit:disabled{opacity:.4;cursor:not-allowed}
+.auth-error{font-family:'VT323',monospace;font-size:14px;color:#ff4444;text-align:center;margin-top:8px;min-height:18px}
+.auth-success{font-family:'VT323',monospace;font-size:14px;color:#00ffcc;text-align:center;margin-top:8px}
+.auth-skip{display:block;text-align:center;margin-top:14px;font-size:13px;color:#3a5a3a;cursor:pointer;transition:color .15s}
+.auth-skip:hover{color:#5a7a5a}
+.auth-user-bar{display:flex;align-items:center;gap:8px;padding:5px 10px;background:rgba(0,255,204,.04);border:1px solid rgba(0,255,204,.12);border-radius:3px;margin-left:8px}
+.auth-user-name{font-family:'Press Start 2P',cursive;font-size:6px;color:#00ffcc}
+.auth-btn-sm{font-family:'VT323',monospace;font-size:12px;padding:3px 8px;border:1px solid;border-radius:2px;cursor:pointer;transition:all .12s;background:transparent}
+.auth-btn-save{border-color:#00ffcc40;color:#00ffcc}
+.auth-btn-save:hover{background:rgba(0,255,204,.1)}
+.auth-btn-load{border-color:#ffcc0040;color:#ffcc00}
+.auth-btn-load:hover{background:rgba(255,204,0,.1)}
+.auth-btn-logout{border-color:#ff444440;color:#ff4444}
+.auth-btn-logout:hover{background:rgba(255,68,68,.1)}
+.save-indicator{position:fixed;bottom:12px;right:12px;font-family:'Press Start 2P',cursive;font-size:6px;padding:6px 10px;background:rgba(10,10,18,.95);border:1px solid;border-radius:3px;z-index:200;animation:save-fade 2s ease-out forwards;pointer-events:none}
+@keyframes save-fade{0%{opacity:0;transform:translateY(10px)}15%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0}}
+
+/* LEADERBOARD */
+.lb-row{display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(24,24,40,.5);border:1px solid #1a1a2a;border-radius:3px;transition:all .12s}
+.lb-row.lb-top1{border-color:#ffcc0044;background:rgba(255,204,0,.06)}
+.lb-row.lb-top2{border-color:#c0c0c044;background:rgba(192,192,192,.04)}
+.lb-row.lb-top3{border-color:#cd7f3244;background:rgba(205,127,50,.04)}
+.lb-row.lb-you{border-color:#00ffcc44;background:rgba(0,255,204,.04)}
+.lb-rank{font-family:'Press Start 2P',cursive;font-size:8px;width:28px;text-align:center;flex-shrink:0}
+.lb-rank-1{color:#ffcc00;text-shadow:0 0 8px rgba(255,204,0,.5)}
+.lb-rank-2{color:#c0c0c0;text-shadow:0 0 6px rgba(192,192,192,.4)}
+.lb-rank-3{color:#cd7f32;text-shadow:0 0 6px rgba(205,127,50,.4)}
+.lb-rank-n{color:#4a6a4a}
+.lb-info{flex:1;min-width:0}
+.lb-name{font-family:'Press Start 2P',cursive;font-size:6px;color:#e0ffe0;letter-spacing:.3px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-stats{font-size:12px;color:#4a6a4a;display:flex;gap:8px}
+.lb-score{font-family:'Press Start 2P',cursive;font-size:8px;color:#ffcc00;text-shadow:0 0 6px rgba(255,204,0,.3);flex-shrink:0;text-align:right}
+.lb-empty{text-align:center;padding:20px;color:#3a5a3a;font-size:14px}
+.lb-loading{text-align:center;padding:20px;color:#4a6a4a;font-size:14px;animation:pulse-text 1.5s ease-in-out infinite}
+@keyframes pulse-text{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* CASCADE ANIMATION */
+.cascade-ring{position:absolute;top:50%;left:50%;width:0;height:0;border:2px solid;border-radius:50%;pointer-events:none;animation:cascade-expand .6s ease-out forwards;transform:translate(-50%,-50%)}
+@keyframes cascade-expand{0%{width:0;height:0;opacity:1}100%{width:120px;height:120px;opacity:0}}
+
+/* ADMIN PANEL */
+.admin-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);animation:admin-fade-in .3s ease}
+@keyframes admin-fade-in{0%{opacity:0}100%{opacity:1}}
+.admin-panel{background:rgba(10,10,18,.98);border:2px solid #ff3344;border-radius:8px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 0 60px rgba(255,51,68,.2);padding:0}
+.admin-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #2a1a1a;background:rgba(255,51,68,.05);position:sticky;top:0;z-index:1}
+.admin-title{font-family:'Press Start 2P',cursive;font-size:10px;color:#ff3344;text-shadow:0 0 12px rgba(255,51,68,.5);letter-spacing:1px;display:flex;align-items:center;gap:8px}
+.admin-close{font-family:'Press Start 2P',cursive;font-size:8px;color:#ff3344;background:rgba(255,51,68,.1);border:1px solid rgba(255,51,68,.3);border-radius:3px;padding:6px 10px;cursor:pointer;transition:all .15s}
+.admin-close:hover{background:rgba(255,51,68,.2);box-shadow:0 0 10px rgba(255,51,68,.3)}
+.admin-body{padding:14px 18px;display:flex;flex-direction:column;gap:14px}
+.admin-section{border:1px solid #1a1a2a;border-radius:4px;overflow:hidden}
+.admin-section-title{font-family:'Press Start 2P',cursive;font-size:6px;color:#ff6644;letter-spacing:1px;padding:8px 12px;background:rgba(255,51,68,.04);border-bottom:1px solid #1a1a2a;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.admin-section-title:hover{background:rgba(255,51,68,.08)}
+.admin-section-title::after{content:'▼';font-size:6px;color:#4a3a3a;transition:transform .2s}
+.admin-section.collapsed .admin-section-title::after{transform:rotate(-90deg)}
+.admin-section-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.admin-section.collapsed .admin-section-body{display:none}
+.admin-row{display:flex;align-items:center;gap:8px}
+.admin-label{font-family:'VT323',monospace;font-size:15px;color:#8a6a6a;min-width:100px;flex-shrink:0}
+.admin-input{flex:1;font-family:'VT323',monospace;font-size:16px;background:rgba(24,24,40,.8);border:1px solid #2a2a40;border-radius:3px;padding:5px 8px;color:#e0ffe0;outline:none;transition:border-color .15s}
+.admin-input:focus{border-color:#ff3344}
+.admin-input::placeholder{color:#3a3a4a}
+.admin-btn{font-family:'Press Start 2P',cursive;font-size:6px;padding:6px 12px;border:1px solid;border-radius:3px;cursor:pointer;transition:all .15s;background:transparent;white-space:nowrap;letter-spacing:.3px}
+.admin-btn:hover{box-shadow:0 0 8px color-mix(in srgb,currentColor 20%,transparent)}
+.admin-btn.btn-set{color:#00ffcc;border-color:rgba(0,255,204,.3)}
+.admin-btn.btn-set:hover{background:rgba(0,255,204,.1)}
+.admin-btn.btn-max{color:#ffcc00;border-color:rgba(255,204,0,.3)}
+.admin-btn.btn-max:hover{background:rgba(255,204,0,.1)}
+.admin-btn.btn-danger{color:#ff3344;border-color:rgba(255,51,68,.3)}
+.admin-btn.btn-danger:hover{background:rgba(255,51,68,.1)}
+.admin-btn.btn-action{color:#aa44ff;border-color:rgba(170,68,255,.3)}
+.admin-btn.btn-action:hover{background:rgba(170,68,255,.1)}
+.admin-btn.btn-flux{color:#00aaff;border-color:rgba(0,170,255,.3)}
+.admin-btn.btn-flux:hover{background:rgba(0,170,255,.1)}
+.admin-quick-row{display:flex;gap:5px;flex-wrap:wrap}
+.admin-status{font-family:'VT323',monospace;font-size:14px;color:#44ff44;padding:6px 10px;background:rgba(68,255,68,.04);border:1px solid rgba(68,255,68,.15);border-radius:3px;text-align:center;min-height:24px;transition:all .2s}
+.admin-status.error{color:#ff3344;background:rgba(255,51,68,.04);border-color:rgba(255,51,68,.15)}
+
+/* RESPONSIVE */
+@media(max-width:1200px){.side-panel{width:320px}.spinners-grid{grid-template-columns:repeat(8,1fr);gap:4px}}
+@media(max-width:1000px){.game-main{flex-direction:column;padding:8px 10px}.side-panel{width:100%}.panel-content{max-height:none}.spinners-grid{grid-template-columns:repeat(8,1fr)}}
+@media(max-width:700px){.spinners-grid{grid-template-columns:repeat(5,1fr)}.spinner-visual{width:46px;height:46px}.top-bar{gap:6px}.game-title{font-size:11px}.cur-amount{font-size:11px}.tab-btn{font-size:4px;padding:6px 2px}}
+@media(max-width:480px){.spinners-grid{grid-template-columns:repeat(4,1fr);gap:4px}.tab-btn{font-size:3.5px;padding:5px 2px}.spinner-visual{width:40px;height:40px}}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#1e1e2e;border-radius:2px}
+</style>
+</head>
+<body>
+<div class="game-root" id="gameRoot">
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <h1 class="game-title"><span class="title-spin">SPIN</span><span class="title-rev">REV</span></h1>
+      <span class="prestige-badge" id="prestigeBadge"></span>
+      <div class="auth-user-bar" id="authUserBar" style="display:none">
+        <span class="auth-user-name" id="authUserName">Guest</span>
+        <button class="auth-btn-sm auth-btn-save" id="cloudSaveBtn" title="Save to cloud">☁ Save</button>
+        <button class="auth-btn-sm auth-btn-load" id="cloudLoadBtn" title="Load from cloud">↓ Load</button>
+        <button class="auth-btn-sm auth-btn-logout" id="logoutBtn" title="Sign out">✕</button>
+      </div>
+      <button class="auth-btn-sm" id="loginBtn" style="border-color:#00ffcc40;color:#00ffcc;font-family:'Press Start 2P',cursive;font-size:5px;padding:4px 8px">🔑 LOGIN</button>
+    </div>
+    <div class="top-bar-center">
+      <div class="currency-pill rev-pill">
+        <span class="cur-amount" id="revAmount">0</span>
+        <span class="cur-label">REV</span>
+      </div>
+      <div class="currency-pill token-pill">
+        <span class="cur-amount" id="tokenAmount">0</span>
+        <span class="cur-label">TOKEN</span>
+      </div>
+      <div class="currency-pill flux-pill">
+        <span class="cur-amount" id="fluxAmount">0</span>
+        <span class="cur-label">FLUX</span>
+      </div>
+    </div>
+    <div class="top-bar-right">
+      <div class="stat-mini"><span class="stat-mini-label">PER CLICK</span><span class="stat-mini-value" id="perClick">1</span></div>
+      <div class="stat-mini"><span class="stat-mini-label">PER SEC</span><span class="stat-mini-value" id="perSec">0</span></div>
+    </div>
+  </header>
+
+  <!-- COMBO METER -->
+  <div class="combo-meter" id="comboMeter">
+    <div class="combo-inner">
+      <div class="combo-count" id="comboCount">x1</div>
+      <div class="combo-mult" id="comboMult">COMBO</div>
+      <div class="combo-bar"><div class="combo-bar-fill" id="comboBar" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <main class="game-main">
+    <section class="spinners-section">
+      <h2 class="section-title">⚙ SPINNERS <span class="section-subtitle">click to spin &amp; earn REV</span></h2>
+      <div class="spinners-grid" id="spinnersGrid"></div>
+    </section>
+
+    <aside class="side-panel">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="upgrades">🔧 UPGR</button>
+        <button class="tab-btn" data-tab="prestige">🌀 PRES</button>
+        <button class="tab-btn" data-tab="tree">✦ TREE</button>
+        <button class="tab-btn" data-tab="ascension" id="ascTab">⚡ ASC</button>
+        <button class="tab-btn" data-tab="animals" id="animalsTab">🐾 PETS</button>
+        <button class="tab-btn" data-tab="stats">📊 STAT</button>
+        <button class="tab-btn" data-tab="leaderboard">🏆 RANK</button>
+      </div>
+      <div class="panel-content">
+        <div class="panel visible" id="upgradePanel">
+          <h2 class="shop-title">UPGRADES</h2>
+          <div class="upgrade-list" id="upgradeList"></div>
+        </div>
+        <div class="panel" id="prestigePanel">
+          <h2 class="panel-title" style="color:#ff00aa;text-shadow:0 0 10px rgba(255,0,170,.3)">🌀 PRESTIGE</h2>
+          <div class="panel-expl" style="border-color:rgba(255,0,170,.2)">Reset progress for a permanent multiplier + tokens. Each tier unlocks NEW mechanics.</div>
+          <div class="prestige-stats" id="prestigeStats"></div>
+          <div class="prestige-progress">
+            <div class="prestige-progress-label"><span>Progress to prestige</span><span id="pProgressText">0 / 500 REV</span></div>
+            <div class="prestige-progress-bar"><div class="prestige-progress-fill" id="pProgressFill" style="width:0%"></div></div>
+          </div>
+          <button class="prestige-btn not-ready" id="prestigeBtn">EARN MORE REV TO PRESTIGE</button>
+          <p class="prestige-warning" id="prestigeWarning"></p>
+          <div class="prestige-perks" id="prestigePerks"></div>
+        </div>
+        <div class="panel" id="treePanel">
+          <h2 class="panel-title" style="color:#aa44ff;text-shadow:0 0 10px rgba(170,68,255,.3)">✦ SKILL TREE</h2>
+          <div class="panel-expl" style="border-color:rgba(170,68,255,.2)">Spend PRESTIGE TOKENS on permanent upgrades. Earned by prestiging.</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:rgba(255,0,170,.05);border:1px solid rgba(255,0,170,.15);border-radius:3px">
+            <span style="font-size:14px;color:#5a7a5a">TOKENS AVAILABLE:</span>
+            <span id="treeTokBalance" style="font-family:'Press Start 2P',cursive;font-size:14px;color:#ff00aa;text-shadow:0 0 8px rgba(255,0,170,.4)">0</span>
+          </div>
+          <div id="treeContent"></div>
+        </div>
+        <div class="panel" id="ascPanel">
+          <h2 class="panel-title" style="color:#00aaff;text-shadow:0 0 10px rgba(0,170,255,.3)">⚡ ASCENSION</h2>
+          <div class="panel-expl" style="border-color:rgba(0,170,255,.2)">Spend FLUX on powerful ascension upgrades. Flux is earned passively from prestige tier.</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:rgba(0,170,255,.05);border:1px solid rgba(0,170,255,.15);border-radius:3px">
+            <span style="font-size:14px;color:#5a7a5a">FLUX:</span>
+            <span id="ascFluxBalance" style="font-family:'Press Start 2P',cursive;font-size:14px;color:#00aaff;text-shadow:0 0 8px rgba(0,170,255,.4)">0</span>
+            <span style="font-size:12px;color:#4a6a4a;margin-left:auto">+<span id="ascFluxRate">0</span>/sec</span>
+          </div>
+          <div id="ascUpgradeList"></div>
+        </div>
+        <div class="panel" id="animalsPanel">
+          <h2 class="panel-title" style="color:#ffaa00;text-shadow:0 0 10px rgba(255,170,0,.3)">🐾 ANIMAL COMPANIONS</h2>
+          <div class="panel-expl" style="border-color:rgba(255,170,0,.2)">Buy and level up animals. Each gives unique permanent bonuses. Animals survive prestige!</div>
+          <div class="animals-summary" id="animalsSummary"></div>
+          <div class="animal-grid" id="animalGrid"></div>
+        </div>
+        <div class="panel" id="statsPanel">
+          <h2 class="panel-title" style="color:#5a7a5a">📊 STATISTICS</h2>
+          <div class="stats-grid" id="statsGrid"></div>
+        </div>
+        <div class="panel" id="leaderboardPanel">
+          <h2 class="panel-title" style="color:#ffcc00;text-shadow:0 0 10px rgba(255,204,0,.3)">🏆 LEADERBOARD</h2>
+          <div class="panel-expl" style="border-color:rgba(255,204,0,.2)">Compete with other players! Submit your score to the global leaderboard.</div>
+          <div style="display:flex;gap:6px;margin-bottom:12px;align-items:stretch">
+            <input id="playerNameInput" type="text" maxlength="20" placeholder="ENTER YOUR NAME" style="flex:1;background:#0e0e16;border:1px solid #2a2a40;color:#ffcc00;padding:8px 10px;border-radius:3px;font-family:'Press Start 2P';font-size:7px;letter-spacing:.5px;text-transform:uppercase">
+            <button id="submitScoreBtn" style="font-family:'Press Start 2P';font-size:6px;padding:8px 14px;background:rgba(255,204,0,.1);border:1px solid #ffcc0044;color:#ffcc00;border-radius:3px;cursor:pointer;transition:all .15s;white-space:nowrap">SUBMIT</button>
+          </div>
+          <div id="submitStatus" style="font-size:13px;color:#5a7a5a;margin-bottom:10px;text-align:center;min-height:16px"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-family:'Press Start 2P';font-size:7px;color:#5a7a5a;letter-spacing:1px">GLOBAL RANKINGS</span>
+            <button id="refreshLeaderboard" style="font-family:'VT323';font-size:13px;padding:3px 8px;background:rgba(0,255,204,.06);border:1px solid #00ffcc30;color:#00ffcc;border-radius:2px;cursor:pointer">↻ Refresh</button>
+          </div>
+          <div id="leaderboardList" style="display:flex;flex-direction:column;gap:4px"></div>
+          <div style="margin-top:16px;border-top:1px solid #1a1a2a;padding-top:12px">
+            <div style="font-family:'Press Start 2P';font-size:7px;color:#5a7a5a;letter-spacing:1px;margin-bottom:8px">YOUR BEST RUNS</div>
+            <div id="localLeaderboard" style="display:flex;flex-direction:column;gap:4px"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="flash-container" id="flashContainer"></div>
+</div>
+
+<script>
+// ============================================================
+// CONSTANTS
+// ============================================================
+const NUM_SPINNERS = 100;
+const SPINNER_NAMES = [
+  "Alpha","Beta","Gamma","Delta","Epsilon","Zeta","Eta","Theta","Iota","Kappa",
+  "Lambda","Mu","Nu","Xi","Omicron","Pi","Rho","Sigma","Tau","Upsilon",
+  "Phi","Chi","Psi","Omega","Nexus","Aether","Blaze","Cipher","Drift","Echo",
+  "Flux","Glyph","Helix","Ion","Jade","Karma","Lux","Mist","Neon","Orbit",
+  "Prism","Quark","Rift","Surge","Terra","Ultra","Vex","Warp","Xeno","Yotta",
+  "Zenith","Arc","Bolt","Core","Dusk","Edge","Fuse","Grit","Haze","Iris",
+  "Jolt","Knot","Lynx","Mach","Nova","Opal","Pulse","Quasar","Rune","Shard",
+  "Thorn","Umbra","Volt","Wave","Xerox","Yarn","Zap","Apex","Bloom","Crux",
+  "Dawn","Ember","Frost","Gleam","Halo","Ingot","Jinx","Keen","Loom","Myth",
+  "Null","Onyx","Pyre","Quest","Raze","Storm","Titan","Unity","Veil","Wrath"
+];
+const SPINNER_COLORS = (()=>{const c=[];for(let i=0;i<100;i++){c.push(`hsl(${Math.round(i/100*360)},100%,65%)`)}return c})();
+
+const ANIMALS_UNLOCK_COST = 500;
+
+// ── PRESTIGE TIER PERKS (unlocked at each tier) ──
+const PRESTIGE_PERKS = [
+  { tier:1, name:"AUTO-SPIN",     desc:"Unlock auto-spin upgrade",       icon:"⚡" },
+  { tier:2, name:"CHAIN SPINNERS",desc:"Spinners can chain to neighbors", icon:"🔗" },
+  { tier:3, name:"CASCADE MODE",  desc:"Spinning triggers chain reactions",icon:"💫" },
+  { tier:4, name:"COMBO SYSTEM",  desc:"Rapid clicks build combo multiplier",icon:"🔥" },
+  { tier:5, name:"FLUX GENERATION",desc:"Earn FLUX currency passively",   icon:"⚡" },
+  { tier:6, name:"MEGA CLICKS",   desc:"Every 10th click is 5x power",   icon:"💥" },
+  { tier:8, name:"SYNERGY BONUS", desc:"+2% REV per unique owned animal", icon:"🐾" },
+  { tier:10,name:"TRANSCENDENCE", desc:"Spinners keep levels on prestige",icon:"🌌" },
+];
+
+// ── REGULAR UPGRADES (bought with REV) ───────────────────────
+const UPGRADES = [
+  { id:"clickPower",     cat:"CLICKING",  name:"CLICK POWER",     desc:"+3 REV per click",                icon:">>", color:"#00ffcc", base:8,   scale:1.5,  max:Infinity },
+  { id:"clickFrenzy",    cat:"CLICKING",  name:"CLICK FRENZY",    desc:"Clicking speeds up ALL spinners", icon:"!!", color:"#44ffdd", base:60,  scale:1.55, max:Infinity },
+  { id:"multiClick",     cat:"CLICKING",  name:"MULTI CLICK",     desc:"+1 bonus click per click",        icon:"xx", color:"#88ffff", base:150, scale:1.75, max:Infinity },
+  { id:"critChance",     cat:"CLICKING",  name:"CRIT CHANCE",     desc:"+2% critical click chance",       icon:"!!", color:"#ff4444", base:200, scale:1.8,  max:Infinity, mechanic:true },
+  { id:"speedBoost",     cat:"SPEED",     name:"SPEED BOOST",     desc:"+12% click spin speed",           icon:"~~", color:"#00aaff", base:20,  scale:1.45, max:Infinity },
+  { id:"maxSpeed",       cat:"SPEED",     name:"MAX SPEED",       desc:"+2 max speed cap",                icon:"^^", color:"#44ddff", base:100, scale:1.65, max:Infinity },
+  { id:"spinDecay",      cat:"SPEED",     name:"ANTI DECAY",      desc:"-15% spin slowdown rate",         icon:"--", color:"#66ffcc", base:60,  scale:1.6,  max:Infinity },
+  { id:"chainRange",     cat:"SPEED",     name:"CHAIN RANGE",     desc:"Chain effect hits +1 spinner",    icon:"⚡", color:"#ffdd44", base:300, scale:1.8,  max:Infinity, mechanic:true, reqTier:2 },
+  { id:"passiveIncome",  cat:"PASSIVE",   name:"PASSIVE REV",     desc:"+3 REV/sec idle income",          icon:"++", color:"#ff6633", base:50,  scale:1.5,  max:Infinity },
+  { id:"autoSpinMult",   cat:"PASSIVE",   name:"AUTO SPIN",       desc:"Enable auto-spin on 1 spinner",   icon:"//", color:"#ffcc00", base:40,  scale:1.55, max:100, reqTier:1 },
+  { id:"autoRevBoost",   cat:"PASSIVE",   name:"AUTO BOOST",      desc:"+20% auto-spin REV output",       icon:"@@", color:"#ffaa00", base:100, scale:1.65, max:Infinity, reqTier:1 },
+  { id:"cascadePower",   cat:"PASSIVE",   name:"CASCADE POWER",   desc:"+15% cascade chain multiplier",   icon:"💫", color:"#ff44cc", base:500, scale:1.9,  max:Infinity, mechanic:true, reqTier:3 },
+  { id:"offlineBonus",   cat:"PASSIVE",   name:"OFFLINE RATE",    desc:"+10% offline earnings rate",       icon:"ZZ", color:"#ff9944", base:250, scale:1.9,  max:Infinity },
+  { id:"costReduction",  cat:"ECONOMY",   name:"DISCOUNT",        desc:"-5% all upgrade costs",           icon:"$",  color:"#aa44ff", base:80,  scale:1.7,  max:Infinity },
+  { id:"spinnerDiscount",cat:"ECONOMY",   name:"CHEAP UNLOCK",    desc:"-8% spinner unlock costs",        icon:"%%", color:"#cc44ff", base:140, scale:1.75, max:Infinity },
+  { id:"bulkBonus",      cat:"ECONOMY",   name:"BULK EARN",       desc:"+5% REV from all sources",        icon:"&&", color:"#dd44ff", base:400, scale:1.95, max:Infinity },
+  { id:"prestigeSpeed",  cat:"PRESTIGE",  name:"PRESTIGE RUSH",   desc:"-10% REV needed to prestige",     icon:"**", color:"#ff00aa", base:600, scale:2.1,  max:Infinity },
+  { id:"tokenBoost",     cat:"PRESTIGE",  name:"TOKEN LUCK",      desc:"+1 extra token on prestige",      icon:"TT", color:"#ff4488", base:1500,scale:2.4,  max:Infinity },
+];
+
+// ── ASCENSION UPGRADES (bought with FLUX) ──
+const ASC_UPGRADES = [
+  { id:"fluxMult",     name:"FLUX AMPLIFIER",    desc:"+25% flux generation speed",       icon:"⚡", color:"#00aaff", base:10,  scale:1.6,  max:Infinity },
+  { id:"revMult",      name:"REV OVERFLOW",      desc:"+10% all REV earned permanently",  icon:"💰", color:"#ffcc00", base:5,   scale:1.5,  max:Infinity },
+  { id:"startBoost",   name:"HEAD START",        desc:"Start each prestige with +500 REV",icon:"🚀", color:"#00ffcc", base:15,  scale:1.7,  max:Infinity },
+  { id:"autoUnlock",   name:"AUTO UNLOCK",       desc:"Auto-unlock next spinner at prestige",icon:"🔓",color:"#ffaa00",base:25,  scale:2.0,  max:100 },
+  { id:"spinnerPower", name:"SPINNER OVERCLOCK", desc:"+5% base spinner output",          icon:"⚙️", color:"#44ddff", base:8,   scale:1.55, max:Infinity },
+  { id:"critDamage",   name:"CRIT AMPLIFIER",    desc:"+1x crit multiplier",              icon:"💥", color:"#ff4444", base:20,  scale:1.8,  max:Infinity },
+  { id:"comboDecay",   name:"COMBO SUSTAIN",     desc:"Combo decays 20% slower",          icon:"🔥", color:"#ff6633", base:12,  scale:1.6,  max:Infinity },
+  { id:"cascadeChain", name:"INFINITE CASCADE",  desc:"+10% cascade chance",              icon:"💫", color:"#ff44cc", base:30,  scale:2.0,  max:Infinity },
+  { id:"prestigeMult", name:"PRESTIGE BOOST",    desc:"+0.5x prestige multiplier gain",   icon:"🌀", color:"#ff00aa", base:50,  scale:2.2,  max:Infinity },
+  { id:"tokenGen",     name:"TOKEN FORGE",       desc:"+1 token per prestige",            icon:"🔮", color:"#aa44ff", base:40,  scale:2.0,  max:Infinity },
+];
+
+// ── SKILL TREE (bought with PRESTIGE TOKENS) — 24 unique nodes ──
+const SKILLS = [
+  { id:"sk_origin",      name:"ORIGIN SPARK",    desc:"Unlocks the skill tree. +10% all REV.",        color:"#ffffff", cost:1, maxLevel:1 },
+  { id:"sk_clickPath",   name:"CLICK MASTERY",   desc:"+15 base click power permanently.",            color:"#00ffcc", cost:1, maxLevel:1 },
+  { id:"sk_speedPath",   name:"VELOCITY CORE",   desc:"+30% spin speed on all spinners.",             color:"#00aaff", cost:1, maxLevel:1 },
+  { id:"sk_passivePath", name:"IDLE ENGINE",     desc:"+5 passive REV/sec permanently.",              color:"#ff6633", cost:1, maxLevel:1 },
+  { id:"sk_critClick",   name:"CRIT CLICK",      desc:"10% chance for 5x click damage.",              color:"#44ffdd", cost:2, maxLevel:1 },
+  { id:"sk_clickCombo",  name:"COMBO CLICKS",    desc:"Combo builds 50% faster.",                     color:"#88ffff", cost:2, maxLevel:1 },
+  { id:"sk_turboSpin",   name:"TURBO SPIN",      desc:"Spinners decay 50% slower.",                   color:"#44ddff", cost:2, maxLevel:1 },
+  { id:"sk_autoStart",   name:"AUTO IGNITE",     desc:"Spinners start at 3x minimum speed.",          color:"#66ffcc", cost:2, maxLevel:1 },
+  { id:"sk_goldRush",    name:"GOLD RUSH",       desc:"First click each second gives 3x REV.",        color:"#ffcc00", cost:3, maxLevel:1 },
+  { id:"sk_chainLight",  name:"CHAIN LIGHTNING",  desc:"Chain hits deal +50% damage.",                 color:"#ffdd44", cost:3, maxLevel:1 },
+  { id:"sk_idleWave",    name:"IDLE WAVE",       desc:"Passive income pulses for +50% every 10s.",    color:"#ff9944", cost:3, maxLevel:1 },
+  { id:"sk_cheapAll",    name:"BARGAIN HUNTER",  desc:"All costs reduced by 20% permanently.",        color:"#aa44ff", cost:3, maxLevel:1 },
+  { id:"sk_megaCrit",    name:"MEGA CRIT",       desc:"Crits now deal 10x instead of 5x.",            color:"#00ffcc", cost:4, maxLevel:1 },
+  { id:"sk_multiHit",    name:"MULTI STRIKE",    desc:"Each click hits 3 random spinners.",           color:"#44ffdd", cost:4, maxLevel:1 },
+  { id:"sk_hyperIdle",   name:"HYPER IDLE",      desc:"Passive REV doubled permanently.",             color:"#ff6633", cost:4, maxLevel:1 },
+  { id:"sk_tokenMagnet", name:"TOKEN MAGNET",    desc:"+2 extra tokens per prestige.",                color:"#ff00aa", cost:4, maxLevel:1 },
+  { id:"sk_infiniteCombo",name:"INF COMBO",      desc:"Combo multiplier cap raised to 50x.",          color:"#88ffff", cost:5, maxLevel:1 },
+  { id:"sk_stormSpeed",  name:"STORM SPEED",     desc:"Max speed cap doubled.",                       color:"#00aaff", cost:5, maxLevel:1 },
+  { id:"sk_presDouble",  name:"PRESTIGE x2",     desc:"Prestige multiplier gain doubled.",            color:"#ff4488", cost:5, maxLevel:1 },
+  { id:"sk_godClick",    name:"GOD CLICK",       desc:"Clicks deal +100 flat REV always.",            color:"#ffffff", cost:6, maxLevel:1 },
+  { id:"sk_eternalSpin", name:"ETERNAL SPIN",    desc:"Spinners never slow below 50% max.",           color:"#44ddff", cost:6, maxLevel:1 },
+  { id:"sk_wealthGod",   name:"WEALTH GOD",      desc:"All REV sources +50%.",                        color:"#ffaa00", cost:6, maxLevel:1 },
+  { id:"sk_omnipotent",  name:"OMNIPOTENT",      desc:"All bonuses from other skills doubled.",       color:"#ff00aa", cost:8, maxLevel:1 },
+  { id:"sk_transcend",   name:"TRANSCENDENCE",   desc:"Prestige no longer resets spinner levels.",    color:"#aa44ff", cost:10, maxLevel:1 },
+];
+
+const TREE_HEIGHT = 980;
+const SKILL_POSITIONS = {
+  sk_origin:{x:50,y:40},sk_clickPath:{x:18,y:130},sk_speedPath:{x:50,y:130},sk_passivePath:{x:82,y:130},
+  sk_critClick:{x:10,y:240},sk_clickCombo:{x:35,y:240},sk_turboSpin:{x:65,y:240},sk_autoStart:{x:90,y:240},
+  sk_goldRush:{x:10,y:360},sk_chainLight:{x:37,y:360},sk_idleWave:{x:63,y:360},sk_cheapAll:{x:90,y:360},
+  sk_megaCrit:{x:12,y:480},sk_multiHit:{x:38,y:480},sk_hyperIdle:{x:62,y:480},sk_tokenMagnet:{x:88,y:480},
+  sk_infiniteCombo:{x:20,y:600},sk_stormSpeed:{x:50,y:600},sk_presDouble:{x:80,y:600},
+  sk_godClick:{x:20,y:720},sk_eternalSpin:{x:50,y:720},sk_wealthGod:{x:80,y:720},
+  sk_omnipotent:{x:35,y:860},sk_transcend:{x:65,y:860},
+};
+const SKILL_CONNECTIONS = [
+  ["sk_origin","sk_clickPath"],["sk_origin","sk_speedPath"],["sk_origin","sk_passivePath"],
+  ["sk_clickPath","sk_critClick"],["sk_clickPath","sk_clickCombo"],["sk_speedPath","sk_turboSpin"],["sk_passivePath","sk_autoStart"],
+  ["sk_critClick","sk_goldRush"],["sk_clickCombo","sk_chainLight"],["sk_turboSpin","sk_idleWave"],["sk_autoStart","sk_cheapAll"],
+  ["sk_goldRush","sk_megaCrit"],["sk_chainLight","sk_multiHit"],["sk_idleWave","sk_hyperIdle"],["sk_cheapAll","sk_tokenMagnet"],
+  ["sk_megaCrit","sk_infiniteCombo"],["sk_multiHit","sk_infiniteCombo"],["sk_multiHit","sk_stormSpeed"],
+  ["sk_hyperIdle","sk_stormSpeed"],["sk_hyperIdle","sk_presDouble"],["sk_tokenMagnet","sk_presDouble"],
+  ["sk_infiniteCombo","sk_godClick"],["sk_stormSpeed","sk_eternalSpin"],["sk_presDouble","sk_wealthGod"],
+  ["sk_godClick","sk_omnipotent"],["sk_eternalSpin","sk_omnipotent"],["sk_eternalSpin","sk_transcend"],["sk_wealthGod","sk_transcend"],
+];
+const SKILL_EMOJI = {
+  sk_origin:"✨",sk_clickPath:"👆",sk_speedPath:"💨",sk_passivePath:"💤",
+  sk_critClick:"🎯",sk_clickCombo:"🔥",sk_turboSpin:"🌀",sk_autoStart:"🚀",
+  sk_goldRush:"💰",sk_chainLight:"⚡",sk_idleWave:"🌊",sk_cheapAll:"🏷️",
+  sk_megaCrit:"💥",sk_multiHit:"✴️",sk_hyperIdle:"☀️",sk_tokenMagnet:"🧲",
+  sk_infiniteCombo:"♾️",sk_stormSpeed:"🌪️",sk_presDouble:"⭐",
+  sk_godClick:"👑",sk_eternalSpin:"💎",sk_wealthGod:"🏆",
+  sk_omnipotent:"🔱",sk_transcend:"🌌",
+};
+
+// ── ANIMALS ──
+const ANIMALS = [
+  {id:"cat",name:"SHADOW CAT",emoji:"🐱",rarity:"common",color:"#44ff44",baseCost:50,scale:1.5,bonus:"passiveRev",bonusPerLv:0.8,bonusDesc:"+0.8 REV/sec per level",maxLevel:20},
+  {id:"dog",name:"LOYAL HOUND",emoji:"🐕",rarity:"common",color:"#44ff44",baseCost:80,scale:1.5,bonus:"clickPower",bonusPerLv:2,bonusDesc:"+2 click power per level",maxLevel:20},
+  {id:"rabbit",name:"SWIFT RABBIT",emoji:"🐰",rarity:"common",color:"#44ff44",baseCost:60,scale:1.5,bonus:"spinSpeed",bonusPerLv:0.5,bonusDesc:"+0.5 spin speed per level",maxLevel:15},
+  {id:"hamster",name:"HOARD HAMSTER",emoji:"🐹",rarity:"common",color:"#44ff44",baseCost:100,scale:1.5,bonus:"costReduce",bonusPerLv:1.5,bonusDesc:"-1.5% costs per level",maxLevel:15},
+  {id:"wolf",name:"DIRE WOLF",emoji:"🐺",rarity:"uncommon",color:"#00aaff",baseCost:500,scale:1.6,bonus:"clickPower",bonusPerLv:8,bonusDesc:"+8 click power per level",maxLevel:15},
+  {id:"eagle",name:"STORM EAGLE",emoji:"🦅",rarity:"uncommon",color:"#00aaff",baseCost:600,scale:1.6,bonus:"spinSpeed",bonusPerLv:1.2,bonusDesc:"+1.2 spin speed per level",maxLevel:12},
+  {id:"bear",name:"IRON BEAR",emoji:"🐻",rarity:"uncommon",color:"#00aaff",baseCost:750,scale:1.6,bonus:"passiveRev",bonusPerLv:3,bonusDesc:"+3 REV/sec per level",maxLevel:12},
+  {id:"fox",name:"CUNNING FOX",emoji:"🦊",rarity:"uncommon",color:"#00aaff",baseCost:400,scale:1.55,bonus:"costReduce",bonusPerLv:3,bonusDesc:"-3% costs per level",maxLevel:10},
+  {id:"lion",name:"GOLDEN LION",emoji:"🦁",rarity:"rare",color:"#aa44ff",baseCost:3000,scale:1.7,bonus:"revMult",bonusPerLv:5,bonusDesc:"+5% all REV per level",maxLevel:10},
+  {id:"shark",name:"ABYSS SHARK",emoji:"🦈",rarity:"rare",color:"#aa44ff",baseCost:4000,scale:1.7,bonus:"clickPower",bonusPerLv:25,bonusDesc:"+25 click power per level",maxLevel:10},
+  {id:"tiger",name:"PHANTOM TIGER",emoji:"🐅",rarity:"rare",color:"#aa44ff",baseCost:3500,scale:1.7,bonus:"autoBoost",bonusPerLv:8,bonusDesc:"+8% auto-spin output per level",maxLevel:10},
+  {id:"dragon",name:"EMBER DRAGON",emoji:"🐉",rarity:"epic",color:"#ff6633",baseCost:20000,scale:1.8,bonus:"revMult",bonusPerLv:12,bonusDesc:"+12% all REV per level",maxLevel:8},
+  {id:"phoenix",name:"PHOENIX",emoji:"🔥",rarity:"epic",color:"#ff6633",baseCost:25000,scale:1.8,bonus:"prestigeBonus",bonusPerLv:5,bonusDesc:"+5% prestige multiplier per level",maxLevel:8},
+  {id:"unicorn",name:"VOID UNICORN",emoji:"🦄",rarity:"epic",color:"#ff6633",baseCost:18000,scale:1.75,bonus:"passiveRev",bonusPerLv:15,bonusDesc:"+15 REV/sec per level",maxLevel:8},
+  {id:"kraken",name:"KRAKEN",emoji:"🐙",rarity:"legendary",color:"#ffaa00",baseCost:100000,scale:2.0,bonus:"revMult",bonusPerLv:20,bonusDesc:"+20% all REV per level",maxLevel:5},
+  {id:"leviathan",name:"LEVIATHAN",emoji:"🐋",rarity:"legendary",color:"#ffaa00",baseCost:150000,scale:2.0,bonus:"passiveRev",bonusPerLv:50,bonusDesc:"+50 REV/sec per level",maxLevel:5},
+  {id:"celestial",name:"CELESTIAL SERPENT",emoji:"🐲",rarity:"mythic",color:"#ff00aa",baseCost:500000,scale:2.2,bonus:"prestigeBonus",bonusPerLv:15,bonusDesc:"+15% prestige mult per level",maxLevel:3},
+  {id:"cosmicwolf",name:"COSMIC WOLF",emoji:"🌑",rarity:"mythic",color:"#ff00aa",baseCost:750000,scale:2.2,bonus:"revMult",bonusPerLv:35,bonusDesc:"+35% all REV per level",maxLevel:3},
+];
+const RARITY_ORDER = ["common","uncommon","rare","epic","legendary","mythic"];
+
+// ── MILESTONES ──
+const MILESTONES = [
+  {id:"m1",   check:G=>G.totalRev>=100,    icon:"💫",text:"100 REV!",         sub:"The journey begins..."},
+  {id:"m2",   check:G=>G.totalRev>=1000,   icon:"⭐",text:"1,000 REV!",       sub:"Getting warmed up"},
+  {id:"m3",   check:G=>G.totalRev>=10000,  icon:"🌟",text:"10,000 REV!",      sub:"Spinning pro"},
+  {id:"m4",   check:G=>G.totalRev>=100000, icon:"💎",text:"100K REV!",        sub:"Unstoppable force"},
+  {id:"m5",   check:G=>G.totalRev>=1e6,    icon:"👑",text:"1 MILLION REV!",   sub:"Spinner mogul"},
+  {id:"m6",   check:G=>G.prestigeLevel>=1, icon:"🌀",text:"FIRST PRESTIGE!", sub:"A new beginning"},
+  {id:"m7",   check:G=>G.prestigeLevel>=5, icon:"🔱",text:"PRESTIGE TIER 5!",sub:"Master of revolutions"},
+  {id:"m8",   check:G=>G.totalRev>=1e9,    icon:"🌌",text:"1 BILLION REV!",  sub:"Transcendent spinner"},
+];
+
+const LOCAL_KEY = "spin-rev-v5";
+let totalClicks = parseInt(localStorage.getItem("spin-rev-clicks") || "0");
+let confirmingPrestige = false, confirmTimer = null;
+let prestigeHistory = [];
+try { prestigeHistory = JSON.parse(localStorage.getItem("spin-rev-history") || "[]"); } catch(e){}
+let triggeredMilestones = [];
+try { triggeredMilestones = JSON.parse(localStorage.getItem("spin-rev-milestones") || "[]"); } catch(e){}
+
+// ── COMBO STATE ──
+let comboCount = 0;
+let lastClickTime = 0;
+const COMBO_TIMEOUT = 1200; // ms between clicks to maintain combo
+const COMBO_MAX = has => has ? 50 : 20;
+
+// ── GOLD RUSH STATE ──
+let lastSecondClick = 0;
+
+// ============================================================
+// GAME STATE
+// ============================================================
+function createInitialState() {
+  const spinners = [];
+  for (let i = 0; i < NUM_SPINNERS; i++)
+    spinners.push({ id:i, unlocked:i===0, level:1, speed:.5, baseRevPerSpin:1, autoSpin:false, chained:false });
+  const upgrades = {};
+  for (const u of UPGRADES) upgrades[u.id] = 0;
+  const skills = {};
+  for (const s of SKILLS) skills[s.id] = 0;
+  const animals = {};
+  for (const a of ANIMALS) animals[a.id] = { owned:false, level:0 };
+  const ascUpgrades = {};
+  for (const a of ASC_UPGRADES) ascUpgrades[a.id] = 0;
+  return { rev:0, totalRev:0, revPerClick:1, spinners, upgrades, skills, animals, ascUpgrades,
+    flux:0, animalsUnlocked:false, prestigeLevel:0, prestigeMultiplier:1, prestigeTokens:0,
+    passiveRevPerSec:0, lastTick:Date.now() };
+}
+
+let G;
+try {
+  const raw = localStorage.getItem(LOCAL_KEY);
+  G = raw ? JSON.parse(raw) : null;
+  if (!G || !G.spinners) {
+    // Try migrating from v4
+    const v4 = localStorage.getItem("spin-rev-v4");
+    if (v4) {
+      G = JSON.parse(v4);
+    } else {
+      G = createInitialState();
+    }
+  }
+  // Patch missing fields
+  if (!G.skills) { G.skills = {}; }
+  for (const s of SKILLS) if (G.skills[s.id] === undefined) G.skills[s.id] = 0;
+  if (!G.animals) G.animals = {};
+  for (const a of ANIMALS) if (!G.animals[a.id]) G.animals[a.id] = { owned:false, level:0 };
+  if (!G.ascUpgrades) G.ascUpgrades = {};
+  for (const a of ASC_UPGRADES) if (G.ascUpgrades[a.id] === undefined) G.ascUpgrades[a.id] = 0;
+  if (G.flux === undefined) G.flux = 0;
+  if (G.animalsUnlocked === undefined) G.animalsUnlocked = false;
+  if (!G.prestigeTokens) G.prestigeTokens = 0;
+  for (const u of UPGRADES) if (G.upgrades[u.id] === undefined) G.upgrades[u.id] = 0;
+  // Ensure 100 spinners
+  while (G.spinners.length < NUM_SPINNERS) G.spinners.push({id:G.spinners.length,unlocked:false,level:1,speed:.5,baseRevPerSpin:1,autoSpin:false,chained:false});
+  // Ensure all spinners have chained prop
+  for (const s of G.spinners) if (s.chained === undefined) s.chained = false;
+} catch(e) { G = createInitialState(); }
+
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+function fmt(n) {
+  if (n >= 1e15) return (n/1e15).toFixed(2)+"Q";
+  if (n >= 1e12) return (n/1e12).toFixed(2)+"T";
+  if (n >= 1e9)  return (n/1e9).toFixed(2)+"B";
+  if (n >= 1e6)  return (n/1e6).toFixed(2)+"M";
+  if (n >= 1e3)  return (n/1e3).toFixed(1)+"K";
+  return Math.floor(n).toString();
+}
+function has(id) { return (G.skills[id] || 0) > 0; }
+function skMul() { return has("sk_omnipotent") ? 2 : 1; }
+function hasTier(t) { return G.prestigeLevel >= t; }
+
+function getAnimalBonus(type) {
+  let total = 0;
+  for (const a of ANIMALS) {
+    const state = G.animals[a.id];
+    if (state && state.owned && state.level > 0 && a.bonus === type) total += a.bonusPerLv * state.level;
+  }
+  return total;
+}
+function getAnimalBuyCost(a) { return G.animals[a.id]?.owned ? Infinity : Math.floor(a.baseCost); }
+function getAnimalLevelUpCost(a) {
+  const state = G.animals[a.id];
+  if (!state || !state.owned || state.level >= a.maxLevel) return Infinity;
+  return Math.floor(a.baseCost * 0.6 * Math.pow(a.scale, state.level));
+}
+
+// ── SOFTCAP function: diminishes returns after a threshold ──
+function softcap(value, cap, strength) {
+  if (value <= cap) return value;
+  const excess = value - cap;
+  return cap + excess / (1 + excess * strength);
+}
+
+// ── COST CALCULATIONS ──
+function getCostReduction() {
+  const cr = G.upgrades.costReduction || 0;
+  let red = 1 - cr * 0.05;
+  if (has("sk_cheapAll")) red -= 0.20 * skMul();
+  red -= getAnimalBonus("costReduce") / 100;
+  return Math.max(red, 0.05);
+}
+
+function getUpgradeCost(u) {
+  const lv = G.upgrades[u.id];
+  if (u.max !== Infinity && lv >= u.max) return Infinity;
+  return Math.floor(u.base * Math.pow(u.scale, lv) * getCostReduction());
+}
+
+function getAscUpgradeCost(u) {
+  const lv = G.ascUpgrades[u.id] || 0;
+  if (u.max !== Infinity && lv >= u.max) return Infinity;
+  return Math.floor(u.base * Math.pow(u.scale, lv));
+}
+
+function getSpinnerUnlockCost(id) {
+  if (id === 0) return 0;
+  let cost = Math.floor(20 * Math.pow(1.45, id)); // scaled for 100 spinners
+  const sd = G.upgrades.spinnerDiscount || 0;
+  let red = 1 - sd * 0.08;
+  red *= getCostReduction();
+  return Math.floor(cost * Math.max(red, 0.05));
+}
+
+function getSpinnerUpgradeCost(s) {
+  return Math.floor(10 * Math.pow(1.3, s.level) * (s.id * 0.5 + 1) * getCostReduction());
+}
+
+function getPrestigeThreshold() {
+  const base = 400; // lower first prestige requirement
+  const psLv = G.upgrades.prestigeSpeed || 0;
+  let red = 1 - psLv * 0.10;
+  return Math.floor(base * Math.pow(2.5, G.prestigeLevel) * Math.max(red, 0.15));
+}
+
+function getTokensOnPrestige() {
+  let base = 1;
+  base += G.upgrades.tokenBoost || 0;
+  if (has("sk_tokenMagnet")) base += 2 * skMul();
+  base += G.ascUpgrades.tokenGen || 0;
+  return base;
+}
+
+function getPrestigeMultiplierGain() {
+  let mult = 1.5;
+  if (has("sk_presDouble")) mult *= 2 * skMul();
+  mult += getAnimalBonus("prestigeBonus") / 100;
+  mult += (G.ascUpgrades.prestigeMult || 0) * 0.5;
+  return mult;
+}
+
+function getFluxPerSec() {
+  if (!hasTier(5)) return 0;
+  let base = G.prestigeLevel * 0.1;
+  base *= 1 + (G.ascUpgrades.fluxMult || 0) * 0.25;
+  return base;
+}
+
+function getComboMultiplier() {
+  if (!hasTier(4) || comboCount <= 1) return 1;
+  const maxCombo = has("sk_infiniteCombo") ? 50 : 20;
+  const effective = Math.min(comboCount, maxCombo);
+  return 1 + (effective - 1) * 0.15; // 15% per combo level
+}
+
+function getComboDecayTime() {
+  let t = COMBO_TIMEOUT;
+  t += (G.ascUpgrades.comboDecay || 0) * 0.2 * COMBO_TIMEOUT;
+  if (has("sk_clickCombo")) t *= 1.5;
+  return t;
+}
+
+// ── SYNERGY BONUS (Tier 8): +2% REV per unique owned animal ──
+function getSynergyBonus() {
+  if (!hasTier(8)) return 0;
+  const owned = ANIMALS.filter(a => G.animals[a.id]?.owned).length;
+  return owned * 0.02;
+}
+
+// ── FULL MULTIPLIER ──
+function getRevMult() {
+  let mult = 1;
+  mult += getAnimalBonus("revMult") / 100;
+  if (has("sk_origin"))    mult += 0.10 * skMul();
+  if (has("sk_wealthGod")) mult += 0.50 * skMul();
+  mult += (G.ascUpgrades.revMult || 0) * 0.10;
+  mult += getSynergyBonus();
+  mult *= 1 + (G.upgrades.bulkBonus || 0) * 0.05;
+  mult *= 1 + (G.ascUpgrades.spinnerPower || 0) * 0.05;
+  return softcap(mult, 50, 0.001); // softcap at 50x to prevent breaking
+}
+
+// ── PASSIVE REV ──
+function calcPassive() {
+  let p = (G.upgrades.passiveIncome || 0) * 3 * G.prestigeMultiplier;
+  let autoBoost = 1 + (G.upgrades.autoRevBoost || 0) * 0.20 + getAnimalBonus("autoBoost") / 100;
+  for (const s of G.spinners)
+    if (s.unlocked && s.autoSpin)
+      p += s.baseRevPerSpin * s.speed * G.prestigeMultiplier * autoBoost;
+  if (has("sk_passivePath")) p += 5 * skMul() * G.prestigeMultiplier;
+  if (has("sk_idleWave"))    p *= 1.5 * skMul();
+  if (has("sk_hyperIdle"))   p *= 2 * skMul();
+  p += getAnimalBonus("passiveRev") * G.prestigeMultiplier;
+  return p * getRevMult();
+}
+
+// ── REV PER CLICK ──
+function calcRevPerClick() {
+  const clickPow = (G.upgrades.clickPower || 0) * 3;
+  const multiClick = (G.upgrades.multiClick || 0);
+  let base = 1 + clickPow + multiClick * G.prestigeMultiplier;
+  if (has("sk_clickPath")) base += 15 * skMul();
+  if (has("sk_godClick"))  base += 100 * skMul();
+  const anClick = getAnimalBonus("clickPower");
+  return (base + anClick) * G.prestigeMultiplier * getRevMult();
+}
+
+function getMaxSpeed() {
+  let ms = 15 + (G.upgrades.maxSpeed || 0) * 2 + getAnimalBonus("spinSpeed");
+  if (has("sk_speedPath")) ms *= 1.3;
+  if (has("sk_stormSpeed")) ms *= 2 * skMul();
+  return ms;
+}
+
+function getDecayRate(s) {
+  let antiDecay = 1 - (G.upgrades.spinDecay || 0) * 0.15;
+  if (has("sk_turboSpin")) antiDecay *= 0.5 * (1/skMul());
+  return (s.autoSpin ? 0.002 : 0.012) * Math.max(antiDecay, 0.02);
+}
+
+function getMinSpeed(s) {
+  let min = s.autoSpin ? (0.3 + s.level * 0.12) : 0.1;
+  if (has("sk_autoStart")) min *= 3 * skMul();
+  if (has("sk_eternalSpin")) min = Math.max(min, getMaxSpeed() * 0.5);
+  return min;
+}
+
+function getOfflineRate() { return Math.min(0.5 + (G.upgrades.offlineBonus || 0) * 0.10, 0.95); }
+
+function getCritChance() {
+  let c = (G.upgrades.critChance || 0) * 0.02;
+  if (has("sk_critClick")) c += 0.10 * skMul();
+  return Math.min(c, 0.8);
+}
+
+function getCritMult() {
+  let m = 5;
+  if (has("sk_megaCrit")) m = 10;
+  m += (G.ascUpgrades.critDamage || 0);
+  return m * skMul();
+}
+
+function getCascadeChance() {
+  if (!hasTier(3)) return 0;
+  let c = 0.2 + (G.upgrades.cascadePower || 0) * 0.15;
+  c += (G.ascUpgrades.cascadeChain || 0) * 0.10;
+  return Math.min(c, 0.85);
+}
+
+function getChainCount() {
+  if (!hasTier(2)) return 0;
+  return 1 + (G.upgrades.chainRange || 0);
+}
+
+// ============================================================
+// SPINNER RENDERING
+// ============================================================
+const rotations = new Float64Array(NUM_SPINNERS);
+const spinnerEls = [];
+
+function buildSpinners() {
+  const grid = document.getElementById("spinnersGrid");
+  grid.innerHTML = "";
+  for (let i = 0; i < NUM_SPINNERS; i++) {
+    const card = document.createElement("div");
+    card.className = "spinner-card";
+    card.dataset.id = i;
+    spinnerEls[i] = card;
+    grid.appendChild(card);
+  }
+  updateSpinnerCards();
+}
+
+function updateSpinnerCards() {
+  for (let i = 0; i < NUM_SPINNERS; i++) {
+    const s = G.spinners[i], card = spinnerEls[i];
+    const color = SPINNER_COLORS[i], name = SPINNER_NAMES[i];
+    if (!s.unlocked) {
+      card.className = "spinner-card locked";
+      card.style.setProperty("--glow","#333");
+      const cost = getSpinnerUnlockCost(i);
+      const afford = G.rev >= cost;
+      card.innerHTML = `<div class="spinner-visual locked-visual"><svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="#222" stroke-width="2" stroke-dasharray="4 8"/>
+        <text x="50" y="42" text-anchor="middle" fill="#333" font-size="18" font-family="'Press Start 2P'">?</text>
+        <text x="50" y="62" text-anchor="middle" fill="#444" font-size="7" font-family="'VT323'">${name}</text>
+        </svg></div>
+        <button class="unlock-btn ${afford?"affordable":"too-expensive"}" data-unlock="${i}" ${afford?"":"disabled"}>🔓 ${fmt(cost)} REV</button>`;
+    } else {
+      const gi = Math.min(s.speed / 10, 1);
+      const chainClass = s.chained && hasTier(2) ? " chained" : "";
+      card.className = `spinner-card active${s.autoSpin?" auto-spinning":""}${chainClass}`;
+      card.style.setProperty("--glow", color);
+      const ucost = getSpinnerUpgradeCost(s);
+      const afford = G.rev >= ucost;
+      const lvl3 = s.level >= 3 ? `<circle cx="50" cy="50" r="34" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="10 15" opacity="${.25+gi*.3}" stroke-linecap="round"/>` : "";
+      const lvl7 = s.level >= 7 ? `<circle cx="50" cy="50" r="20" fill="none" stroke="${color}" stroke-width="1" stroke-dasharray="3 9" opacity=".2" stroke-linecap="round"/>` : "";
+      const cr = 4 + gi * 2;
+      card.innerHTML = `<div class="spinner-visual">
+        <svg viewBox="0 0 100 100">
+          <defs><filter id="gf${i}"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <circle cx="50" cy="50" r="46" fill="${color}05"/>
+          <circle cx="50" cy="50" r="46" fill="none" stroke="${color}" stroke-width=".5" opacity="${.12+gi*.18}"/>
+          <g class="spin-ring" data-si="${i}">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="${color}" stroke-width="3" stroke-dasharray="${15+s.level*3} ${Math.max(50-s.level*2,8)}" stroke-linecap="round" opacity="${.65+gi*.3}" ${gi>.3?`filter="url(#gf${i})"`:""}/>${lvl3}
+          </g>
+          <g class="spin-ring-inner" data-sii="${i}">
+            <circle cx="50" cy="50" r="26" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="6 12" opacity="${.18+gi*.28}" stroke-linecap="round"/>${lvl7}
+          </g>
+          <circle cx="50" cy="50" r="${cr}" fill="${color}" opacity="${.35+gi*.4}"/>
+          <circle cx="50" cy="50" r="2" fill="${color}" opacity=".9"/>
+          <text x="50" y="86" text-anchor="middle" fill="${color}" font-size="7" font-family="'VT323'" opacity=".7">LV.${s.level}</text>
+        </svg>
+        ${s.autoSpin?`<div class="auto-badge" style="border-color:${color};color:${color}">⚡AUTO</div>`:""}
+        ${s.chained&&hasTier(2)?`<div class="chain-badge">🔗</div>`:""}
+        <div class="speed-bar"><div class="speed-bar-fill" style="width:${Math.min((s.speed/getMaxSpeed())*100,100)}%;background:${color};box-shadow:0 0 5px ${color}80"></div></div>
+      </div>
+      <div class="spinner-info">
+        <span class="spinner-name" style="color:${color}">${name}</span>
+        <span class="spinner-rev" style="color:${color}aa">${s.baseRevPerSpin.toFixed(1)}</span>
+      </div>
+      <button class="upgrade-spinner-btn ${afford?"affordable":"too-expensive"}" style="--btn-color:${color}" data-supgrade="${i}" ${afford?"":"disabled"}>⬆ ${fmt(ucost)}</button>`;
+    }
+  }
+}
+
+// ============================================================
+// UPGRADES PANEL
+// ============================================================
+const CATS_ORDER = ["CLICKING","SPEED","PASSIVE","ECONOMY","PRESTIGE"];
+const CAT_COLORS = { CLICKING:"#00ffcc", SPEED:"#00aaff", PASSIVE:"#ff6633", ECONOMY:"#aa44ff", PRESTIGE:"#ff00aa" };
+
+function buildUpgrades() {
+  const list = document.getElementById("upgradeList");
+  list.innerHTML = "";
+  for (const cat of CATS_ORDER) {
+    const items = UPGRADES.filter(u => u.cat === cat && (!u.reqTier || hasTier(u.reqTier)));
+    if (items.length === 0) continue;
+    const lbl = document.createElement("div");
+    lbl.className = "upgrade-section-label";
+    lbl.style.color = CAT_COLORS[cat];
+    lbl.textContent = "── " + cat + " ──";
+    list.appendChild(lbl);
+    for (const u of items) {
+      const lv = G.upgrades[u.id];
+      const isMaxed = lv >= u.max;
+      const cost = isMaxed ? 0 : getUpgradeCost(u);
+      const afford = !isMaxed && G.rev >= cost;
+      const row = document.createElement("button");
+      row.className = `upgrade-row ${isMaxed ? "maxed" : afford ? "affordable" : "too-expensive"}${u.mechanic ? " mechanic-change" : ""}`;
+      row.style.setProperty("--row-color", u.color);
+      row.dataset.upgrade = u.id;
+      if (!afford || isMaxed) row.disabled = true;
+      row.innerHTML = `<div class="upg-icon" style="color:${u.color}">${u.icon}</div>
+        <div class="upg-details">
+          <div class="upg-name" style="color:${u.color}">${u.name}</div>
+          <div class="upg-desc">${u.desc}</div>
+        </div>
+        <div class="upg-meta">
+          <div class="upg-level">${isMaxed?"MAX":("LV."+lv+(u.max===Infinity?"":"/ "+u.max))}</div>
+          <div class="upg-cost">${isMaxed?"MAXED":fmt(cost)+" REV"}</div>
+        </div>`;
+      list.appendChild(row);
+    }
+  }
+}
+
+// ============================================================
+// PRESTIGE PANEL
+// ============================================================
+function updatePrestige() {
+  const threshold = getPrestigeThreshold();
+  const canP = G.totalRev >= threshold;
+  const newMult = G.prestigeMultiplier * getPrestigeMultiplierGain();
+  const tokGain = getTokensOnPrestige();
+
+  document.getElementById("prestigeStats").innerHTML = `
+    <div class="prestige-stat"><span class="ps-label">TIER</span><span class="ps-value pv-tier">${G.prestigeLevel}</span></div>
+    <div class="prestige-stat"><span class="ps-label">MULTI</span><span class="ps-value pv-mult">x${G.prestigeMultiplier.toFixed(1)}</span></div>
+    <div class="prestige-stat"><span class="ps-label">TOKENS</span><span class="ps-value pv-tok">${G.prestigeTokens}</span></div>
+    <div class="prestige-stat"><span class="ps-label">FLUX/S</span><span class="ps-value pv-flux">${getFluxPerSec().toFixed(2)}</span></div>`;
+
+  const pct = Math.min((G.totalRev / threshold) * 100, 100);
+  document.getElementById("pProgressText").textContent = fmt(G.totalRev) + " / " + fmt(threshold) + " REV";
+  document.getElementById("pProgressFill").style.width = pct + "%";
+
+  const btn = document.getElementById("prestigeBtn");
+  if (confirmingPrestige) {
+    btn.className = "prestige-btn confirming"; btn.textContent = "⚠ CLICK AGAIN TO CONFIRM ⚠"; btn.disabled = false;
+    document.getElementById("prestigeWarning").textContent = "WARNING: All spinners & upgrades reset!";
+  } else if (canP) {
+    btn.className = "prestige-btn ready";
+    btn.textContent = `⚡ PRESTIGE → x${newMult.toFixed(1)} + ${tokGain} TOKEN${tokGain>1?"S":""} ⚡`;
+    btn.disabled = false;
+    document.getElementById("prestigeWarning").textContent = "Gain x" + newMult.toFixed(1) + " multiplier + " + tokGain + " token" + (tokGain>1?"s":"") + "!";
+  } else {
+    btn.className = "prestige-btn not-ready";
+    btn.textContent = fmt(threshold) + " TOTAL REV TO PRESTIGE";
+    btn.disabled = true;
+    document.getElementById("prestigeWarning").textContent = "";
+  }
+
+  // Prestige tier perks
+  const perksEl = document.getElementById("prestigePerks");
+  perksEl.innerHTML = "<div style='font-family:Press Start 2P;font-size:7px;color:#5a7a5a;margin-bottom:8px;letter-spacing:1px'>TIER UNLOCKS</div>" +
+    PRESTIGE_PERKS.map(p => {
+      const unlocked = G.prestigeLevel >= p.tier;
+      return `<div class="perk-row ${unlocked?"unlocked":"locked"}">
+        <div class="perk-icon">${p.icon}</div>
+        <div class="perk-info"><div class="perk-name">${p.name}</div><div class="perk-desc">${p.desc}</div></div>
+        <div class="perk-tier">${unlocked?"✓":"TIER "+p.tier}</div>
+      </div>`;
+    }).join("");
+}
+
+// ============================================================
+// ASCENSION PANEL (FLUX)
+// ============================================================
+function buildAscension() {
+  document.getElementById("ascFluxBalance").textContent = fmt(G.flux);
+  document.getElementById("ascFluxRate").textContent = getFluxPerSec().toFixed(2);
+  const list = document.getElementById("ascUpgradeList");
+  list.innerHTML = "";
+  if (!hasTier(5)) {
+    list.innerHTML = `<div style="text-align:center;padding:30px;color:#3a5a3a"><div style="font-size:24px;margin-bottom:8px">🔒</div><div style="font-family:'Press Start 2P';font-size:7px;color:#4a6a4a">REACH PRESTIGE TIER 5</div><div style="font-size:13px;margin-top:6px">to unlock Ascension upgrades</div></div>`;
+    return;
+  }
+  for (const u of ASC_UPGRADES) {
+    const lv = G.ascUpgrades[u.id] || 0;
+    const isMaxed = u.max !== Infinity && lv >= u.max;
+    const cost = isMaxed ? 0 : getAscUpgradeCost(u);
+    const afford = !isMaxed && G.flux >= cost;
+    const row = document.createElement("button");
+    row.className = `asc-upgrade-row ${isMaxed ? "maxed" : afford ? "affordable" : "too-expensive"}`;
+    row.dataset.ascUpgrade = u.id;
+    if (!afford || isMaxed) row.disabled = true;
+    row.innerHTML = `<div class="asc-icon">${u.icon}</div>
+      <div class="asc-details">
+        <div class="asc-name">${u.name}</div>
+        <div class="asc-desc">${u.desc}</div>
+      </div>
+      <div class="asc-meta">
+        <div class="asc-level">${isMaxed?"MAX":"LV."+lv}</div>
+        <div class="asc-cost">${isMaxed?"MAXED":fmt(cost)+" FLUX"}</div>
+      </div>`;
+    list.appendChild(row);
+  }
+}
+
+// ============================================================
+// SKILL TREE
+// ============================================================
+function skillPrereqMet(skillId) {
+  const parents = SKILL_CONNECTIONS.filter(c => c[1] === skillId).map(c => c[0]);
+  if (parents.length === 0) return true;
+  return parents.some(pid => (G.skills[pid] || 0) > 0);
+}
+
+function buildSkillTree() {
+  document.getElementById("treeTokBalance").textContent = G.prestigeTokens;
+  const container = document.getElementById("treeContent");
+  container.innerHTML = "";
+  const canvas = document.createElement("div");
+  canvas.className = "tree-canvas";
+  canvas.style.height = TREE_HEIGHT + "px";
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("class", "tree-svg");
+  svg.setAttribute("viewBox", `0 0 310 ${TREE_HEIGHT}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.style.width = "100%"; svg.style.height = "100%";
+  for (const [fromId, toId] of SKILL_CONNECTIONS) {
+    const from = SKILL_POSITIONS[fromId], to = SKILL_POSITIONS[toId];
+    if (!from || !to) continue;
+    const lit = (G.skills[fromId] || 0) > 0;
+    const fromSk = SKILLS.find(s => s.id === fromId);
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", (from.x / 100 * 310).toFixed(1));
+    line.setAttribute("y1", from.y.toString());
+    line.setAttribute("x2", (to.x / 100 * 310).toFixed(1));
+    line.setAttribute("y2", to.y.toString());
+    if (lit) { line.setAttribute("class", "line-unlocked"); line.setAttribute("stroke", fromSk ? fromSk.color : "#00ffcc"); }
+    else { line.setAttribute("class", "line-locked"); line.setAttribute("stroke", "#1a2a3a"); }
+    svg.appendChild(line);
+  }
+  canvas.appendChild(svg);
+  for (const sk of SKILLS) {
+    const pos = SKILL_POSITIONS[sk.id];
+    if (!pos) continue;
+    const lv = G.skills[sk.id] || 0;
+    const isMaxed = lv >= sk.maxLevel;
+    const prereqOk = skillPrereqMet(sk.id);
+    const canAfford = G.prestigeTokens >= sk.cost && !isMaxed && prereqOk;
+    const node = document.createElement("div");
+    node.className = "tree-node";
+    node.style.setProperty("--nd-color", sk.color);
+    node.style.left = pos.x + "%"; node.style.top = pos.y + "px";
+    node.dataset.skill = sk.id;
+    if (isMaxed) node.classList.add("tn-maxed");
+    else if (lv > 0) node.classList.add("tn-owned");
+    else if (!prereqOk) node.classList.add("tn-locked");
+    else if (canAfford) node.classList.add("tn-available");
+    else node.classList.add("tn-locked");
+    node.innerHTML = `<div class="tn-icon">${SKILL_EMOJI[sk.id]||"✦"}</div><div class="tn-label">${sk.name}</div><div class="tn-lv ${isMaxed?"tn-maxed-lv":""}">${isMaxed?"✓":""}</div>
+      <div class="tree-tooltip"><div class="tt-name">${sk.name}</div><div class="tt-desc">${sk.desc}</div>
+      ${!prereqOk && lv === 0 ? '<div style="font-size:11px;color:#ff4444;margin-bottom:3px">🔒 Unlock parent first</div>' : ''}
+      <div class="tt-footer"><span class="tt-level">${isMaxed?"OWNED":"LOCKED"}</span><span class="tt-cost">${isMaxed?"✓":(sk.cost+"🔮")}</span></div></div>`;
+    canvas.appendChild(node);
+  }
+  container.appendChild(canvas);
+  // Gate node
+  const gate = document.createElement("div");
+  if (G.animalsUnlocked) {
+    gate.className = "gate-node gate-unlocked";
+    gate.innerHTML = `<div class="gate-icon">🐾</div><div class="gate-title" style="color:#44ff44">✓ ANIMALS UNLOCKED</div><div class="gate-desc">Go to the 🐾 PETS tab!</div>`;
+  } else if (G.prestigeTokens >= ANIMALS_UNLOCK_COST) {
+    gate.className = "gate-node gate-ready"; gate.dataset.gate = "animals";
+    gate.innerHTML = `<div class="gate-icon">🔓</div><div class="gate-title">UNLOCK ANIMALS</div><div class="gate-desc">Spend ${ANIMALS_UNLOCK_COST} tokens</div><div class="gate-cost">CLICK — ${ANIMALS_UNLOCK_COST} 🔮</div>`;
+  } else {
+    gate.className = "gate-node gate-locked";
+    gate.innerHTML = `<div class="gate-icon">🔒</div><div class="gate-title">ANIMALS</div><div class="gate-desc">Requires ${ANIMALS_UNLOCK_COST} tokens</div><div class="gate-cost" style="color:#4a6a4a">${G.prestigeTokens} / ${ANIMALS_UNLOCK_COST} 🔮</div>`;
+  }
+  container.appendChild(gate);
+}
+
+// ============================================================
+// ANIMALS PANEL
+// ============================================================
+function buildAnimals() {
+  if (!G.animalsUnlocked) return;
+  const owned = ANIMALS.filter(a => G.animals[a.id]?.owned).length;
+  const totalLvs = ANIMALS.reduce((s,a) => s + (G.animals[a.id]?.level || 0), 0);
+  document.getElementById("animalsSummary").innerHTML = `
+    <div class="animal-summary-stat"><span class="as-label">OWNED</span><span class="as-value">${owned}/${ANIMALS.length}</span></div>
+    <div class="animal-summary-stat"><span class="as-label">TOTAL LVS</span><span class="as-value">${totalLvs}</span></div>
+    <div class="animal-summary-stat"><span class="as-label">+REV/S</span><span class="as-value">+${getAnimalBonus("passiveRev").toFixed(1)}</span></div>
+    <div class="animal-summary-stat"><span class="as-label">+CLICK</span><span class="as-value">+${getAnimalBonus("clickPower")}</span></div>
+    <div class="animal-summary-stat"><span class="as-label">+REV%</span><span class="as-value">+${getAnimalBonus("revMult")}%</span></div>`;
+  const grid = document.getElementById("animalGrid");
+  grid.innerHTML = "";
+  for (const rarity of RARITY_ORDER) {
+    const group = ANIMALS.filter(a => a.rarity === rarity);
+    if (group.length === 0) continue;
+    const label = document.createElement("div");
+    label.className = "upgrade-section-label"; label.style.color = group[0].color;
+    label.textContent = "── " + rarity.toUpperCase() + " ──";
+    grid.appendChild(label);
+    for (const a of group) {
+      const state = G.animals[a.id];
+      const isOwned = state?.owned;
+      const level = state?.level || 0;
+      const isMaxed = level >= a.maxLevel;
+      const card = document.createElement("div");
+      card.className = `animal-card ${isOwned ? "owned" : (G.rev >= getAnimalBuyCost(a) ? "" : "card-locked")}`;
+      card.style.setProperty("--an-color", a.color);
+      if (isOwned) {
+        const lvlCost = getAnimalLevelUpCost(a);
+        const canLvl = !isMaxed && G.rev >= lvlCost;
+        const xpPct = isMaxed ? 100 : Math.min((level / a.maxLevel) * 100, 100);
+        card.innerHTML = `<div class="an-emoji">${a.emoji}</div><div class="an-details"><div class="an-header"><span class="an-name">${a.name}</span><span class="an-rarity rarity-${a.rarity}">${a.rarity.toUpperCase()}</span></div><div class="an-bonus">${a.bonusDesc} (total: +${(a.bonusPerLv*level).toFixed(1)})</div><div class="an-level-bar"><span class="an-level">LV.${level}/${a.maxLevel}</span><div class="an-xp-bar"><div class="an-xp-fill" style="width:${xpPct}%;background:${a.color};box-shadow:0 0 4px ${a.color}60"></div></div></div></div><div class="an-actions"><button class="an-lvl-btn" data-animal-lvl="${a.id}" ${canLvl?"":"disabled"}>${isMaxed?"MAX":"⬆ "+fmt(lvlCost)}</button></div><span class="an-owned-badge">OWNED</span>`;
+      } else {
+        const buyCost = getAnimalBuyCost(a);
+        card.innerHTML = `<div class="an-emoji" style="opacity:.5">${a.emoji}</div><div class="an-details"><div class="an-header"><span class="an-name">${a.name}</span><span class="an-rarity rarity-${a.rarity}">${a.rarity.toUpperCase()}</span></div><div class="an-bonus">${a.bonusDesc}</div></div><div class="an-actions"><button class="an-buy-btn" data-animal-buy="${a.id}" ${G.rev>=buyCost?"":"disabled"}>🛒 ${fmt(buyCost)} REV</button></div>`;
+      }
+      grid.appendChild(card);
+    }
+  }
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function updateStats() {
+  const g = document.getElementById("statsGrid");
+  const uc = G.spinners.filter(s => s.unlocked).length;
+  const ac = G.spinners.filter(s => s.autoSpin).length;
+  const stats = [
+    {l:"TOTAL REV EARNED",v:fmt(G.totalRev),c:"#ffcc00"},
+    {l:"CURRENT REV",v:fmt(G.rev),c:"#ffcc00"},
+    {l:"REV PER CLICK",v:fmt(G.revPerClick),c:"#00ffcc"},
+    {l:"REV PER SECOND",v:fmt(G.passiveRevPerSec),c:"#44ff44"},
+    {l:"FLUX",v:fmt(G.flux),c:"#00aaff"},
+    {l:"FLUX/SEC",v:getFluxPerSec().toFixed(2),c:"#00aaff"},
+    {l:"TOTAL CLICKS",v:fmt(totalClicks),c:"#00ffcc"},
+    {l:"SPINNERS UNLOCKED",v:uc+"/"+NUM_SPINNERS,c:"#ff00aa"},
+    {l:"AUTO SPINNERS",v:""+ac,c:"#00aaff"},
+    {l:"PRESTIGE TIER",v:""+G.prestigeLevel,c:"#ff00aa"},
+    {l:"PRESTIGE TOKENS",v:""+G.prestigeTokens,c:"#ff4488"},
+    {l:"MULTIPLIER",v:"x"+G.prestigeMultiplier.toFixed(2),c:"#ffcc00"},
+    {l:"REV MULT",v:"x"+getRevMult().toFixed(2),c:"#ffaa00"},
+    {l:"CRIT CHANCE",v:Math.round(getCritChance()*100)+"%",c:"#ff4444"},
+    {l:"COMBO MAX",v:(hasTier(4)?("x"+(has("sk_infiniteCombo")?50:20)):"LOCKED"),c:"#ff6633"},
+    {l:"OFFLINE RATE",v:Math.round(getOfflineRate()*100)+"%",c:"#ff9944"},
+  ];
+  g.innerHTML = stats.map(s => `<div class="stat-item"><span class="stat-item-label">${s.l}</span><span class="stat-item-value" style="color:${s.c}">${s.v}</span></div>`).join("");
+}
+
+// ============================================================
+// TOP BAR
+// ============================================================
+function updateTopBar() {
+  document.getElementById("revAmount").textContent = fmt(G.rev);
+  document.getElementById("tokenAmount").textContent = G.prestigeTokens;
+  document.getElementById("fluxAmount").textContent = fmt(G.flux);
+  document.getElementById("perClick").textContent = fmt(G.revPerClick);
+  document.getElementById("perSec").textContent = fmt(G.passiveRevPerSec);
+  const pb = document.getElementById("prestigeBadge");
+  if (G.prestigeLevel > 0) { pb.textContent = "★ P" + G.prestigeLevel; pb.classList.add("visible"); }
+  else pb.classList.remove("visible");
+}
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function updateTabStates() {
+  document.getElementById("animalsTab").classList.toggle("tab-locked", !G.animalsUnlocked);
+  document.getElementById("ascTab").classList.toggle("tab-locked", !hasTier(5));
+}
+
+// ============================================================
+// FULL REFRESH
+// ============================================================
+function refreshUI() {
+  G.revPerClick = calcRevPerClick();
+  G.passiveRevPerSec = calcPassive();
+  updateTopBar();
+  updateSpinnerCards();
+  buildUpgrades();
+  updatePrestige();
+  buildSkillTree();
+  buildAscension();
+  buildAnimals();
+  updateStats();
+  updateTabStates();
+}
+
+// ============================================================
+// EFFECTS
+// ============================================================
+function addFlash(text, color) {
+  const c = document.getElementById("flashContainer");
+  const el = document.createElement("div");
+  el.className = "purchase-flash"; el.style.borderColor = color; el.style.color = color;
+  el.textContent = "✓ " + text;
+  c.appendChild(el); setTimeout(() => el.remove(), 1300);
+}
+function addClickEffect(x, y, amount, type) {
+  const el = document.createElement("div");
+  el.className = "click-effect" + (type ? " " + type : "");
+  el.style.left = x + "px"; el.style.top = y + "px";
+  el.textContent = "+" + fmt(amount);
+  document.getElementById("gameRoot").appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+function prestigeFlash() {
+  const el = document.createElement("div");
+  el.className = "prestige-flash-overlay";
+  document.body.appendChild(el); setTimeout(() => el.remove(), 1700);
+}
+function showMilestone(m) {
+  const el = document.createElement("div");
+  el.className = "milestone-toast";
+  el.innerHTML = `<div class="milestone-icon">${m.icon}</div><div class="milestone-text">${m.text}</div><div class="milestone-sub">${m.sub}</div>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+function showCascadeRing(card, color) {
+  const ring = document.createElement("div");
+  ring.className = "cascade-ring";
+  ring.style.borderColor = color;
+  card.querySelector(".spinner-visual").appendChild(ring);
+  setTimeout(() => ring.remove(), 600);
+}
+
+// ============================================================
+// COMBO SYSTEM
+// ============================================================
+function updateComboMeter() {
+  const meter = document.getElementById("comboMeter");
+  if (!hasTier(4) || comboCount <= 1) {
+    meter.classList.remove("active");
+    return;
+  }
+  meter.classList.add("active");
+  const mult = getComboMultiplier();
+  document.getElementById("comboCount").textContent = "x" + mult.toFixed(1);
+  document.getElementById("comboMult").textContent = comboCount + " COMBO";
+  const elapsed = Date.now() - lastClickTime;
+  const decay = getComboDecayTime();
+  const pct = Math.max(0, (1 - elapsed / decay) * 100);
+  document.getElementById("comboBar").style.width = pct + "%";
+}
+
+// ============================================================
+// CHAIN & CASCADE LOGIC
+// ============================================================
+function triggerChain(sourceId, gain) {
+  const chainCount = getChainCount();
+  if (chainCount <= 0) return 0;
+  const chainMult = has("sk_chainLight") ? 0.5 : 0.3;
+  let totalChainGain = 0;
+  const unlocked = G.spinners.filter(s => s.unlocked && s.id !== sourceId);
+  const targets = [];
+  for (let c = 0; c < chainCount && unlocked.length > 0; c++) {
+    const idx = Math.floor(Math.random() * unlocked.length);
+    targets.push(unlocked.splice(idx, 1)[0]);
+  }
+  for (const t of targets) {
+    const chainGain = gain * chainMult;
+    t.speed = Math.min(t.speed + 0.05, getMaxSpeed());
+    G.rev += chainGain; G.totalRev += chainGain;
+    totalChainGain += chainGain;
+    t.chained = true;
+    setTimeout(() => { t.chained = false; }, 300);
+  }
+  return totalChainGain;
+}
+
+function triggerCascade(sourceId, gain) {
+  if (!hasTier(3)) return 0;
+  const chance = getCascadeChance();
+  if (Math.random() > chance) return 0;
+  const cascadeMult = 1 + (G.upgrades.cascadePower || 0) * 0.15;
+  const unlocked = G.spinners.filter(s => s.unlocked && s.id !== sourceId);
+  if (unlocked.length === 0) return 0;
+  const target = unlocked[Math.floor(Math.random() * unlocked.length)];
+  const cascadeGain = gain * 0.5 * cascadeMult;
+  target.speed = Math.min(target.speed + 0.1, getMaxSpeed());
+  G.rev += cascadeGain; G.totalRev += cascadeGain;
+  // Visual effect
+  const card = spinnerEls[target.id];
+  if (card) showCascadeRing(card, SPINNER_COLORS[target.id]);
+  return cascadeGain;
+}
+
+// ============================================================
+// EVENT HANDLERS
+// ============================================================
+document.getElementById("spinnersGrid").addEventListener("click", e => {
+  const ub = e.target.closest("[data-unlock]");
+  if (ub) {
+    const id = parseInt(ub.dataset.unlock);
+    const cost = getSpinnerUnlockCost(id);
+    if (G.rev >= cost && !G.spinners[id].unlocked) {
+      G.rev -= cost; G.spinners[id].unlocked = true;
+      addFlash("SPINNER UNLOCKED!", SPINNER_COLORS[id]); refreshUI();
+    }
+    return;
+  }
+  const su = e.target.closest("[data-supgrade]");
+  if (su) {
+    const id = parseInt(su.dataset.supgrade);
+    const s = G.spinners[id];
+    if (!s.unlocked) return;
+    const cost = getSpinnerUpgradeCost(s);
+    if (G.rev >= cost) {
+      G.rev -= cost; s.level++; s.baseRevPerSpin *= 1.28; s.speed += 0.18;
+      addFlash("SPINNER LV." + s.level, SPINNER_COLORS[id]); refreshUI();
+    }
+    return;
+  }
+  const card = e.target.closest(".spinner-card.active");
+  if (card) {
+    const id = parseInt(card.dataset.id);
+    const s = G.spinners[id];
+    if (!s.unlocked) return;
+
+    // COMBO SYSTEM
+    const now = Date.now();
+    if (hasTier(4)) {
+      if (now - lastClickTime < getComboDecayTime()) {
+        comboCount++;
+      } else {
+        comboCount = 1;
+      }
+      lastClickTime = now;
+    }
+
+    // GOLD RUSH (first click each second = 3x)
+    let goldRushMult = 1;
+    if (has("sk_goldRush")) {
+      const sec = Math.floor(now / 1000);
+      if (sec !== lastSecondClick) { goldRushMult = 3; lastSecondClick = sec; }
+    }
+
+    // BASE GAIN
+    const cfrenzy = 1 + (G.upgrades.clickFrenzy || 0) * 0.08;
+    let gain = G.revPerClick * s.baseRevPerSpin * cfrenzy * goldRushMult * getComboMultiplier();
+
+    // MEGA CLICK (Tier 6: every 10th click = 5x)
+    let megaClick = false;
+    if (hasTier(6) && totalClicks % 10 === 0) { gain *= 5; megaClick = true; }
+
+    // CRIT
+    let isCrit = false;
+    if (getCritChance() > 0 && Math.random() < getCritChance()) {
+      gain *= getCritMult(); isCrit = true;
+    }
+
+    // SPEED
+    const sfactor = 1 + (G.upgrades.speedBoost || 0) * 0.12;
+    s.speed = Math.min(s.speed + 0.09 * sfactor, getMaxSpeed());
+    if ((G.upgrades.clickFrenzy || 0) > 0) {
+      for (const os of G.spinners)
+        if (os.unlocked && os.id !== id) os.speed = Math.min(os.speed + 0.01, getMaxSpeed());
+    }
+
+    G.rev += gain; G.totalRev += gain; totalClicks++;
+
+    // CHAIN
+    const chainGain = triggerChain(id, gain);
+
+    // CASCADE
+    const cascadeGain = triggerCascade(id, gain);
+
+    // MULTI STRIKE (skill)
+    if (has("sk_multiHit")) {
+      const unlocked = G.spinners.filter(ss => ss.unlocked && ss.id !== id);
+      for (let h = 0; h < Math.min(2, unlocked.length); h++) {
+        const target = unlocked[Math.floor(Math.random() * unlocked.length)];
+        const multiGain = gain * 0.3;
+        G.rev += multiGain; G.totalRev += multiGain;
+        target.speed = Math.min(target.speed + 0.03, getMaxSpeed());
+      }
+    }
+
+    // VISUAL EFFECTS
+    const rect = card.getBoundingClientRect();
+    const effectType = isCrit ? "crit" : (comboCount > 5 ? "combo" : null);
+    addClickEffect(rect.left + rect.width / 2, rect.top, Math.floor(gain), effectType);
+    card.classList.add("click-pulse");
+    setTimeout(() => card.classList.remove("click-pulse"), 140);
+    if (gain > 100 || isCrit || megaClick) {
+      document.getElementById("gameRoot").classList.add("shake");
+      setTimeout(() => document.getElementById("gameRoot").classList.remove("shake"), 100);
+    }
+    updateTopBar();
+    updateComboMeter();
+    const bar = card.querySelector(".speed-bar-fill");
+    if (bar) bar.style.width = Math.min((s.speed / getMaxSpeed()) * 100, 100) + "%";
+  }
+});
+
+document.getElementById("upgradeList").addEventListener("click", e => {
+  const row = e.target.closest("[data-upgrade]");
+  if (!row) return;
+  const uid = row.dataset.upgrade;
+  const u = UPGRADES.find(x => x.id === uid);
+  if (!u) return;
+  const lv = G.upgrades[uid];
+  if (lv >= u.max) return;
+  const cost = getUpgradeCost(u);
+  if (G.rev < cost) return;
+  G.rev -= cost; G.upgrades[uid]++;
+  if (uid === "autoSpinMult") {
+    const target = G.spinners.find(s => s.unlocked && !s.autoSpin);
+    if (target) target.autoSpin = true;
+  }
+  addFlash(u.name + " LV." + (lv + 1), u.color); refreshUI();
+});
+
+// Ascension upgrades
+document.getElementById("ascUpgradeList").addEventListener("click", e => {
+  const row = e.target.closest("[data-asc-upgrade]");
+  if (!row) return;
+  const uid = row.dataset.ascUpgrade;
+  const u = ASC_UPGRADES.find(x => x.id === uid);
+  if (!u) return;
+  const lv = G.ascUpgrades[uid] || 0;
+  if (u.max !== Infinity && lv >= u.max) return;
+  const cost = getAscUpgradeCost(u);
+  if (G.flux < cost) return;
+  G.flux -= cost; G.ascUpgrades[uid] = lv + 1;
+  addFlash(u.name + " LV." + (lv + 1), u.color); refreshUI();
+});
+
+// Tab switching
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.tab;
+    if (tab === "animals" && !G.animalsUnlocked) return;
+    if (tab === "ascension" && !hasTier(5)) return;
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    ["upgradePanel","prestigePanel","treePanel","ascPanel","animalsPanel","statsPanel","leaderboardPanel"].forEach(id => {
+      document.getElementById(id).classList.remove("visible");
+    });
+    const panelMap = {upgrades:"upgradePanel",prestige:"prestigePanel",tree:"treePanel",ascension:"ascPanel",animals:"animalsPanel",stats:"statsPanel",leaderboard:"leaderboardPanel"};
+    document.getElementById(panelMap[tab]).classList.add("visible");
+    if (tab==="prestige") updatePrestige();
+    if (tab==="tree") buildSkillTree();
+    if (tab==="ascension") buildAscension();
+    if (tab==="animals") buildAnimals();
+    if (tab==="stats") updateStats();
+    if (tab==="leaderboard") { fetchLeaderboard(); updateLocalLeaderboard(); }
+  });
+});
+
+// Prestige button
+document.getElementById("prestigeBtn").addEventListener("click", () => {
+  const threshold = getPrestigeThreshold();
+  if (G.totalRev < threshold) return;
+  if (!confirmingPrestige) {
+    confirmingPrestige = true; updatePrestige();
+    clearTimeout(confirmTimer);
+    confirmTimer = setTimeout(() => { confirmingPrestige = false; updatePrestige(); }, 3500);
+    return;
+  }
+  const newLevel  = G.prestigeLevel + 1;
+  const newMult   = G.prestigeMultiplier * getPrestigeMultiplierGain();
+  const tokGain   = getTokensOnPrestige();
+  const newTokens = G.prestigeTokens + tokGain;
+  const savedSkills = { ...G.skills };
+  const savedAnimals = JSON.parse(JSON.stringify(G.animals));
+  const savedUnlocked = G.animalsUnlocked;
+  const savedAsc = { ...G.ascUpgrades };
+  const savedFlux = G.flux;
+  const keepSpinners = has("sk_transcend") || hasTier(10);
+  const savedSpinners = keepSpinners ? JSON.parse(JSON.stringify(G.spinners)) : null;
+  prestigeFlash();
+  addFlash("PRESTIGE TIER " + newLevel + "! +" + tokGain + " TOKEN" + (tokGain>1?"S":""), "#ff00aa");
+  prestigeHistory.push({ tier:newLevel, mult:newMult, tok:tokGain, date:new Date().toLocaleDateString() });
+  localStorage.setItem("spin-rev-history", JSON.stringify(prestigeHistory.slice(-20)));
+  G = createInitialState();
+  G.prestigeLevel      = newLevel;
+  G.prestigeMultiplier = newMult;
+  G.prestigeTokens     = newTokens;
+  G.skills             = savedSkills;
+  G.animals            = savedAnimals;
+  G.animalsUnlocked    = savedUnlocked;
+  G.ascUpgrades        = savedAsc;
+  G.flux               = savedFlux;
+  if (savedSpinners) G.spinners = savedSpinners;
+  // HEAD START from ascension
+  const headStart = (G.ascUpgrades.startBoost || 0) * 500;
+  if (headStart > 0) { G.rev += headStart; G.totalRev += headStart; }
+  // AUTO UNLOCK from ascension
+  const autoUnlocks = G.ascUpgrades.autoUnlock || 0;
+  for (let i = 0; i < autoUnlocks && i < NUM_SPINNERS; i++) G.spinners[i].unlocked = true;
+  confirmingPrestige = false;
+  comboCount = 0;
+  refreshUI();
+});
+
+// Skill tree click + gate node
+document.getElementById("treeContent").addEventListener("click", e => {
+  const gate = e.target.closest("[data-gate]");
+  if (gate) {
+    if (G.animalsUnlocked) return;
+    if (G.prestigeTokens >= ANIMALS_UNLOCK_COST) {
+      G.prestigeTokens -= ANIMALS_UNLOCK_COST;
+      G.animalsUnlocked = true;
+      addFlash("ANIMALS UNLOCKED! 🐾", "#ffaa00"); refreshUI();
+    }
+    return;
+  }
+  const node = e.target.closest("[data-skill]");
+  if (!node) return;
+  const sid = node.dataset.skill;
+  const sk = SKILLS.find(x => x.id === sid);
+  if (!sk) return;
+  const lv = G.skills[sid] || 0;
+  if (lv >= sk.maxLevel) return;
+  if (!skillPrereqMet(sid)) return;
+  if (G.prestigeTokens < sk.cost) return;
+  G.prestigeTokens -= sk.cost;
+  G.skills[sid] = lv + 1;
+  addFlash(sk.name + " UNLOCKED!", sk.color); refreshUI();
+});
+
+// Animal panel clicks
+document.getElementById("animalGrid").addEventListener("click", e => {
+  const buyBtn = e.target.closest("[data-animal-buy]");
+  if (buyBtn) {
+    const aid = buyBtn.dataset.animalBuy;
+    const a = ANIMALS.find(x => x.id === aid);
+    if (!a) return;
+    const cost = getAnimalBuyCost(a);
+    if (G.rev < cost) return;
+    G.rev -= cost; G.animals[aid] = { owned:true, level:1 };
+    addFlash(a.name + " ACQUIRED! " + a.emoji, a.color); refreshUI();
+    return;
+  }
+  const lvlBtn = e.target.closest("[data-animal-lvl]");
+  if (lvlBtn) {
+    const aid = lvlBtn.dataset.animalLvl;
+    const a = ANIMALS.find(x => x.id === aid);
+    if (!a) return;
+    const state = G.animals[aid];
+    if (!state?.owned || state.level >= a.maxLevel) return;
+    const cost = getAnimalLevelUpCost(a);
+    if (G.rev < cost) return;
+    G.rev -= cost; state.level++;
+    addFlash(a.name + " LV." + state.level + " " + a.emoji, a.color); refreshUI();
+  }
+});
+
+// ============================================================
+// ANIMATION LOOP
+// ============================================================
+let lastAnim = performance.now();
+function animLoop(now) {
+  const dt = (now - lastAnim) / 1000;
+  lastAnim = now;
+  for (let i = 0; i < NUM_SPINNERS; i++) {
+    if (!G.spinners[i].unlocked) continue;
+    rotations[i] += G.spinners[i].speed * 360 * dt;
+    const ring = document.querySelector(`.spin-ring[data-si="${i}"]`);
+    if (ring) ring.setAttribute("transform", `rotate(${rotations[i]} 50 50)`);
+    const inner = document.querySelector(`.spin-ring-inner[data-sii="${i}"]`);
+    if (inner) inner.setAttribute("transform", `rotate(${-rotations[i]*.55} 50 50)`);
+  }
+  // Combo decay visual
+  if (hasTier(4) && comboCount > 1) {
+    const elapsed = Date.now() - lastClickTime;
+    if (elapsed > getComboDecayTime()) { comboCount = 0; updateComboMeter(); }
+    else { const pct = Math.max(0, (1 - elapsed / getComboDecayTime()) * 100); document.getElementById("comboBar").style.width = pct + "%"; }
+  }
+  requestAnimationFrame(animLoop);
+}
+requestAnimationFrame(animLoop);
+
+// ============================================================
+// GAME TICK (50ms)
+// ============================================================
+setInterval(() => {
+  const passive = calcPassive();
+  const earned = passive / 20;
+  if (earned > 0) { G.rev += earned; G.totalRev += earned; }
+  // FLUX generation
+  const fluxRate = getFluxPerSec();
+  if (fluxRate > 0) G.flux += fluxRate / 20;
+  // Speed decay
+  const maxSpd = getMaxSpeed();
+  for (const s of G.spinners) {
+    if (!s.unlocked) continue;
+    const decay = getDecayRate(s);
+    const min = getMinSpeed(s);
+    s.speed = Math.max(s.speed - decay, min);
+  }
+  G.passiveRevPerSec = passive;
+  G.lastTick = Date.now();
+  updateTopBar();
+  // Check milestones
+  for (const m of MILESTONES) {
+    if (!triggeredMilestones.includes(m.id) && m.check(G)) {
+      triggeredMilestones.push(m.id);
+      showMilestone(m);
+      localStorage.setItem("spin-rev-milestones", JSON.stringify(triggeredMilestones));
+    }
+  }
+}, 50);
+
+// UI refresh interval
+setInterval(() => {
+  G.revPerClick = calcRevPerClick();
+  G.passiveRevPerSec = calcPassive();
+  updateSpinnerCards();
+  buildUpgrades();
+}, 500);
+
+// Save interval
+setInterval(() => {
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(G));
+  localStorage.setItem("spin-rev-clicks", totalClicks.toString());
+}, 3000);
+
+// Block Enter key
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); }
+});
+
+// ============================================================
+// INIT — OFFLINE EARNINGS
+// ============================================================
+const elapsed = (Date.now() - G.lastTick) / 1000;
+const offPassive = calcPassive();
+if (elapsed > 5 && offPassive > 0) {
+  const earnings = Math.floor(offPassive * elapsed * getOfflineRate());
+  const fluxEarned = getFluxPerSec() * elapsed;
+  if (earnings > 0) {
+    G.rev += earnings; G.totalRev += earnings;
+    if (fluxEarned > 0) G.flux += fluxEarned;
+    const overlay = document.createElement("div");
+    overlay.className = "offline-overlay";
+    overlay.innerHTML = `<div class="offline-popup">
+      <div class="offline-icon">⏰</div>
+      <h2 class="offline-title">WELCOME BACK!</h2>
+      <p class="offline-desc">Your spinners earned while you were away:</p>
+      <div class="offline-amount">+${fmt(earnings)} REV${fluxEarned > 0 ? " | +" + fmt(fluxEarned) + " FLUX" : ""}</div>
+      <button class="offline-btn" id="offBtn">COLLECT &amp; CONTINUE</button>
+    </div>`;
+    document.body.appendChild(overlay);
+    document.getElementById("offBtn").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", ev => { if (ev.target === overlay) overlay.remove(); });
+  }
+}
+G.lastTick = Date.now();
+
+buildSpinners();
+refreshUI();
+
+// ============================================================
+// LEADERBOARD
+// ============================================================
+let leaderboardData = [];
+let playerName = localStorage.getItem("spin-rev-player-name") || "";
+if (playerName) document.getElementById("playerNameInput").value = playerName;
+
+async function fetchLeaderboard() {
+  const list = document.getElementById("leaderboardList");
+  list.innerHTML = '<div class="lb-loading">Loading leaderboard...</div>';
+  try {
+    const res = await fetch("/api/leaderboard");
+    const data = await res.json();
+    leaderboardData = data.leaderboard || [];
+    renderLeaderboard();
+  } catch(e) {
+    list.innerHTML = '<div class="lb-empty">Failed to load leaderboard. Are you online?</div>';
+  }
+}
+
+function renderLeaderboard() {
+  const list = document.getElementById("leaderboardList");
+  if (leaderboardData.length === 0) {
+    list.innerHTML = '<div class="lb-empty">No scores yet. Be the first!</div>';
+    return;
+  }
+  const myName = (localStorage.getItem("spin-rev-player-name") || "").toUpperCase();
+  list.innerHTML = leaderboardData.map((row, i) => {
+    const rank = i + 1;
+    const rankClass = rank === 1 ? "lb-rank-1" : rank === 2 ? "lb-rank-2" : rank === 3 ? "lb-rank-3" : "lb-rank-n";
+    const rowClass = rank === 1 ? "lb-top1" : rank === 2 ? "lb-top2" : rank === 3 ? "lb-top3" : "";
+    const rName = row.playerName || row.player_name || "???";
+    const isYou = rName === myName;
+    const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "#" + rank;
+    const rRev = row.totalRev || row.total_rev || 0;
+    const rPres = row.prestigeLevel || row.prestige_level || 0;
+    const rMult = row.prestigeMultiplier || row.prestige_multiplier || 1;
+    const rSpin = row.spinnersUnlocked || row.spinners_unlocked || 1;
+    return `<div class="lb-row ${rowClass} ${isYou ? "lb-you" : ""}">
+      <div class="lb-rank ${rankClass}">${medal}</div>
+      <div class="lb-info">
+        <div class="lb-name">${rName}${isYou ? " (YOU)" : ""}</div>
+        <div class="lb-stats">
+          <span>P${rPres}</span>
+          <span>x${rMult.toFixed(1)}</span>
+          <span>${rSpin}🔧</span>
+        </div>
+      </div>
+      <div class="lb-score">${fmt(rRev)}</div>
+    </div>`;
+  }).join("");
+}
+
+async function submitScore() {
+  const nameInput = document.getElementById("playerNameInput");
+  const name = nameInput.value.trim();
+  const status = document.getElementById("submitStatus");
+  if (!name || name.length === 0) {
+    status.textContent = "⚠ Enter a name first!";
+    status.style.color = "#ff4444";
+    return;
+  }
+  if (name.length > 20) {
+    status.textContent = "⚠ Name must be 20 chars or less!";
+    status.style.color = "#ff4444";
+    return;
+  }
+  localStorage.setItem("spin-rev-player-name", name);
+  playerName = name;
+  status.textContent = "Submitting...";
+  status.style.color = "#ffcc00";
+  try {
+    const res = await fetch("/api/leaderboard/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        playerName: name,
+        totalRev: G.totalRev,
+        prestigeLevel: G.prestigeLevel,
+        prestigeMultiplier: G.prestigeMultiplier,
+        spinnersUnlocked: G.spinners.filter(s => s.unlocked).length,
+        flux: G.flux,
+        totalClicks: totalClicks,
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (data.action === "no_change") {
+        status.textContent = "✓ Score submitted — your existing score is higher!";
+      } else {
+        status.textContent = "✓ Score submitted successfully!";
+      }
+      status.style.color = "#00ffcc";
+      // Save to local leaderboard too
+      saveLocalRun();
+      fetchLeaderboard();
+    } else {
+      status.textContent = "⚠ " + (data.error || "Failed to submit");
+      status.style.color = "#ff4444";
+    }
+  } catch(e) {
+    status.textContent = "⚠ Network error. Try again.";
+    status.style.color = "#ff4444";
+  }
+}
+
+// Local leaderboard (personal best runs)
+function saveLocalRun() {
+  let runs = [];
+  try { runs = JSON.parse(localStorage.getItem("spin-rev-local-lb") || "[]"); } catch(e){}
+  runs.push({
+    totalRev: G.totalRev,
+    prestigeLevel: G.prestigeLevel,
+    prestigeMultiplier: G.prestigeMultiplier,
+    spinners: G.spinners.filter(s => s.unlocked).length,
+    date: new Date().toLocaleDateString(),
+    clicks: totalClicks,
+  });
+  // Keep top 10 by totalRev
+  runs.sort((a,b) => b.totalRev - a.totalRev);
+  runs = runs.slice(0, 10);
+  localStorage.setItem("spin-rev-local-lb", JSON.stringify(runs));
+}
+
+function updateLocalLeaderboard() {
+  let runs = [];
+  try { runs = JSON.parse(localStorage.getItem("spin-rev-local-lb") || "[]"); } catch(e){}
+  const el = document.getElementById("localLeaderboard");
+  if (runs.length === 0) {
+    el.innerHTML = '<div class="lb-empty">No runs recorded yet. Submit a score to track your progress!</div>';
+    return;
+  }
+  el.innerHTML = runs.map((r, i) => {
+    return `<div class="lb-row">
+      <div class="lb-rank lb-rank-n">#${i+1}</div>
+      <div class="lb-info">
+        <div class="lb-name">${r.date}</div>
+        <div class="lb-stats"><span>P${r.prestigeLevel}</span><span>x${(r.prestigeMultiplier||1).toFixed(1)}</span><span>${r.spinners}🔧</span><span>${fmt(r.clicks)} clicks</span></div>
+      </div>
+      <div class="lb-score">${fmt(r.totalRev)}</div>
+    </div>`;
+  }).join("");
+}
+
+document.getElementById("submitScoreBtn").addEventListener("click", submitScore);
+document.getElementById("refreshLeaderboard").addEventListener("click", fetchLeaderboard);
+
+// Auto-submit score every 60 seconds if player name is set
+setInterval(() => {
+  const name = localStorage.getItem("spin-rev-player-name");
+  if (name && G.totalRev > 0) {
+    fetch("/api/leaderboard/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        playerName: name,
+        totalRev: G.totalRev,
+        prestigeLevel: G.prestigeLevel,
+        prestigeMultiplier: G.prestigeMultiplier,
+        spinnersUnlocked: G.spinners.filter(s => s.unlocked).length,
+        flux: G.flux,
+        totalClicks: totalClicks,
+      })
+    }).catch(() => {});
+  }
+}, 60000);
+
+// ============================================================
+// AUTH SYSTEM — Login / Signup / Cloud Save
+// ============================================================
+let currentUser = null;
+
+async function checkAuth() {
+  try {
+    const res = await fetch("/api/me");
+    const data = await res.json();
+    if (data.user) {
+      currentUser = data.user;
+      showLoggedInState();
+    } else {
+      currentUser = null;
+      showLoggedOutState();
+    }
+  } catch(e) {
+    currentUser = null;
+    showLoggedOutState();
+  }
+}
+
+function showLoggedInState() {
+  document.getElementById("authUserBar").style.display = "flex";
+  document.getElementById("loginBtn").style.display = "none";
+  document.getElementById("authUserName").textContent = currentUser.name || currentUser.email.split("@")[0];
+}
+
+function showLoggedOutState() {
+  document.getElementById("authUserBar").style.display = "none";
+  document.getElementById("loginBtn").style.display = "";
+}
+
+function showSaveIndicator(text, color) {
+  const el = document.createElement("div");
+  el.className = "save-indicator";
+  el.style.borderColor = color; el.style.color = color;
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+async function cloudSave() {
+  if (!currentUser) return;
+  try {
+    const saveData = JSON.stringify(G);
+    const res = await fetch("/api/save/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ saveData, totalClicks }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showSaveIndicator("☁ SAVED TO CLOUD", "#00ffcc");
+    } else {
+      showSaveIndicator("⚠ SAVE FAILED", "#ff4444");
+    }
+  } catch(e) {
+    showSaveIndicator("⚠ NETWORK ERROR", "#ff4444");
+  }
+}
+
+async function cloudLoad() {
+  if (!currentUser) return;
+  try {
+    const res = await fetch("/api/save/load");
+    const data = await res.json();
+    if (data.save && data.save.saveData) {
+      const loaded = JSON.parse(data.save.saveData);
+      // Merge into G
+      Object.assign(G, loaded);
+      // Patch missing fields
+      if (!G.skills) G.skills = {};
+      for (const s of SKILLS) if (G.skills[s.id] === undefined) G.skills[s.id] = 0;
+      if (!G.animals) G.animals = {};
+      for (const a of ANIMALS) if (!G.animals[a.id]) G.animals[a.id] = { owned:false, level:0 };
+      if (!G.ascUpgrades) G.ascUpgrades = {};
+      for (const au of ASC_UPGRADES) if (G.ascUpgrades[au.id] === undefined) G.ascUpgrades[au.id] = 0;
+      if (G.flux === undefined) G.flux = 0;
+      while (G.spinners.length < NUM_SPINNERS) G.spinners.push({id:G.spinners.length,unlocked:false,level:1,speed:.5,baseRevPerSpin:1,autoSpin:false,chained:false});
+      for (const s of G.spinners) if (s.chained === undefined) s.chained = false;
+      if (data.save.totalClicks) totalClicks = data.save.totalClicks;
+      G.lastTick = Date.now();
+      refreshUI();
+      showSaveIndicator("☁ LOADED FROM CLOUD", "#ffcc00");
+    } else {
+      showSaveIndicator("NO CLOUD SAVE FOUND", "#4a6a4a");
+    }
+  } catch(e) {
+    showSaveIndicator("⚠ LOAD FAILED", "#ff4444");
+  }
+}
+
+async function logout() {
+  try {
+    await fetch("/api/auth/sign-out", { method: "POST" });
+  } catch(e) {}
+  currentUser = null;
+  showLoggedOutState();
+  showSaveIndicator("SIGNED OUT", "#ff4444");
+}
+
+function showAuthOverlay() {
+  let overlay = document.getElementById("authOverlay");
+  if (overlay) { overlay.remove(); return; }
+
+  overlay = document.createElement("div");
+  overlay.id = "authOverlay";
+  overlay.className = "auth-overlay";
+  overlay.innerHTML = `
+    <div class="auth-box">
+      <div class="auth-title">🔑 SPIN REV</div>
+      <div class="auth-subtitle">Sign in to save your progress to the cloud</div>
+      <div class="auth-tabs">
+        <div class="auth-tab active" data-auth-tab="signin">SIGN IN</div>
+        <div class="auth-tab" data-auth-tab="signup">SIGN UP</div>
+      </div>
+      <form id="authForm">
+        <div class="auth-field" id="nameField" style="display:none">
+          <label>NAME</label>
+          <input type="text" id="authName" placeholder="Your display name" autocomplete="name">
+        </div>
+        <div class="auth-field">
+          <label>EMAIL</label>
+          <input type="email" id="authEmail" placeholder="your@email.com" autocomplete="email" required>
+        </div>
+        <div class="auth-field">
+          <label>PASSWORD</label>
+          <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" minlength="8" required>
+        </div>
+        <button type="submit" class="auth-submit" id="authSubmitBtn">SIGN IN</button>
+      </form>
+      <div class="auth-error" id="authError"></div>
+      <div class="auth-skip" id="authSkip">Skip — play without saving</div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  let mode = "signin";
+
+  // Tab switching
+  overlay.querySelectorAll(".auth-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      mode = tab.dataset.authTab;
+      overlay.querySelectorAll(".auth-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById("nameField").style.display = mode === "signup" ? "" : "none";
+      document.getElementById("authSubmitBtn").textContent = mode === "signup" ? "CREATE ACCOUNT" : "SIGN IN";
+      document.getElementById("authError").textContent = "";
+    });
+  });
+
+  // Form submit
+  document.getElementById("authForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("authEmail").value.trim();
+    const password = document.getElementById("authPassword").value;
+    const name = document.getElementById("authName").value.trim() || email.split("@")[0];
+    const errEl = document.getElementById("authError");
+    const btn = document.getElementById("authSubmitBtn");
+
+    if (!email || !password) { errEl.textContent = "Fill in all fields"; return; }
+    if (password.length < 8) { errEl.textContent = "Password must be 8+ characters"; return; }
+
+    btn.disabled = true;
+    btn.textContent = "LOADING...";
+    errEl.textContent = "";
+
+    try {
+      if (mode === "signup") {
+        const res = await fetch("/api/auth/sign-up/email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, name }),
+        });
+        const data = await res.json();
+        if (data.user || data.token) {
+          currentUser = data.user || { email, name };
+          showLoggedInState();
+          overlay.remove();
+          showSaveIndicator("✓ ACCOUNT CREATED!", "#00ffcc");
+          checkAuth();
+          return;
+        }
+        errEl.textContent = data.message || data.error || "Sign up failed";
+      } else {
+        const res = await fetch("/api/auth/sign-in/email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (data.user || data.token) {
+          currentUser = data.user || { email };
+          showLoggedInState();
+          overlay.remove();
+          showSaveIndicator("✓ SIGNED IN!", "#00ffcc");
+          checkAuth();
+          // Auto-load cloud save
+          setTimeout(cloudLoad, 500);
+          return;
+        }
+        errEl.textContent = data.message || data.error || "Sign in failed — check email/password";
+      }
+    } catch(err) {
+      errEl.textContent = "Network error. Try again.";
+    }
+    btn.disabled = false;
+    btn.textContent = mode === "signup" ? "CREATE ACCOUNT" : "SIGN IN";
+  });
+
+  // Skip
+  document.getElementById("authSkip").addEventListener("click", () => overlay.remove());
+
+  // Click outside to close
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
+document.getElementById("loginBtn").addEventListener("click", showAuthOverlay);
+document.getElementById("cloudSaveBtn").addEventListener("click", cloudSave);
+document.getElementById("cloudLoadBtn").addEventListener("click", cloudLoad);
+document.getElementById("logoutBtn").addEventListener("click", logout);
+
+// Auto cloud save every 30 seconds if logged in
+setInterval(() => {
+  if (currentUser && G.totalRev > 0) cloudSave();
+}, 30000);
+
+// Check auth on load
+checkAuth();
+
+// ============================================================
+// ADMIN PANEL — type "Runableiscool" to open
+// ============================================================
+let adminBuffer = "";
+const ADMIN_CODE = "Runableiscool";
+document.addEventListener("keypress", e => {
+  adminBuffer += e.key;
+  if (adminBuffer.length > ADMIN_CODE.length) adminBuffer = adminBuffer.slice(-ADMIN_CODE.length);
+  if (adminBuffer === ADMIN_CODE) {
+    adminBuffer = "";
+    toggleAdminPanel();
+  }
+});
+
+function toggleAdminPanel() {
+  let panel = document.getElementById("adminPanel");
+  if (panel) { panel.remove(); return; }
+  panel = document.createElement("div");
+  panel.id = "adminPanel";
+  panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(8,8,14,.98);border:2px solid #ff00aa;border-radius:8px;padding:20px 24px;width:420px;max-height:80vh;overflow-y:auto;box-shadow:0 0 60px rgba(255,0,170,.3);font-family:'VT323',monospace";
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-family:'Press Start 2P',cursive;font-size:10px;color:#ff00aa;text-shadow:0 0 10px rgba(255,0,170,.5)">🛠 ADMIN PANEL</h2>
+      <button id="adminClose" style="font-family:'Press Start 2P';font-size:8px;background:none;color:#ff4444;cursor:pointer;padding:4px 8px;border:1px solid #ff4444;border-radius:3px">✕</button>
+    </div>
+    <div style="font-size:11px;color:#ff444488;margin-bottom:12px;text-align:center;border-bottom:1px solid #2a2a40;padding-bottom:8px">⚠ CHEATS — USE AT YOUR OWN RISK ⚠</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <label style="font-size:12px;color:#5a7a5a">SET REV</label>
+        <input id="adm_rev" type="number" value="0" style="background:#0e0e16;border:1px solid #2a2a40;color:#ffcc00;padding:6px 8px;border-radius:3px;font-family:'VT323';font-size:15px;width:100%">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <label style="font-size:12px;color:#5a7a5a">SET TOKENS</label>
+        <input id="adm_tokens" type="number" value="0" style="background:#0e0e16;border:1px solid #2a2a40;color:#ff00aa;padding:6px 8px;border-radius:3px;font-family:'VT323';font-size:15px;width:100%">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <label style="font-size:12px;color:#5a7a5a">SET FLUX</label>
+        <input id="adm_flux" type="number" value="0" style="background:#0e0e16;border:1px solid #2a2a40;color:#00aaff;padding:6px 8px;border-radius:3px;font-family:'VT323';font-size:15px;width:100%">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <label style="font-size:12px;color:#5a7a5a">SET PRESTIGE TIER</label>
+        <input id="adm_tier" type="number" value="0" style="background:#0e0e16;border:1px solid #2a2a40;color:#ff4488;padding:6px 8px;border-radius:3px;font-family:'VT323';font-size:15px;width:100%">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <label style="font-size:12px;color:#5a7a5a">SET MULTIPLIER</label>
+        <input id="adm_mult" type="number" value="1" step="0.5" style="background:#0e0e16;border:1px solid #2a2a40;color:#ffcc00;padding:6px 8px;border-radius:3px;font-family:'VT323';font-size:15px;width:100%">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <label style="font-size:12px;color:#5a7a5a">SET TOTAL REV</label>
+        <input id="adm_totalrev" type="number" value="0" style="background:#0e0e16;border:1px solid #2a2a40;color:#ffaa00;padding:6px 8px;border-radius:3px;font-family:'VT323';font-size:15px;width:100%">
+      </div>
+    </div>
+
+    <button id="adm_apply" style="width:100%;padding:8px;font-family:'Press Start 2P';font-size:7px;background:rgba(255,0,170,.1);border:1px solid #ff00aa;color:#ff00aa;border-radius:3px;cursor:pointer;margin-bottom:10px;transition:all .15s">APPLY VALUES</button>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+      <button class="adm-btn" data-action="unlockAll" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(0,255,204,.06);border:1px solid #00ffcc40;color:#00ffcc;border-radius:3px;cursor:pointer">🔓 Unlock All Spinners</button>
+      <button class="adm-btn" data-action="maxSpinners" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(0,170,255,.06);border:1px solid #00aaff40;color:#00aaff;border-radius:3px;cursor:pointer">⬆ Max Spinner Levels</button>
+      <button class="adm-btn" data-action="maxUpgrades" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(170,68,255,.06);border:1px solid #aa44ff40;color:#aa44ff;border-radius:3px;cursor:pointer">🔧 Max All Upgrades</button>
+      <button class="adm-btn" data-action="unlockSkills" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(255,204,0,.06);border:1px solid #ffcc0040;color:#ffcc00;border-radius:3px;cursor:pointer">✦ Unlock All Skills</button>
+      <button class="adm-btn" data-action="unlockAnimals" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(255,170,0,.06);border:1px solid #ffaa0040;color:#ffaa00;border-radius:3px;cursor:pointer">🐾 Unlock All Animals</button>
+      <button class="adm-btn" data-action="maxAnimals" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(255,102,51,.06);border:1px solid #ff663340;color:#ff6633;border-radius:3px;cursor:pointer">🐾 Max Animal Levels</button>
+      <button class="adm-btn" data-action="maxAsc" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(0,170,255,.06);border:1px solid #00aaff40;color:#00aaff;border-radius:3px;cursor:pointer">⚡ Max Ascension Upg</button>
+      <button class="adm-btn" data-action="autoAll" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(255,204,0,.06);border:1px solid #ffcc0040;color:#ffcc00;border-radius:3px;cursor:pointer">// Auto-Spin All</button>
+    </div>
+
+    <div style="border-top:1px solid #2a2a40;padding-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <button class="adm-btn" data-action="resetSave" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(255,68,68,.06);border:1px solid #ff444440;color:#ff4444;border-radius:3px;cursor:pointer">💀 RESET ALL SAVE DATA</button>
+      <button class="adm-btn" data-action="godMode" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(255,0,170,.06);border:1px solid #ff00aa40;color:#ff00aa;border-radius:3px;cursor:pointer">👑 GOD MODE (all max)</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+
+  // Populate current values
+  document.getElementById("adm_rev").value = Math.floor(G.rev);
+  document.getElementById("adm_tokens").value = G.prestigeTokens;
+  document.getElementById("adm_flux").value = Math.floor(G.flux);
+  document.getElementById("adm_tier").value = G.prestigeLevel;
+  document.getElementById("adm_mult").value = G.prestigeMultiplier;
+  document.getElementById("adm_totalrev").value = Math.floor(G.totalRev);
+
+  // Close button
+  document.getElementById("adminClose").addEventListener("click", () => panel.remove());
+
+  // Apply values
+  document.getElementById("adm_apply").addEventListener("click", () => {
+    G.rev = parseFloat(document.getElementById("adm_rev").value) || 0;
+    G.prestigeTokens = parseInt(document.getElementById("adm_tokens").value) || 0;
+    G.flux = parseFloat(document.getElementById("adm_flux").value) || 0;
+    G.prestigeLevel = parseInt(document.getElementById("adm_tier").value) || 0;
+    G.prestigeMultiplier = parseFloat(document.getElementById("adm_mult").value) || 1;
+    G.totalRev = parseFloat(document.getElementById("adm_totalrev").value) || 0;
+    if (G.totalRev < G.rev) G.totalRev = G.rev;
+    addFlash("ADMIN: VALUES APPLIED", "#ff00aa");
+    refreshUI();
+  });
+
+  // Action buttons
+  panel.querySelectorAll(".adm-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const action = btn.dataset.action;
+      switch(action) {
+        case "unlockAll":
+          G.spinners.forEach(s => s.unlocked = true);
+          addFlash("ALL SPINNERS UNLOCKED", "#00ffcc");
+          break;
+        case "maxSpinners":
+          G.spinners.forEach(s => { if(s.unlocked){s.level=50;s.baseRevPerSpin=Math.pow(1.28,50);s.speed=5;} });
+          addFlash("SPINNERS MAXED TO LV.50", "#00aaff");
+          break;
+        case "maxUpgrades":
+          for (const u of UPGRADES) {
+            if (u.max === Infinity) G.upgrades[u.id] = 50;
+            else G.upgrades[u.id] = u.max;
+          }
+          // Apply auto-spin
+          G.spinners.forEach(s => { if(s.unlocked) s.autoSpin = true; });
+          addFlash("ALL UPGRADES MAXED", "#aa44ff");
+          break;
+        case "unlockSkills":
+          for (const s of SKILLS) G.skills[s.id] = s.maxLevel;
+          addFlash("ALL SKILLS UNLOCKED", "#ffcc00");
+          break;
+        case "unlockAnimals":
+          G.animalsUnlocked = true;
+          for (const a of ANIMALS) G.animals[a.id] = { owned:true, level:1 };
+          addFlash("ALL ANIMALS UNLOCKED", "#ffaa00");
+          break;
+        case "maxAnimals":
+          G.animalsUnlocked = true;
+          for (const a of ANIMALS) G.animals[a.id] = { owned:true, level:a.maxLevel };
+          addFlash("ALL ANIMALS MAXED", "#ff6633");
+          break;
+        case "maxAsc":
+          for (const u of ASC_UPGRADES) {
+            if (u.max === Infinity) G.ascUpgrades[u.id] = 30;
+            else G.ascUpgrades[u.id] = u.max;
+          }
+          addFlash("ASCENSION UPGRADES MAXED", "#00aaff");
+          break;
+        case "autoAll":
+          G.spinners.forEach(s => { if(s.unlocked) s.autoSpin = true; });
+          addFlash("ALL SPINNERS AUTO-SPIN", "#ffcc00");
+          break;
+        case "resetSave":
+          if (confirm("Are you sure? This will DELETE ALL save data!")) {
+            localStorage.removeItem(LOCAL_KEY);
+            localStorage.removeItem("spin-rev-clicks");
+            localStorage.removeItem("spin-rev-history");
+            localStorage.removeItem("spin-rev-milestones");
+            location.reload();
+          }
+          return;
+        case "godMode":
+          G.rev = 1e15; G.totalRev = 1e15; G.flux = 1e6;
+          G.prestigeLevel = 15; G.prestigeMultiplier = 1000;
+          G.prestigeTokens = 9999;
+          G.spinners.forEach(s => { s.unlocked=true; s.level=50; s.baseRevPerSpin=Math.pow(1.28,50); s.speed=5; s.autoSpin=true; });
+          for (const u of UPGRADES) { if(u.max===Infinity) G.upgrades[u.id]=50; else G.upgrades[u.id]=u.max; }
+          for (const s of SKILLS) G.skills[s.id] = s.maxLevel;
+          G.animalsUnlocked = true;
+          for (const a of ANIMALS) G.animals[a.id] = { owned:true, level:a.maxLevel };
+          for (const u of ASC_UPGRADES) { if(u.max===Infinity) G.ascUpgrades[u.id]=30; else G.ascUpgrades[u.id]=u.max; }
+          addFlash("👑 GOD MODE ACTIVATED", "#ff00aa");
+          break;
+      }
+      refreshUI();
+    });
+  });
+}
+</script>
+</body>
+</html>
