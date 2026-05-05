@@ -20,7 +20,7 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
-            gap: 20px;
+            gap: 16px;
         }
 
         #menu h1 {
@@ -28,13 +28,12 @@
             background: linear-gradient(135deg, #ff006a, #00f0ff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: none;
         }
 
         #menu .subtitle {
             color: #888;
             font-size: 1rem;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         .menu-btn {
@@ -55,10 +54,31 @@
             transform: scale(1.05);
         }
 
+        .setting-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        .setting-row label { color: #ccc; }
+
+        .setting-row input {
+            width: 70px;
+            padding: 6px 10px;
+            font-size: 1rem;
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 6px;
+            text-align: center;
+        }
+
         .player-select {
             display: flex;
             gap: 12px;
-            margin-top: 10px;
         }
 
         .player-select button {
@@ -79,9 +99,7 @@
             background: rgba(0, 255, 136, 0.1);
         }
 
-        .player-select button:hover {
-            border-color: #00ff88;
-        }
+        .player-select button:hover { border-color: #00ff88; }
 
         #game {
             display: none;
@@ -94,12 +112,10 @@
             width: 100%;
             height: 100%;
             background: #0d0d1a;
-            border: 3px solid #1a1a2e;
             position: relative;
             overflow: hidden;
         }
 
-        /* Grid lines */
         #arena::before {
             content: '';
             position: absolute;
@@ -108,6 +124,7 @@
                 linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
             background-size: 50px 50px;
+            pointer-events: none;
         }
 
         .player {
@@ -115,7 +132,6 @@
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            transition: none;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -144,6 +160,52 @@
             color: #fff;
             white-space: nowrap;
             pointer-events: none;
+        }
+
+        .wall {
+            position: absolute;
+            background: linear-gradient(135deg, #2a2a4a, #3a3a5a);
+            border: 2px solid #555;
+            border-radius: 4px;
+            z-index: 5;
+        }
+
+        .teleporter {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            z-index: 6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            animation: tpGlow 1.5s ease-in-out infinite alternate;
+            cursor: default;
+        }
+
+        .teleporter.pair-a {
+            background: radial-gradient(circle, rgba(180, 0, 255, 0.6), rgba(180, 0, 255, 0.1));
+            border: 2px solid #b400ff;
+            box-shadow: 0 0 12px rgba(180, 0, 255, 0.5);
+        }
+
+        .teleporter.pair-b {
+            background: radial-gradient(circle, rgba(255, 150, 0, 0.6), rgba(255, 150, 0, 0.1));
+            border: 2px solid #ff9600;
+            box-shadow: 0 0 12px rgba(255, 150, 0, 0.5);
+        }
+
+        .teleporter.used {
+            opacity: 0.2;
+            border-color: #333;
+            box-shadow: none;
+            animation: none;
+        }
+
+        @keyframes tpGlow {
+            from { filter: brightness(0.8); }
+            to { filter: brightness(1.3); }
         }
 
         #hud {
@@ -208,7 +270,6 @@
             color: #555;
             z-index: 100;
             pointer-events: none;
-            line-height: 1.6;
         }
 
         #gameover {
@@ -252,20 +313,38 @@
             background: #00f0ff;
             color: #0a0a0f;
         }
+
+        .controls-legend {
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.75rem;
+            text-align: center;
+            line-height: 2;
+        }
+
+        .controls-legend span { font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="menu">
         <h1>TAG</h1>
         <p class="subtitle">Local Multiplayer — Chase & Evade!</p>
-        <p style="color:#666; font-size:0.85rem;">Select number of players:</p>
+
+        <p style="color:#666; font-size:0.85rem;">Players:</p>
         <div class="player-select">
-            <button onclick="setPlayers(2)">2 Players</button>
-            <button onclick="setPlayers(3)">3 Players</button>
-            <button onclick="setPlayers(4)" class="active">4 Players</button>
+            <button onclick="setPlayers(2)">2</button>
+            <button onclick="setPlayers(3)">3</button>
+            <button onclick="setPlayers(4)" class="active">4</button>
         </div>
+
+        <div class="setting-row">
+            <label>Time (seconds):</label>
+            <input type="number" id="timeInput" value="60" min="10" max="300" step="10">
+        </div>
+
         <button class="menu-btn" onclick="startGame()">START GAME</button>
-        <div style="margin-top:30px; color:#666; font-size:0.75rem; text-align:center; line-height:2;">
+
+        <div class="controls-legend">
             <div><span style="color:#ff006a">P1:</span> W A S D</div>
             <div><span style="color:#00f0ff">P2:</span> I J K L</div>
             <div><span style="color:#00ff88">P3:</span> ↑ ← ↓ →</div>
@@ -294,8 +373,9 @@
         const PLAYER_COLORS = ['#ff006a', '#00f0ff', '#00ff88', '#ffcc00'];
         const PLAYER_NAMES = ['P1', 'P2', 'P3', 'P4'];
         const SPEED = 4.5;
-        const TAG_COOLDOWN = 1000; // 1 second immunity after being tagged
-        const GAME_DURATION = 60; // seconds
+        const TAG_COOLDOWN = 1000;
+        const PLAYER_SIZE = 36;
+        const TP_SIZE = 40;
 
         const CONTROLS = [
             { up: 'w', down: 's', left: 'a', right: 'd' },
@@ -305,14 +385,17 @@
         ];
 
         let numPlayers = 4;
+        let gameDuration = 60;
         let players = [];
+        let walls = [];
+        let teleporters = []; // [{x,y,pairId,used,el}, ...]
         let itPlayer = 0;
         let gameRunning = false;
-        let timeLeft = GAME_DURATION;
+        let timeLeft = 60;
         let timerInterval;
         let keys = {};
         let lastTagTime = 0;
-        let scores = []; // time spent as "it" (lower is better)
+        let scores = [];
 
         function setPlayers(n) {
             numPlayers = n;
@@ -321,7 +404,130 @@
             });
         }
 
+        function generateWalls() {
+            walls = [];
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const margin = 80;
+
+            // Generate 6-10 random walls
+            const numWalls = 6 + Math.floor(Math.random() * 5);
+
+            for (let i = 0; i < numWalls; i++) {
+                const isHorizontal = Math.random() > 0.5;
+                let wall;
+                if (isHorizontal) {
+                    wall = {
+                        x: margin + Math.random() * (w - margin * 3),
+                        y: margin + Math.random() * (h - margin * 3),
+                        width: 80 + Math.random() * 150,
+                        height: 12
+                    };
+                } else {
+                    wall = {
+                        x: margin + Math.random() * (w - margin * 3),
+                        y: margin + Math.random() * (h - margin * 3),
+                        width: 12,
+                        height: 80 + Math.random() * 150
+                    };
+                }
+                walls.push(wall);
+            }
+            return walls;
+        }
+
+        function generateTeleporters() {
+            teleporters = [];
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const margin = 100;
+
+            // 2 pairs of teleporters (4 total portals)
+            for (let pair = 0; pair < 2; pair++) {
+                // Place two ends far from each other
+                const x1 = margin + Math.random() * (w / 2 - margin * 2);
+                const y1 = margin + Math.random() * (h - margin * 2);
+                const x2 = w / 2 + Math.random() * (w / 2 - margin * 2);
+                const y2 = margin + Math.random() * (h - margin * 2);
+
+                teleporters.push({ x: x1, y: y1, pairId: pair, used: false, el: null });
+                teleporters.push({ x: x2, y: y2, pairId: pair, used: false, el: null });
+            }
+            return teleporters;
+        }
+
+        function renderWalls(arena) {
+            walls.forEach(wall => {
+                const el = document.createElement('div');
+                el.className = 'wall';
+                el.style.left = wall.x + 'px';
+                el.style.top = wall.y + 'px';
+                el.style.width = wall.width + 'px';
+                el.style.height = wall.height + 'px';
+                arena.appendChild(el);
+            });
+        }
+
+        function renderTeleporters(arena) {
+            teleporters.forEach((tp, i) => {
+                const el = document.createElement('div');
+                el.className = `teleporter pair-${tp.pairId === 0 ? 'a' : 'b'}`;
+                el.style.left = tp.x + 'px';
+                el.style.top = tp.y + 'px';
+                el.textContent = '◉';
+                arena.appendChild(el);
+                tp.el = el;
+            });
+        }
+
+        function collidesWithWall(x, y, size) {
+            for (const wall of walls) {
+                if (x < wall.x + wall.width &&
+                    x + size > wall.x &&
+                    y < wall.y + wall.height &&
+                    y + size > wall.y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function checkTeleport(playerIdx) {
+            const p = players[playerIdx];
+            const px = p.x + PLAYER_SIZE / 2;
+            const py = p.y + PLAYER_SIZE / 2;
+
+            for (let i = 0; i < teleporters.length; i++) {
+                const tp = teleporters[i];
+                if (tp.used) continue;
+
+                const tpCx = tp.x + TP_SIZE / 2;
+                const tpCy = tp.y + TP_SIZE / 2;
+                const dist = Math.sqrt((px - tpCx) ** 2 + (py - tpCy) ** 2);
+
+                if (dist < 28) {
+                    // Find the paired teleporter
+                    const partner = teleporters.find(t => t.pairId === tp.pairId && t !== tp && !t.used);
+                    if (partner) {
+                        // Teleport player to partner
+                        p.x = partner.x + TP_SIZE / 2 - PLAYER_SIZE / 2;
+                        p.y = partner.y + TP_SIZE / 2 - PLAYER_SIZE / 2;
+
+                        // Disable BOTH teleporters in the pair
+                        tp.used = true;
+                        partner.used = true;
+                        tp.el.classList.add('used');
+                        partner.el.classList.add('used');
+                        return;
+                    }
+                }
+            }
+        }
+
         function startGame() {
+            gameDuration = parseInt(document.getElementById('timeInput').value) || 60;
+            gameDuration = Math.max(10, Math.min(300, gameDuration));
+
             document.getElementById('menu').style.display = 'none';
             document.getElementById('game').style.display = 'block';
             document.getElementById('gameover').style.display = 'none';
@@ -331,18 +537,24 @@
 
             players = [];
             scores = new Array(numPlayers).fill(0);
-            timeLeft = GAME_DURATION;
+            timeLeft = gameDuration;
             lastTagTime = 0;
 
             const w = window.innerWidth;
             const h = window.innerHeight;
 
+            // Generate map
+            generateWalls();
+            generateTeleporters();
+            renderWalls(arena);
+            renderTeleporters(arena);
+
             // Spawn positions (corners)
             const spawns = [
-                { x: 100, y: 100 },
-                { x: w - 140, y: 100 },
-                { x: 100, y: h - 140 },
-                { x: w - 140, y: h - 140 }
+                { x: 50, y: 50 },
+                { x: w - 90, y: 50 },
+                { x: 50, y: h - 90 },
+                { x: w - 90, y: h - 90 }
             ];
 
             for (let i = 0; i < numPlayers; i++) {
@@ -358,17 +570,14 @@
                 players.push({
                     el,
                     x: spawns[i].x,
-                    y: spawns[i].y,
-                    vx: 0,
-                    vy: 0
+                    y: spawns[i].y
                 });
             }
 
-            // Random "it" player
             itPlayer = Math.floor(Math.random() * numPlayers);
             updateItDisplay();
 
-            // Build scoreboard
+            // Scoreboard
             const sb = document.getElementById('scoreboard');
             sb.innerHTML = '';
             for (let i = 0; i < numPlayers; i++) {
@@ -405,13 +614,13 @@
             const w = window.innerWidth;
             const h = window.innerHeight;
 
-            // Update scores (it player accumulates time)
+            // Accumulate IT time
             scores[itPlayer] += 1 / 60;
             for (let i = 0; i < numPlayers; i++) {
                 document.getElementById(`score${i}`).textContent = `${PLAYER_NAMES[i]}: ${scores[i].toFixed(1)}s`;
             }
 
-            // Move players
+            // Move players with wall collision
             for (let i = 0; i < numPlayers; i++) {
                 const c = CONTROLS[i];
                 let dx = 0, dy = 0;
@@ -421,37 +630,44 @@
                 if (keys[c.up]) dy -= 1;
                 if (keys[c.down]) dy += 1;
 
-                // Normalize diagonal
                 if (dx !== 0 && dy !== 0) {
                     dx *= 0.707;
                     dy *= 0.707;
                 }
 
-                // IT player is slightly faster
                 const speed = i === itPlayer ? SPEED * 1.1 : SPEED;
 
-                players[i].x += dx * speed;
-                players[i].y += dy * speed;
+                // Move X
+                let newX = players[i].x + dx * speed;
+                newX = Math.max(0, Math.min(w - PLAYER_SIZE, newX));
+                if (!collidesWithWall(newX, players[i].y, PLAYER_SIZE)) {
+                    players[i].x = newX;
+                }
 
-                // Bounds
-                players[i].x = Math.max(0, Math.min(w - 36, players[i].x));
-                players[i].y = Math.max(0, Math.min(h - 36, players[i].y));
+                // Move Y
+                let newY = players[i].y + dy * speed;
+                newY = Math.max(0, Math.min(h - PLAYER_SIZE, newY));
+                if (!collidesWithWall(players[i].x, newY, PLAYER_SIZE)) {
+                    players[i].y = newY;
+                }
 
                 players[i].el.style.left = players[i].x + 'px';
                 players[i].el.style.top = players[i].y + 'px';
+
+                // Check teleporters
+                checkTeleport(i);
             }
 
-            // Check tag collisions
+            // Tag collision
             const now = Date.now();
             if (now - lastTagTime > TAG_COOLDOWN) {
                 for (let i = 0; i < numPlayers; i++) {
                     if (i === itPlayer) continue;
-                    const dx = players[itPlayer].x - players[i].x;
-                    const dy = players[itPlayer].y - players[i].y;
+                    const dx = (players[itPlayer].x + PLAYER_SIZE/2) - (players[i].x + PLAYER_SIZE/2);
+                    const dy = (players[itPlayer].y + PLAYER_SIZE/2) - (players[i].y + PLAYER_SIZE/2);
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
-                    if (dist < 34) {
-                        // Tagged!
+                    if (dist < PLAYER_SIZE) {
                         itPlayer = i;
                         lastTagTime = now;
                         updateItDisplay();
@@ -467,7 +683,6 @@
             gameRunning = false;
             clearInterval(timerInterval);
 
-            // Sort players by score (lowest time as IT wins)
             const ranked = players.map((_, i) => i).sort((a, b) => scores[a] - scores[b]);
 
             let html = '';
@@ -487,11 +702,10 @@
             document.getElementById('menu').style.display = 'flex';
         }
 
-        // Input handling
+        // Input
         document.addEventListener('keydown', (e) => {
             keys[e.key] = true;
             keys[e.key.toLowerCase()] = true;
-            // Prevent arrow keys from scrolling
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
                 e.preventDefault();
             }
