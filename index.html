@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PatGames</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated bubbles background */
+        .bubbles {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.15;
+            animation: float linear infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 0.15; }
+            90% { opacity: 0.15; }
+            100% { transform: translateY(-100px) scale(1); opacity: 0; }
+        }
+
+        /* Header */
+        .header {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 60px 20px 40px;
+        }
+
+        .header h1 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            background: linear-gradient(135deg, #00f0ff, #b400ff, #ff006a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            margin-bottom: 12px;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.4)); }
+            to { filter: drop-shadow(0 0 20px rgba(180, 0, 255, 0.6)); }
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #888;
+            font-weight: 400;
+        }
+
+        /* Games grid */
+        .games-container {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .game-card {
+            background: linear-gradient(145deg, #1a1a2e, #16162a);
+            border: 1px solid #2a2a4a;
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 3px;
+            background: var(--card-accent);
+            opacity: 0.8;
+        }
+
+        .game-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--card-accent);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px color-mix(in srgb, var(--card-accent) 20%, transparent);
+        }
+
+        .game-card .emoji {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .game-card h2 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.9rem;
+            color: #fff;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .game-card .version {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-family: 'Press Start 2P', cursive;
+            color: var(--card-accent);
+            background: color-mix(in srgb, var(--card-accent) 15%, transparent);
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-bottom: 14px;
+        }
+
+        .game-card .description {
+            font-size: 0.9rem;
+            color: #999;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .game-card .play-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--card-accent);
+            color: #0a0a0f;
+            font-weight: 700;
+            font-size: 0.85rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .game-card .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 16px color-mix(in srgb, var(--card-accent) 40%, transparent);
+        }
+
+        .game-card .play-btn.coming-soon {
+            background: #333;
+            color: #888;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* Footer */
+        .footer {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 60px 20px 30px;
+            color: #555;
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: #00f0ff;
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .games-container {
+                grid-template-columns: 1fr;
+            }
+            .header { padding: 40px 20px 30px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated bubbles -->
+    <div class="bubbles" id="bubbles"></div>
+
+    <div class="header">
+        <h1>PatGames</h1>
+        <p>A collection of browser games. Pick one and play!</p>
+    </div>
+
+    <div class="games-container">
+        <!-- Spin Rev -->
+        <div class="game-card" style="--card-accent: #00f0ff;">
+            <span class="emoji">🌀</span>
+            <h2>Spin Rev</h2>
+            <span class="version">v1.0</span>
+            <p class="description">An addictive idle spinner game with 100 spinners, prestige system, skill tree, animals, ascension, and a global leaderboard.</p>
+            <a href="games/spin-rev/" class="play-btn">▶ PLAY</a>
+        </div>
+
+        <!-- Tag -->
+        <div class="game-card" style="--card-accent: #ff006a;">
+            <span class="emoji">🏃</span>
+            <h2>Tag</h2>
+            <span class="version">v1.0</span>
+            <p class="description">Fast-paced local multiplayer tag game. Up to 4 players using WAS, IJL, Arrow Keys, and GVB controls. Chase and evade!</p>
+            <a href="games/tag/" class="play-btn coming-soon">🚧 COMING SOON</a>
+        </div>
+
+        <!-- Block Breaker Idle -->
+        <div class="game-card" style="--card-accent: #b400ff;">
+            <span class="emoji">🧱</span>
+            <h2>Block Breaker Idle</h2>
+            <span class="version">v1.0</span>
+            <p class="description">Break blocks with upgradeable balls. Combine balls, upgrade hit power, and boost money gain. Idle your way to the top!</p>
+            <a href="games/block-breaker/" class="play-btn coming-soon">🚧 COMING SOON</a>
+        </div>
+
+        <!-- Minecraft Egalecraft -->
+        <div class="game-card" style="--card-accent: #00ff88;">
+            <span class="emoji">⛏️</span>
+            <h2>Minecraft Egalecraft</h2>
+            <span class="version">v1.8.9</span>
+            <p class="description">A Minecraft-inspired browser experience. Build, mine, and explore in your browser.</p>
+            <a href="games/egalecraft/" class="play-btn coming-soon">🚧 COMING SOON</a>
+        </div>
+
+        <!-- Clicker Game -->
+        <div class="game-card" style="--card-accent: #ffcc00;">
+            <span class="emoji">👆</span>
+            <h2>Clicker Game</h2>
+            <span class="version">v1.0</span>
+            <p class="description">A classic clicker game. Click to earn, buy upgrades, and watch the numbers go up. Simple and satisfying.</p>
+            <a href="games/clicker/" class="play-btn coming-soon">🚧 COMING SOON</a>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>© 2026 PatGames &middot; <a href="https://github.com/odptxbt50">GitHub</a></p>
+    </div>
+
+    <script>
+        // Generate animated bubbles
+        const bubblesContainer = document.getElementById('bubbles');
+        const colors = ['#00f0ff', '#b400ff', '#ff006a', '#00ff88', '#ffcc00'];
+
+        for (let i = 0; i < 25; i++) {
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            const size = Math.random() * 80 + 20;
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            bubble.style.cssText = `
+                width: ${size}px;
+                height: ${size}px;
+                left: ${Math.random() * 100}%;
+                background: ${color};
+                animation-duration: ${Math.random() * 10 + 8}s;
+                animation-delay: ${Math.random() * 10}s;
+            `;
+            bubblesContainer.appendChild(bubble);
+        }
+    </script>
+</body>
+</html>
+<!-- trigger rebuild -->
