@@ -117,6 +117,33 @@
         .upgrade-btn:hover { background: #00ff88; color: #0a0a0f; }
         .upgrade-btn.cant { opacity: 0.3; cursor: default; }
 
+        .world-slot {
+            display: flex; align-items: center; gap: 10px;
+            background: #1a1a2e; border: 1px solid #333; border-radius: 6px;
+            padding: 8px 14px; width: 280px; font-size: 0.75rem;
+        }
+        .world-slot:hover { border-color: #ffcc00; }
+        .world-slot .world-info { flex: 1; text-align: left; }
+        .world-slot .world-name { color: #ffcc00; font-size: 0.85rem; }
+        .world-slot .world-meta { color: #666; font-size: 0.65rem; }
+        .world-slot button {
+            padding: 4px 10px; font-family: 'Courier New', monospace;
+            font-size: 0.65rem; border-radius: 4px; cursor: pointer; border: 1px solid;
+        }
+        .world-play { background: #1a2e1a; border-color: #00ff88 !important; color: #00ff88; }
+        .world-play:hover { background: #00ff88; color: #0a0a0f; }
+        .world-export { background: #1a1a2e; border-color: #00f0ff !important; color: #00f0ff; }
+        .world-export:hover { background: #00f0ff; color: #0a0a0f; }
+        .world-delete { background: #2e1a1a; border-color: #ff006a !important; color: #ff006a; }
+        .world-delete:hover { background: #ff006a; color: #0a0a0f; }
+
+        /* Save indicator */
+        #saveIndicator {
+            position: absolute; top: 44px; left: 14px; z-index: 100;
+            font-size: 0.65rem; color: #00ff88; pointer-events: none;
+            opacity: 0; transition: opacity 0.3s;
+        }
+
         canvas { display: block; }
     </style>
 </head>
@@ -127,8 +154,17 @@
 
         <div id="menuMain">
             <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:20px;">
+                <button class="menu-btn" onclick="singlePlayer()" style="border-color:#ffcc00;color:#ffcc00;">SINGLEPLAYER</button>
                 <button class="menu-btn" onclick="hostGame()">HOST GAME</button>
                 <button class="menu-btn red" onclick="showJoin()">JOIN GAME</button>
+            </div>
+            <div id="worldSlots" style="margin-top:16px;display:none;text-align:center;">
+                <p style="color:#888;font-size:0.8rem;margin-bottom:8px;">Your Worlds:</p>
+                <div id="worldList" style="display:flex;flex-direction:column;gap:6px;align-items:center;"></div>
+                <div style="margin-top:10px;display:flex;gap:8px;justify-content:center;">
+                    <button class="menu-btn" onclick="importWorld()" style="font-size:0.8rem;padding:8px 16px;border-color:#b400ff;color:#b400ff;">📂 IMPORT WORLD</button>
+                </div>
+                <input type="file" id="importFileInput" accept=".json" style="display:none;">
             </div>
         </div>
 
@@ -170,6 +206,7 @@
         </div>
         <div id="dayNightBar"><div id="dayNightFill"></div></div>
         <div id="staminaBar"><div id="staminaFill"></div></div>
+        <div id="saveIndicator">💾 Saved</div>
         <div id="timeDisplay">6:00 AM</div>
         <div id="inventory"></div>
         <div id="buildMenu">
@@ -229,6 +266,10 @@ const TOOL_UPGRADES = {
 };
 
 let toolLevels = { axe: 0, pick: 0, sword: 0 };
+
+let isSinglePlayer = false;
+let currentWorldId = null;
+let autoSaveTimer = 0;
 
 let isHost = false, peer = null, conn = null, gameStarted = false;
 
@@ -353,6 +394,192 @@ function getGridAlpha() {
     if (h >= 8 && h < 16) return 0.05;
     if ((h >= 20 || h < 5)) return 0.015;
     return 0.03;
+}
+
+// ── SINGLEPLAYER & WORLD SAVE ──
+function getWorlds() {
+    try { return JSON.parse(localStorage.getItem('sz_worlds') || '[]'); } catch { return []; }
+}
+
+function saveWorldList(worlds) {
+    localStorage.setItem('sz_worlds', JSON.stringify(worlds));
+}
+
+function singlePlayer() {
+    isSinglePlayer = true;
+    document.getElementById('worldSlots').style.display = 'block';
+    renderWorldList();
+}
+
+function renderWorldList() {
+    const list = document.getElementById('worldList');
+    const worlds = getWorlds();
+    list.innerHTML = '';
+
+    // New world button
+    const newBtn = document.createElement('div');
+    newBtn.className = 'world-slot';
+    newBtn.style.cursor = 'pointer';
+    newBtn.style.justifyContent = 'center';
+    newBtn.style.borderColor = '#00ff88';
+    newBtn.innerHTML = '<span style="color:#00ff88;">+ NEW WORLD</span>';
+    newBtn.onclick = () => createNewWorld();
+    list.appendChild(newBtn);
+
+    worlds.forEach((w, i) => {
+        const slot = document.createElement('div');
+        slot.className = 'world-slot';
+        slot.innerHTML = `
+            <div class="world-info">
+                <div class="world-name">${w.name}</div>
+                <div class="world-meta">Day ${w.dayCount || 1} · ${w.lastPlayed || 'never'}</div>
+            </div>
+        `;
+        const playBtn = document.createElement('button');
+        playBtn.className = 'world-play';
+        playBtn.textContent = '▶';
+        playBtn.onclick = () => loadWorld(w.id);
+
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'world-export';
+        exportBtn.textContent = '💾';
+        exportBtn.title = 'Export world file';
+        exportBtn.onclick = (e) => { e.stopPropagation(); exportWorld(w.id); };
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'world-delete';
+        delBtn.textContent = '✕';
+        delBtn.onclick = (e) => { e.stopPropagation(); deleteWorld(w.id); };
+
+        slot.appendChild(playBtn);
+        slot.appendChild(exportBtn);
+        slot.appendChild(delBtn);
+        list.appendChild(slot);
+    });
+}
+
+function createNewWorld() {
+    const id = 'w_' + Date.now();
+    const name = 'World ' + (getWorlds().length + 1);
+    currentWorldId = id;
+
+    generateMap();
+    localPlayer = { x: MAP_W * TILE / 2, y: MAP_H * TILE / 2, hp: 100, maxHp: 100 };
+    inventory = { wood: 0, stone: 0, metal: 0, obsidian: 0 };
+    toolLevels = { axe: 0, pick: 0, sword: 0 };
+    gameTime = 0; dayCount = 1; isNight = false; nightPhase = 0;
+    stamina = MAX_STAMINA;
+
+    const worlds = getWorlds();
+    worlds.push({ id, name, dayCount: 1, lastPlayed: new Date().toLocaleDateString() });
+    saveWorldList(worlds);
+    saveWorldData();
+    startGame();
+}
+
+function loadWorld(id) {
+    currentWorldId = id;
+    const data = localStorage.getItem('sz_world_' + id);
+    if (!data) { createNewWorld(); return; }
+
+    try {
+        const save = JSON.parse(data);
+        resources = save.resources || [];
+        walls = save.walls || [];
+        localPlayer = save.player || { x: MAP_W*TILE/2, y: MAP_H*TILE/2, hp: 100, maxHp: 100 };
+        inventory = save.inventory || { wood: 0, stone: 0, metal: 0, obsidian: 0 };
+        toolLevels = save.toolLevels || { axe: 0, pick: 0, sword: 0 };
+        gameTime = save.gameTime || 0;
+        dayCount = save.dayCount || 1;
+        isNight = save.isNight || false;
+        nightPhase = save.nightPhase || 0;
+        zombies = []; // Don't save zombies — they respawn at night
+        stamina = MAX_STAMINA;
+        nextId = save.nextId || 1;
+        startGame();
+    } catch (e) {
+        console.error('Failed to load world:', e);
+        createNewWorld();
+    }
+}
+
+function saveWorldData() {
+    if (!currentWorldId) return;
+    const save = {
+        resources, walls, player: localPlayer, inventory, toolLevels,
+        gameTime, dayCount, isNight, nightPhase, nextId
+    };
+    localStorage.setItem('sz_world_' + currentWorldId, JSON.stringify(save));
+
+    // Update world list metadata
+    const worlds = getWorlds();
+    const w = worlds.find(w => w.id === currentWorldId);
+    if (w) {
+        w.dayCount = dayCount;
+        w.lastPlayed = new Date().toLocaleDateString();
+        saveWorldList(worlds);
+    }
+}
+
+function showSaveIndicator() {
+    const el = document.getElementById('saveIndicator');
+    el.style.opacity = '1';
+    setTimeout(() => { el.style.opacity = '0'; }, 1500);
+}
+
+function exportWorld(id) {
+    const data = localStorage.getItem('sz_world_' + id);
+    if (!data) return;
+    const worlds = getWorlds();
+    const meta = worlds.find(w => w.id === id);
+    const exportData = { meta, data: JSON.parse(data) };
+    const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `survivor-zombie-${meta ? meta.name.replace(/\s/g,'-') : 'world'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importWorld() {
+    document.getElementById('importFileInput').click();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('importFileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const imported = JSON.parse(ev.target.result);
+                const id = 'w_' + Date.now();
+                const name = (imported.meta && imported.meta.name) ? imported.meta.name + ' (imported)' : 'Imported World';
+                localStorage.setItem('sz_world_' + id, JSON.stringify(imported.data));
+                const worlds = getWorlds();
+                worlds.push({
+                    id, name,
+                    dayCount: imported.data.dayCount || 1,
+                    lastPlayed: new Date().toLocaleDateString()
+                });
+                saveWorldList(worlds);
+                renderWorldList();
+            } catch (err) {
+                alert('Invalid world file!');
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    });
+});
+
+function deleteWorld(id) {
+    if (!confirm('Delete this world? This cannot be undone!')) return;
+    localStorage.removeItem('sz_world_' + id);
+    const worlds = getWorlds().filter(w => w.id !== id);
+    saveWorldList(worlds);
+    renderWorldList();
 }
 
 // ── NETWORKING ──
@@ -622,6 +849,16 @@ function update(dt) {
 
     syncTimer += dt;
     if (syncTimer > 0.1) { syncTimer = 0; sendPos(); if (isHost && conn && conn.open) sendState(); }
+
+    // Auto-save singleplayer every 15 seconds
+    if (isSinglePlayer) {
+        autoSaveTimer += dt;
+        if (autoSaveTimer > 15) {
+            autoSaveTimer = 0;
+            saveWorldData();
+            showSaveIndicator();
+        }
+    }
 
     // HUD
     document.getElementById('hudWood').textContent = inventory.wood;
@@ -964,6 +1201,11 @@ canvas.addEventListener('mousemove',(e)=>{mouse.x=e.clientX;mouse.y=e.clientY;})
 canvas.addEventListener('mousedown',(e)=>{mouse.down=true;mouse.x=e.clientX;mouse.y=e.clientY;});
 canvas.addEventListener('mouseup',()=>{mouse.down=false;});
 canvas.addEventListener('contextmenu',(e)=>e.preventDefault());
+
+// Save on page leave
+window.addEventListener('beforeunload', () => {
+    if (isSinglePlayer && gameStarted) saveWorldData();
+});
 </script>
 </body>
 </html>
