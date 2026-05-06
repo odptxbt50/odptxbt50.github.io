@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survivor Zombie - PatGames</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0f; font-family: 'Courier New', monospace; color: #fff; overflow: hidden; height: 100vh; }
+
+        #menu {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; gap: 16px;
+        }
+        #menu h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #00ff88, #ff006a);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .subtitle { color: #888; font-size: 0.9rem; }
+        .menu-btn {
+            padding: 12px 36px; font-size: 1.1rem; font-family: 'Courier New', monospace;
+            background: #1a1a2e; border: 2px solid #00ff88; color: #00ff88;
+            border-radius: 8px; cursor: pointer; transition: all 0.2s;
+        }
+        .menu-btn:hover { background: #00ff88; color: #0a0a0f; }
+        .menu-btn.red { border-color: #ff006a; color: #ff006a; }
+        .menu-btn.red:hover { background: #ff006a; color: #0a0a0f; }
+        .code-input {
+            padding: 10px 16px; font-size: 1.2rem; font-family: 'Courier New', monospace;
+            background: #1a1a2e; border: 2px solid #444; color: #fff;
+            border-radius: 8px; text-align: center; width: 220px; letter-spacing: 4px;
+        }
+        #roomCode {
+            font-size: 2rem; color: #00f0ff; letter-spacing: 6px;
+            background: #1a1a2e; padding: 10px 24px; border-radius: 8px;
+            border: 2px solid #00f0ff; user-select: all;
+        }
+        .status { color: #ffcc00; font-size: 0.85rem; }
+        .hidden { display: none !important; }
+
+        /* HUD */
+        #hud {
+            position: absolute; top: 0; left: 0; right: 0;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 14px; background: rgba(0,0,0,0.7); z-index: 100;
+            font-size: 0.8rem; pointer-events: none;
+        }
+        .hud-item { display: flex; align-items: center; gap: 6px; }
+        .hud-section { display: flex; gap: 16px; }
+        #dayNightBar {
+            position: absolute; top: 36px; left: 0; right: 0; height: 4px;
+            background: #111; z-index: 100;
+        }
+        #dayNightFill {
+            height: 100%; width: 0%; transition: width 0.5s linear;
+        }
+
+        /* Inventory bar */
+        #inventory {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 4px; z-index: 100; pointer-events: none;
+        }
+        .inv-slot {
+            width: 50px; height: 50px; background: rgba(0,0,0,0.7); border: 2px solid #333;
+            border-radius: 6px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; font-size: 20px; position: relative;
+        }
+        .inv-slot.active { border-color: #00ff88; }
+        .inv-slot .count {
+            font-size: 9px; color: #aaa; position: absolute; bottom: 2px; right: 4px;
+        }
+        .inv-slot .key {
+            font-size: 8px; color: #666; position: absolute; top: 2px; left: 4px;
+        }
+
+        /* Build menu */
+        #buildMenu {
+            position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%);
+            display: none; gap: 8px; z-index: 100; background: rgba(0,0,0,0.85);
+            padding: 10px; border-radius: 8px; border: 1px solid #333;
+        }
+        .build-option {
+            padding: 8px 12px; background: #1a1a2e; border: 1px solid #444;
+            border-radius: 6px; color: #ccc; font-family: 'Courier New', monospace;
+            font-size: 0.75rem; cursor: pointer; text-align: center;
+        }
+        .build-option:hover { border-color: #00ff88; color: #00ff88; }
+        .build-option.cant { opacity: 0.4; cursor: default; }
+
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <!-- MENU -->
+    <div id="menu">
+        <h1>🧟 SURVIVOR ZOMBIE</h1>
+        <p class="subtitle">Online Co-op Survival — Build, Mine, Survive!</p>
+
+        <div id="menuMain">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:20px;">
+                <button class="menu-btn" onclick="hostGame()">HOST GAME</button>
+                <button class="menu-btn red" onclick="showJoin()">JOIN GAME</button>
+            </div>
+        </div>
+
+        <div id="menuHost" class="hidden" style="text-align:center;">
+            <p class="status">Waiting for player to join...</p>
+            <p style="color:#888;font-size:0.8rem;margin:10px 0;">Share this code:</p>
+            <div id="roomCode">----</div>
+            <p style="color:#555;font-size:0.7rem;margin-top:10px;">Other player clicks JOIN and enters this code</p>
+        </div>
+
+        <div id="menuJoin" class="hidden" style="text-align:center;">
+            <p style="color:#888;font-size:0.85rem;margin-bottom:10px;">Enter room code:</p>
+            <input type="text" class="code-input" id="joinCodeInput" maxlength="6" placeholder="CODE">
+            <br><br>
+            <button class="menu-btn" onclick="joinGame()">CONNECT</button>
+            <p class="status hidden" id="joinStatus">Connecting...</p>
+        </div>
+
+        <div style="margin-top:30px;color:#555;font-size:0.7rem;text-align:center;line-height:1.8;">
+            WASD to move | 1-5 to select tool | B to open build menu<br>
+            Click to use tool / place wall | Survive the nights!
+        </div>
+    </div>
+
+    <!-- GAME -->
+    <div id="gameContainer" class="hidden" style="position:relative;width:100vw;height:100vh;">
+        <canvas id="gameCanvas"></canvas>
+        <div id="hud">
+            <div class="hud-section">
+                <div class="hud-item">🪵 <span id="hudWood">0</span></div>
+                <div class="hud-item">🪨 <span id="hudStone">0</span></div>
+                <div class="hud-item">⚙️ <span id="hudMetal">0</span></div>
+                <div class="hud-item">💎 <span id="hudObsidian">0</span></div>
+            </div>
+            <div class="hud-item" id="hudDay" style="color:#ffcc00;">☀️ Day 1</div>
+            <div class="hud-section">
+                <div class="hud-item">❤️ <span id="hudHP">100</span></div>
+                <div class="hud-item" id="hudPlayers">👥 1</div>
+            </div>
+        </div>
+        <div id="dayNightBar"><div id="dayNightFill"></div></div>
+        <div id="inventory"></div>
+        <div id="buildMenu">
+            <div class="build-option" onclick="selectBuild('wood')">🪵 Wood Wall<br><span style="font-size:0.6rem;color:#888;">5 wood</span></div>
+            <div class="build-option" onclick="selectBuild('stone')">🪨 Stone Wall<br><span style="font-size:0.6rem;color:#888;">8 stone</span></div>
+            <div class="build-option" onclick="selectBuild('metal')">⚙️ Metal Wall<br><span style="font-size:0.6rem;color:#888;">12 metal</span></div>
+            <div class="build-option" onclick="selectBuild('obsidian')">💎 Obsidian Wall<br><span style="font-size:0.6rem;color:#888;">20 obsidian</span></div>
+        </div>
+    </div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  SURVIVOR ZOMBIE — Co-op Survival Game
+// ═══════════════════════════════════════════════
+
+const TILE = 40;
+const MAP_W = 80, MAP_H = 60;
+const DAY_LENGTH = 600; // 10 min in seconds
+const NIGHT_LENGTH = 600;
+const CYCLE_LENGTH = DAY_LENGTH + NIGHT_LENGTH;
+
+// Wall HP by type
+const WALL_HP = { wood: 50, stone: 150, metal: 400, obsidian: 2000 };
+const WALL_COST = { wood: { wood: 5 }, stone: { stone: 8 }, metal: { metal: 12 }, obsidian: { obsidian: 20 } };
+const WALL_COLORS = {
+    wood: '#8B5E3C', stone: '#888', metal: '#B0C4DE', obsidian: '#2a0a3a'
+};
+const WALL_BORDER = {
+    wood: '#6B3F1F', stone: '#666', metal: '#7B9DBF', obsidian: '#1a0028'
+};
+
+// Resources
+const RESOURCE_TYPES = {
+    tree: { emoji: '🌲', hp: 3, gives: 'wood', amount: 3, color: '#1a5c1a', radius: 16 },
+    rock: { emoji: '🪨', hp: 4, gives: 'stone', amount: 2, color: '#666', radius: 14 },
+    ore: { emoji: '⚙️', hp: 6, gives: 'metal', amount: 2, color: '#8B7355', radius: 12 },
+    obsidian_node: { emoji: '💎', hp: 10, gives: 'obsidian', amount: 1, color: '#2a0a3a', radius: 12 }
+};
+
+// Game state
+let isHost = false;
+let peer = null;
+let conn = null;
+let gameStarted = false;
+
+let localPlayer = { x: MAP_W * TILE / 2, y: MAP_H * TILE / 2, hp: 100, maxHp: 100 };
+let remotePlayer = null;
+let resources = [];
+let walls = [];
+let zombies = [];
+let particles = [];
+let inventory = { wood: 0, stone: 0, metal: 0, obsidian: 0 };
+let selectedSlot = 0; // 0=axe, 1=pick, 2=sword, 3=build, 4=empty
+let buildMode = null; // null or 'wood','stone','metal','obsidian'
+let gameTime = 0; // seconds
+let dayCount = 1;
+let isNight = false;
+let nightPhase = 0; // how many nights completed
+let keys = {};
+let mouse = { x: 0, y: 0, down: false };
+let camera = { x: 0, y: 0 };
+let lastAttack = 0;
+let showBuildMenu = false;
+let zombieSpawnTimer = 0;
+let syncTimer = 0;
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── NETWORKING (PeerJS) ──
+function genCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+}
+
+function hostGame() {
+    const code = genCode();
+    document.getElementById('menuMain').classList.add('hidden');
+    document.getElementById('menuHost').classList.remove('hidden');
+    document.getElementById('roomCode').textContent = code;
+
+    isHost = true;
+    peer = new Peer('sz-' + code, { debug: 0 });
+
+    peer.on('open', () => {
+        console.log('Host ready, code:', code);
+    });
+
+    peer.on('connection', (c) => {
+        conn = c;
+        conn.on('open', () => {
+            // Send initial game state
+            generateMap();
+            remotePlayer = { x: localPlayer.x + 60, y: localPlayer.y, hp: 100, maxHp: 100 };
+            sendState();
+            startGame();
+        });
+        conn.on('data', handleData);
+        conn.on('close', () => { remotePlayer = null; });
+    });
+
+    peer.on('error', (e) => {
+        console.error('Peer error:', e);
+    });
+}
+
+function showJoin() {
+    document.getElementById('menuMain').classList.add('hidden');
+    document.getElementById('menuJoin').classList.remove('hidden');
+}
+
+function joinGame() {
+    const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+    if (code.length < 4) return;
+    document.getElementById('joinStatus').classList.remove('hidden');
+
+    isHost = false;
+    peer = new Peer(undefined, { debug: 0 });
+
+    peer.on('open', () => {
+        conn = peer.connect('sz-' + code, { reliable: true });
+        conn.on('open', () => {
+            console.log('Connected to host');
+        });
+        conn.on('data', handleData);
+        conn.on('close', () => { remotePlayer = null; });
+    });
+}
+
+function handleData(data) {
+    if (data.type === 'state') {
+        // Full state sync from host
+        resources = data.resources;
+        walls = data.walls;
+        zombies = data.zombies || [];
+        gameTime = data.gameTime;
+        dayCount = data.dayCount;
+        isNight = data.isNight;
+        nightPhase = data.nightPhase;
+        if (isHost) {
+            remotePlayer = { x: data.px, y: data.py, hp: data.hp, maxHp: 100 };
+        } else {
+            remotePlayer = { x: data.hostX, y: data.hostY, hp: data.hostHp, maxHp: 100 };
+            if (!gameStarted) startGame();
+        }
+    } else if (data.type === 'pos') {
+        if (!remotePlayer) remotePlayer = { x: 0, y: 0, hp: 100, maxHp: 100 };
+        remotePlayer.x = data.x;
+        remotePlayer.y = data.y;
+        remotePlayer.hp = data.hp;
+    } else if (data.type === 'hit_resource') {
+        const r = resources.find(res => res.id === data.id);
+        if (r) {
+            r.hp--;
+            if (r.hp <= 0) {
+                resources = resources.filter(res => res.id !== data.id);
+            }
+        }
+    } else if (data.type === 'place_wall') {
+        walls.push(data.wall);
+    } else if (data.type === 'hit_zombie') {
+        const z = zombies.find(zz => zz.id === data.id);
+        if (z) {
+            z.hp -= data.dmg;
+            if (z.hp <= 0) zombies = zombies.filter(zz => zz.id !== data.id);
+        }
+    }
+}
+
+function sendState() {
+    if (!conn || !conn.open) return;
+    if (isHost) {
+        conn.send({
+            type: 'state',
+            resources, walls, zombies, gameTime, dayCount, isNight, nightPhase,
+            hostX: localPlayer.x, hostY: localPlayer.y, hostHp: localPlayer.hp
+        });
+    }
+}
+
+function sendPos() {
+    if (!conn || !conn.open) return;
+    conn.send({ type: 'pos', x: localPlayer.x, y: localPlayer.y, hp: localPlayer.hp });
+}
+
+// ── MAP GENERATION ──
+let nextId = 1;
+function generateMap() {
+    resources = [];
+    walls = [];
+    zombies = [];
+
+    // Trees (lots)
+    for (let i = 0; i < 200; i++) {
+        resources.push({
+            id: nextId++, type: 'tree',
+            x: Math.random() * MAP_W * TILE,
+            y: Math.random() * MAP_H * TILE,
+            hp: RESOURCE_TYPES.tree.hp
+        });
+    }
+    // Rocks
+    for (let i = 0; i < 80; i++) {
+        resources.push({
+            id: nextId++, type: 'rock',
+            x: Math.random() * MAP_W * TILE,
+            y: Math.random() * MAP_H * TILE,
+            hp: RESOURCE_TYPES.rock.hp
+        });
+    }
+    // Ore (fewer, scattered)
+    for (let i = 0; i < 40; i++) {
+        resources.push({
+            id: nextId++, type: 'ore',
+            x: Math.random() * MAP_W * TILE,
+            y: Math.random() * MAP_H * TILE,
+            hp: RESOURCE_TYPES.ore.hp
+        });
+    }
+    // Obsidian nodes (rare)
+    for (let i = 0; i < 15; i++) {
+        resources.push({
+            id: nextId++, type: 'obsidian_node',
+            x: Math.random() * MAP_W * TILE,
+            y: Math.random() * MAP_H * TILE,
+            hp: RESOURCE_TYPES.obsidian_node.hp
+        });
+    }
+}
+
+// ── GAME START ──
+function startGame() {
+    gameStarted = true;
+    document.getElementById('menu').classList.add('hidden');
+    document.getElementById('gameContainer').classList.remove('hidden');
+    if (!isHost) {
+        // Client generates nothing, waits for state
+    } else {
+        generateMap();
+    }
+    buildInventoryUI();
+    requestAnimationFrame(gameLoop);
+}
+
+function buildInventoryUI() {
+    const inv = document.getElementById('inventory');
+    inv.innerHTML = '';
+    const slots = [
+        { emoji: '🪓', label: '1' },
+        { emoji: '⛏️', label: '2' },
+        { emoji: '🗡️', label: '3' },
+        { emoji: '🔨', label: '4' },
+    ];
+    slots.forEach((s, i) => {
+        const el = document.createElement('div');
+        el.className = `inv-slot${i === selectedSlot ? ' active' : ''}`;
+        el.innerHTML = `<span class="key">${s.label}</span>${s.emoji}`;
+        inv.appendChild(el);
+    });
+}
+
+// ── ZOMBIES ──
+function spawnZombies() {
+    const count = Math.floor(3 + nightPhase * 2);
+    const baseHp = 20 + nightPhase * 10;
+    const baseDmg = 5 + Math.floor(nightPhase / 2) * 3;
+    const baseSpeed = 1 + Math.min(nightPhase * 0.1, 2);
+
+    for (let i = 0; i < count; i++) {
+        // Spawn from edges
+        let x, y;
+        const side = Math.floor(Math.random() * 4);
+        if (side === 0) { x = Math.random() * MAP_W * TILE; y = -40; }
+        else if (side === 1) { x = MAP_W * TILE + 40; y = Math.random() * MAP_H * TILE; }
+        else if (side === 2) { x = Math.random() * MAP_W * TILE; y = MAP_H * TILE + 40; }
+        else { x = -40; y = Math.random() * MAP_H * TILE; }
+
+        zombies.push({
+            id: nextId++, x, y,
+            hp: baseHp, maxHp: baseHp,
+            dmg: baseDmg, speed: baseSpeed,
+            attackCd: 0,
+            // Can break walls after certain nights
+            wallBreakPower: nightPhase >= 2 ? 1 + Math.floor(nightPhase / 2) : 0
+        });
+    }
+}
+
+// What walls can zombies break at current night phase?
+function canZombieBreak(wallType) {
+    if (nightPhase < 4) return false; // First 4 nights: can't break anything
+    if (wallType === 'wood' && nightPhase >= 4) return true;
+    if (wallType === 'stone' && nightPhase >= 10) return true;
+    if (wallType === 'metal' && nightPhase >= 20) return true;
+    if (wallType === 'obsidian' && nightPhase >= 500) return true; // day 1000 = night 1000
+    return false;
+}
+
+// ── GAME LOOP ──
+let lastTime = 0;
+function gameLoop(timestamp) {
+    const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
+    lastTime = timestamp;
+
+    update(dt);
+    render();
+    requestAnimationFrame(gameLoop);
+}
+
+function update(dt) {
+    // Time
+    gameTime += dt;
+    const cycleTime = gameTime % CYCLE_LENGTH;
+    const wasNight = isNight;
+    isNight = cycleTime >= DAY_LENGTH;
+    dayCount = Math.floor(gameTime / CYCLE_LENGTH) + 1;
+
+    if (!wasNight && isNight) {
+        // Night just started
+        nightPhase++;
+        if (isHost) spawnZombies();
+    }
+
+    // Player movement
+    const speed = 160;
+    let dx = 0, dy = 0;
+    if (keys['a'] || keys['arrowleft']) dx -= 1;
+    if (keys['d'] || keys['arrowright']) dx += 1;
+    if (keys['w'] || keys['arrowup']) dy -= 1;
+    if (keys['s'] || keys['arrowdown']) dy += 1;
+    if (dx && dy) { dx *= 0.707; dy *= 0.707; }
+
+    let nx = localPlayer.x + dx * speed * dt;
+    let ny = localPlayer.y + dy * speed * dt;
+
+    // Wall collision for player
+    if (!collidesWall(nx, localPlayer.y, 14)) localPlayer.x = nx;
+    if (!collidesWall(localPlayer.x, ny, 14)) localPlayer.y = ny;
+
+    // Clamp to map
+    localPlayer.x = Math.max(14, Math.min(MAP_W * TILE - 14, localPlayer.x));
+    localPlayer.y = Math.max(14, Math.min(MAP_H * TILE - 14, localPlayer.y));
+
+    // Camera
+    camera.x = localPlayer.x - canvas.width / 2;
+    camera.y = localPlayer.y - canvas.height / 2;
+
+    // Attack / interact
+    if (mouse.down && Date.now() - lastAttack > 400) {
+        lastAttack = Date.now();
+        const wx = mouse.x + camera.x;
+        const wy = mouse.y + camera.y;
+
+        if (buildMode) {
+            placeBuild(wx, wy);
+        } else if (selectedSlot === 0 || selectedSlot === 1) {
+            hitResource(wx, wy);
+        } else if (selectedSlot === 2) {
+            hitZombie(wx, wy);
+        }
+    }
+
+    // Zombie AI (host only)
+    if (isHost) {
+        updateZombies(dt);
+        zombieSpawnTimer += dt;
+        if (isNight && zombieSpawnTimer > 15) {
+            zombieSpawnTimer = 0;
+            spawnZombies();
+        }
+    }
+
+    // Update particles
+    particles = particles.filter(p => {
+        p.life -= dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        return p.life > 0;
+    });
+
+    // Sync
+    syncTimer += dt;
+    if (syncTimer > 0.1) {
+        syncTimer = 0;
+        sendPos();
+        if (isHost && conn && conn.open) sendState();
+    }
+
+    // HUD
+    document.getElementById('hudWood').textContent = inventory.wood;
+    document.getElementById('hudStone').textContent = inventory.stone;
+    document.getElementById('hudMetal').textContent = inventory.metal;
+    document.getElementById('hudObsidian').textContent = inventory.obsidian;
+    document.getElementById('hudHP').textContent = Math.ceil(localPlayer.hp);
+    document.getElementById('hudDay').innerHTML = (isNight ? '🌙' : '☀️') + ` Day ${dayCount}`;
+    document.getElementById('hudDay').style.color = isNight ? '#ff006a' : '#ffcc00';
+    document.getElementById('hudPlayers').textContent = '👥 ' + (remotePlayer ? 2 : 1);
+
+    const fill = document.getElementById('dayNightFill');
+    if (isNight) {
+        fill.style.width = ((cycleTime - DAY_LENGTH) / NIGHT_LENGTH * 100) + '%';
+        fill.style.background = 'linear-gradient(90deg, #ff006a, #660033)';
+    } else {
+        fill.style.width = (cycleTime / DAY_LENGTH * 100) + '%';
+        fill.style.background = 'linear-gradient(90deg, #ffcc00, #ff8800)';
+    }
+}
+
+function collidesWall(x, y, r) {
+    for (const w of walls) {
+        if (x + r > w.x && x - r < w.x + TILE && y + r > w.y && y - r < w.y + TILE) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function hitResource(wx, wy) {
+    const range = 60;
+    for (const r of resources) {
+        const d = Math.hypot(r.x - localPlayer.x, r.y - localPlayer.y);
+        if (d > range) continue;
+        const info = RESOURCE_TYPES[r.type];
+        // Axe for trees, pick for stone/ore/obsidian
+        if (selectedSlot === 0 && r.type !== 'tree') continue;
+        if (selectedSlot === 1 && r.type === 'tree') continue;
+
+        r.hp--;
+        spawnParticles(r.x, r.y, info.color, 3);
+        if (r.hp <= 0) {
+            inventory[info.gives] = (inventory[info.gives] || 0) + info.amount;
+            resources = resources.filter(res => res.id !== r.id);
+            spawnParticles(r.x, r.y, info.color, 8);
+        }
+        if (conn && conn.open) conn.send({ type: 'hit_resource', id: r.id });
+        break;
+    }
+}
+
+function hitZombie(wx, wy) {
+    const range = 55;
+    for (const z of zombies) {
+        const d = Math.hypot(z.x - localPlayer.x, z.y - localPlayer.y);
+        if (d > range) continue;
+        const dmg = 15;
+        z.hp -= dmg;
+        spawnParticles(z.x, z.y, '#ff0000', 4);
+        if (z.hp <= 0) {
+            zombies = zombies.filter(zz => zz.id !== z.id);
+            spawnParticles(z.x, z.y, '#ff0000', 10);
+        }
+        if (conn && conn.open) conn.send({ type: 'hit_zombie', id: z.id, dmg });
+        break;
+    }
+}
+
+function placeBuild(wx, wy) {
+    if (!buildMode) return;
+    const gx = Math.floor(wx / TILE) * TILE;
+    const gy = Math.floor(wy / TILE) * TILE;
+
+    // Check distance
+    if (Math.hypot(gx + TILE/2 - localPlayer.x, gy + TILE/2 - localPlayer.y) > 100) return;
+
+    // Check cost
+    const cost = WALL_COST[buildMode];
+    for (const [res, amt] of Object.entries(cost)) {
+        if ((inventory[res] || 0) < amt) return;
+    }
+
+    // Check overlap
+    if (walls.some(w => w.x === gx && w.y === gy)) return;
+
+    // Place
+    for (const [res, amt] of Object.entries(cost)) inventory[res] -= amt;
+    const wall = { x: gx, y: gy, type: buildMode, hp: WALL_HP[buildMode], maxHp: WALL_HP[buildMode] };
+    walls.push(wall);
+    if (conn && conn.open) conn.send({ type: 'place_wall', wall });
+}
+
+function selectBuild(type) {
+    buildMode = type;
+    showBuildMenu = false;
+    document.getElementById('buildMenu').style.display = 'none';
+}
+
+// ── ZOMBIE AI ──
+function updateZombies(dt) {
+    const targets = [localPlayer];
+    if (remotePlayer) targets.push(remotePlayer);
+
+    for (const z of zombies) {
+        // Find nearest target (player or wall in the way)
+        let closest = null, closestDist = Infinity;
+        for (const t of targets) {
+            const d = Math.hypot(t.x - z.x, t.y - z.y);
+            if (d < closestDist) { closestDist = d; closest = t; }
+        }
+
+        if (!closest) continue;
+
+        let dx = closest.x - z.x;
+        let dy = closest.y - z.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0) { dx /= dist; dy /= dist; }
+
+        let nx = z.x + dx * z.speed * 60 * dt;
+        let ny = z.y + dy * z.speed * 60 * dt;
+
+        // Check wall collision — attack wall if blocking
+        let blocked = false;
+        for (let wi = walls.length - 1; wi >= 0; wi--) {
+            const w = walls[wi];
+            if (nx + 14 > w.x && nx - 14 < w.x + TILE && ny + 14 > w.y && ny - 14 < w.y + TILE) {
+                blocked = true;
+                if (canZombieBreak(w.type)) {
+                    z.attackCd -= dt;
+                    if (z.attackCd <= 0) {
+                        z.attackCd = 1;
+                        w.hp -= z.wallBreakPower;
+                        spawnParticles(w.x + TILE/2, w.y + TILE/2, WALL_COLORS[w.type], 3);
+                        if (w.hp <= 0) {
+                            walls.splice(wi, 1);
+                            spawnParticles(w.x + TILE/2, w.y + TILE/2, WALL_COLORS[w.type], 10);
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        if (!blocked) {
+            z.x = nx;
+            z.y = ny;
+        }
+
+        // Attack player
+        if (closestDist < 24) {
+            z.attackCd -= dt;
+            if (z.attackCd <= 0) {
+                z.attackCd = 1;
+                if (closest === localPlayer) {
+                    localPlayer.hp -= z.dmg;
+                    spawnParticles(localPlayer.x, localPlayer.y, '#ff0000', 4);
+                    if (localPlayer.hp <= 0) {
+                        localPlayer.hp = 100;
+                        // Respawn
+                        localPlayer.x = MAP_W * TILE / 2;
+                        localPlayer.y = MAP_H * TILE / 2;
+                        inventory = { wood: 0, stone: 0, metal: 0, obsidian: 0 };
+                    }
+                }
+            }
+        }
+    }
+
+    // Clean up dead zombies at day
+    if (!isNight && zombies.length > 0) {
+        zombies = [];
+    }
+}
+
+function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x, y,
+            vx: (Math.random() - 0.5) * 100,
+            vy: (Math.random() - 0.5) * 100,
+            life: 0.5 + Math.random() * 0.3,
+            color, size: 3 + Math.random() * 3
+        });
+    }
+}
+
+// ── RENDER ──
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Sky color
+    if (isNight) {
+        ctx.fillStyle = '#060612';
+    } else {
+        const cycleTime = gameTime % CYCLE_LENGTH;
+        const dayProgress = cycleTime / DAY_LENGTH;
+        if (dayProgress < 0.1) ctx.fillStyle = '#1a1a2f'; // dawn
+        else if (dayProgress > 0.9) ctx.fillStyle = '#1a1a2f'; // dusk
+        else ctx.fillStyle = '#1a2a1a';
+    }
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.translate(-camera.x, -camera.y);
+
+    // Grid
+    ctx.strokeStyle = isNight ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    const sx = Math.floor(camera.x / TILE) * TILE;
+    const sy = Math.floor(camera.y / TILE) * TILE;
+    for (let x = sx; x < camera.x + canvas.width + TILE; x += TILE) {
+        ctx.beginPath(); ctx.moveTo(x, camera.y); ctx.lineTo(x, camera.y + canvas.height); ctx.stroke();
+    }
+    for (let y = sy; y < camera.y + canvas.height + TILE; y += TILE) {
+        ctx.beginPath(); ctx.moveTo(camera.x, y); ctx.lineTo(camera.x + canvas.width, y); ctx.stroke();
+    }
+
+    // Resources
+    for (const r of resources) {
+        if (r.x < camera.x - 30 || r.x > camera.x + canvas.width + 30 ||
+            r.y < camera.y - 30 || r.y > camera.y + canvas.height + 30) continue;
+        const info = RESOURCE_TYPES[r.type];
+        ctx.font = `${info.radius * 2}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(info.emoji, r.x, r.y);
+    }
+
+    // Walls
+    for (const w of walls) {
+        if (w.x + TILE < camera.x || w.x > camera.x + canvas.width ||
+            w.y + TILE < camera.y || w.y > camera.y + canvas.height) continue;
+        ctx.fillStyle = WALL_COLORS[w.type];
+        ctx.fillRect(w.x, w.y, TILE, TILE);
+        ctx.strokeStyle = WALL_BORDER[w.type];
+        ctx.lineWidth = 2;
+        ctx.strokeRect(w.x, w.y, TILE, TILE);
+        // HP bar
+        if (w.hp < w.maxHp) {
+            const pct = w.hp / w.maxHp;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(w.x + 2, w.y - 6, TILE - 4, 4);
+            ctx.fillStyle = pct > 0.5 ? '#00ff88' : pct > 0.25 ? '#ffcc00' : '#ff006a';
+            ctx.fillRect(w.x + 2, w.y - 6, (TILE - 4) * pct, 4);
+        }
+    }
+
+    // Zombies
+    for (const z of zombies) {
+        if (z.x < camera.x - 30 || z.x > camera.x + canvas.width + 30 ||
+            z.y < camera.y - 30 || z.y > camera.y + canvas.height + 30) continue;
+        ctx.fillStyle = '#4a7a2a';
+        ctx.beginPath();
+        ctx.arc(z.x, z.y, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2a4a1a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // Eyes
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath(); ctx.arc(z.x - 4, z.y - 3, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(z.x + 4, z.y - 3, 3, 0, Math.PI * 2); ctx.fill();
+        // HP bar
+        if (z.hp < z.maxHp) {
+            const pct = z.hp / z.maxHp;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(z.x - 12, z.y - 22, 24, 4);
+            ctx.fillStyle = '#ff006a';
+            ctx.fillRect(z.x - 12, z.y - 22, 24 * pct, 4);
+        }
+    }
+
+    // Remote player
+    if (remotePlayer) {
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.arc(remotePlayer.x, remotePlayer.y, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#008faa';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText('P2', remotePlayer.x, remotePlayer.y + 4);
+    }
+
+    // Local player
+    ctx.fillStyle = '#ff006a';
+    ctx.beginPath();
+    ctx.arc(localPlayer.x, localPlayer.y, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#aa0044';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('P1', localPlayer.x, localPlayer.y + 4);
+
+    // HP bar above player
+    const hpPct = localPlayer.hp / localPlayer.maxHp;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(localPlayer.x - 16, localPlayer.y - 26, 32, 4);
+    ctx.fillStyle = hpPct > 0.5 ? '#00ff88' : hpPct > 0.25 ? '#ffcc00' : '#ff006a';
+    ctx.fillRect(localPlayer.x - 16, localPlayer.y - 26, 32 * hpPct, 4);
+
+    // Build preview
+    if (buildMode) {
+        const wx = mouse.x + camera.x;
+        const wy = mouse.y + camera.y;
+        const gx = Math.floor(wx / TILE) * TILE;
+        const gy = Math.floor(wy / TILE) * TILE;
+        const inRange = Math.hypot(gx + TILE/2 - localPlayer.x, gy + TILE/2 - localPlayer.y) <= 100;
+        ctx.globalAlpha = inRange ? 0.5 : 0.2;
+        ctx.fillStyle = WALL_COLORS[buildMode];
+        ctx.fillRect(gx, gy, TILE, TILE);
+        ctx.globalAlpha = 1;
+    }
+
+    // Particles
+    for (const p of particles) {
+        ctx.globalAlpha = Math.max(0, p.life * 2);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+
+    // Night overlay
+    if (isNight) {
+        // Darkness with visibility circle around players
+        ctx.fillStyle = 'rgba(0,0,10,0.6)';
+        ctx.fillRect(camera.x, camera.y, canvas.width, canvas.height);
+
+        // Light around local player
+        const grad = ctx.createRadialGradient(localPlayer.x, localPlayer.y, 50, localPlayer.x, localPlayer.y, 250);
+        grad.addColorStop(0, 'rgba(0,0,10,0)');
+        grad.addColorStop(1, 'rgba(0,0,10,0.7)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(camera.x, camera.y, canvas.width, canvas.height);
+    }
+
+    ctx.restore();
+}
+
+// ── INPUT ──
+document.addEventListener('keydown', (e) => {
+    keys[e.key.toLowerCase()] = true;
+    if (['arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
+
+    if (e.key === '1') { selectedSlot = 0; buildMode = null; buildInventoryUI(); }
+    if (e.key === '2') { selectedSlot = 1; buildMode = null; buildInventoryUI(); }
+    if (e.key === '3') { selectedSlot = 2; buildMode = null; buildInventoryUI(); }
+    if (e.key === '4') { selectedSlot = 3; buildInventoryUI(); }
+
+    if (e.key.toLowerCase() === 'b') {
+        showBuildMenu = !showBuildMenu;
+        document.getElementById('buildMenu').style.display = showBuildMenu ? 'flex' : 'none';
+        if (showBuildMenu) selectedSlot = 3;
+        buildInventoryUI();
+    }
+
+    if (e.key === 'Escape') {
+        buildMode = null;
+        showBuildMenu = false;
+        document.getElementById('buildMenu').style.display = 'none';
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    keys[e.key.toLowerCase()] = false;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+});
+
+canvas.addEventListener('mousedown', (e) => {
+    mouse.down = true;
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+});
+
+canvas.addEventListener('mouseup', () => { mouse.down = false; });
+
+// Prevent context menu
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+</script>
+</body>
+</html>
