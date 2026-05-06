@@ -27,18 +27,30 @@
         .menu-btn:hover { background: #00ff88; color: #0a0a0f; }
         .menu-btn.red { border-color: #ff006a; color: #ff006a; }
         .menu-btn.red:hover { background: #ff006a; color: #0a0a0f; }
-        .code-input {
+        .menu-btn.yellow { border-color: #ffcc00; color: #ffcc00; }
+        .menu-btn.yellow:hover { background: #ffcc00; color: #0a0a0f; }
+        .code-input, .name-input {
             padding: 10px 16px; font-size: 1.2rem; font-family: 'Courier New', monospace;
             background: #1a1a2e; border: 2px solid #444; color: #fff;
-            border-radius: 8px; text-align: center; width: 220px; letter-spacing: 4px;
+            border-radius: 8px; text-align: center; width: 220px;
         }
+        .code-input { letter-spacing: 4px; }
+        .name-input { letter-spacing: 1px; width: 240px; }
+        .name-input:focus, .code-input:focus { border-color: #00ff88; outline: none; }
         #roomCode {
             font-size: 2rem; color: #00f0ff; letter-spacing: 6px;
             background: #1a1a2e; padding: 10px 24px; border-radius: 8px;
-            border: 2px solid #00f0ff; user-select: all;
+            border: 2px solid #00f0ff; user-select: all; cursor: pointer;
         }
         .status { color: #ffcc00; font-size: 0.85rem; }
         .hidden { display: none !important; }
+        .player-list {
+            margin-top: 10px; font-size: 0.8rem; color: #888;
+        }
+        .player-list .pl-item {
+            display: flex; align-items: center; gap: 8px; padding: 3px 0;
+        }
+        .pl-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
         /* HUD */
         #hud {
@@ -54,22 +66,15 @@
             background: #111; z-index: 100;
         }
         #dayNightFill { height: 100%; width: 0%; transition: width 0.5s linear; }
-
-        /* Stamina bar */
         #staminaBar {
             position: absolute; top: 44px; left: 50%; transform: translateX(-50%);
-            width: 160px; height: 6px; background: #222; border-radius: 3px; z-index: 100;
-            overflow: hidden;
+            width: 160px; height: 6px; background: #222; border-radius: 3px; z-index: 100; overflow: hidden;
         }
         #staminaFill { height: 100%; width: 100%; background: #ffcc00; border-radius: 3px; transition: width 0.1s; }
-
-        /* Time display */
         #timeDisplay {
             position: absolute; top: 44px; right: 14px; z-index: 100;
             font-size: 0.7rem; color: #aaa; pointer-events: none;
         }
-
-        /* Inventory bar */
         #inventory {
             position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 4px; z-index: 100; pointer-events: none;
@@ -83,8 +88,6 @@
         .inv-slot .count { font-size: 9px; color: #aaa; position: absolute; bottom: 2px; right: 4px; }
         .inv-slot .key { font-size: 8px; color: #666; position: absolute; top: 2px; left: 4px; }
         .inv-slot .lvl { font-size: 7px; color: #ffcc00; position: absolute; bottom: 2px; left: 4px; }
-
-        /* Build menu */
         #buildMenu {
             position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%);
             display: none; gap: 8px; z-index: 100; background: rgba(0,0,0,0.85);
@@ -96,8 +99,6 @@
             font-size: 0.75rem; cursor: pointer; text-align: center;
         }
         .build-option:hover { border-color: #00ff88; color: #00ff88; }
-
-        /* Upgrade menu */
         #upgradeMenu {
             position: absolute; top: 60px; left: 14px; z-index: 100;
             background: rgba(0,0,0,0.85); padding: 12px; border-radius: 8px;
@@ -137,12 +138,39 @@
         .world-delete { background: #2e1a1a; border-color: #ff006a !important; color: #ff006a; }
         .world-delete:hover { background: #ff006a; color: #0a0a0f; }
 
-        /* Save indicator */
         #saveIndicator {
             position: absolute; top: 44px; left: 14px; z-index: 100;
             font-size: 0.65rem; color: #00ff88; pointer-events: none;
             opacity: 0; transition: opacity 0.3s;
         }
+
+        /* Online player list overlay */
+        #onlineList {
+            position: absolute; top: 56px; right: 14px; z-index: 100;
+            font-size: 0.65rem; pointer-events: none;
+        }
+        .online-item {
+            display: flex; align-items: center; gap: 5px; margin-bottom: 2px;
+        }
+        .online-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+        /* Chat */
+        #chatBox {
+            position: absolute; bottom: 70px; left: 14px; z-index: 100; width: 260px;
+        }
+        #chatMessages {
+            max-height: 120px; overflow-y: auto; font-size: 0.65rem; margin-bottom: 4px;
+            background: rgba(0,0,0,0.5); border-radius: 4px; padding: 4px 6px;
+            pointer-events: none;
+        }
+        .chat-msg { margin-bottom: 2px; }
+        .chat-msg .sender { font-weight: bold; }
+        #chatInput {
+            width: 100%; padding: 4px 8px; font-family: 'Courier New', monospace;
+            font-size: 0.7rem; background: rgba(0,0,0,0.7); border: 1px solid #333;
+            color: #fff; border-radius: 4px; display: none;
+        }
+        #chatInput:focus { border-color: #00ff88; outline: none; }
 
         canvas { display: block; }
     </style>
@@ -152,9 +180,15 @@
         <h1>🧟 SURVIVOR ZOMBIE</h1>
         <p class="subtitle">Online Co-op Survival — Build, Mine, Survive!</p>
 
+        <!-- NAME INPUT (shown for all modes) -->
+        <div id="nameSection" style="margin:8px 0">
+            <p style="color:#888;font-size:0.8rem;margin-bottom:6px;">Your Name:</p>
+            <input type="text" class="name-input" id="playerNameInput" maxlength="16" placeholder="Enter name..." value="">
+        </div>
+
         <div id="menuMain">
-            <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:20px;">
-                <button class="menu-btn" onclick="singlePlayer()" style="border-color:#ffcc00;color:#ffcc00;">SINGLEPLAYER</button>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:10px;">
+                <button class="menu-btn yellow" onclick="singlePlayer()">SINGLEPLAYER</button>
                 <button class="menu-btn" onclick="hostGame()">HOST GAME</button>
                 <button class="menu-btn red" onclick="showJoin()">JOIN GAME</button>
             </div>
@@ -169,10 +203,13 @@
         </div>
 
         <div id="menuHost" class="hidden" style="text-align:center;">
-            <p class="status">Waiting for player to join...</p>
+            <p class="status" id="hostStatus">Creating room...</p>
             <p style="color:#888;font-size:0.8rem;margin:10px 0;">Share this code:</p>
-            <div id="roomCode">----</div>
-            <p style="color:#555;font-size:0.7rem;margin-top:10px;">Other player clicks JOIN and enters this code</p>
+            <div id="roomCode" onclick="copyCode()">----</div>
+            <p style="color:#555;font-size:0.7rem;margin-top:6px;">Click code to copy</p>
+            <div class="player-list" id="hostPlayerList"></div>
+            <br>
+            <button class="menu-btn" onclick="hostStartGame()" id="hostStartBtn" class="hidden" style="display:none;">START GAME</button>
         </div>
 
         <div id="menuJoin" class="hidden" style="text-align:center;">
@@ -181,11 +218,12 @@
             <br><br>
             <button class="menu-btn" onclick="joinGame()">CONNECT</button>
             <p class="status hidden" id="joinStatus">Connecting...</p>
+            <div class="player-list" id="joinPlayerList"></div>
         </div>
 
-        <div style="margin-top:30px;color:#555;font-size:0.7rem;text-align:center;line-height:1.8;">
+        <div style="margin-top:20px;color:#555;font-size:0.7rem;text-align:center;line-height:1.8;">
             WASD move | SHIFT sprint | 1-4 tools | B build | U upgrades<br>
-            Click to use tool / place wall | Survive the nights!
+            Click to use tool / place wall | ENTER to chat | Survive the nights!
         </div>
     </div>
 
@@ -208,6 +246,7 @@
         <div id="staminaBar"><div id="staminaFill"></div></div>
         <div id="saveIndicator">💾 Saved</div>
         <div id="timeDisplay">6:00 AM</div>
+        <div id="onlineList"></div>
         <div id="inventory"></div>
         <div id="buildMenu">
             <div class="build-option" onclick="selectBuild('wood')">🪵 Wood Wall<br><span style="font-size:0.6rem;color:#888;">5 wood</span></div>
@@ -218,6 +257,10 @@
         <div id="upgradeMenu">
             <h3>⬆ UPGRADES [U]</h3>
             <div id="upgradeList"></div>
+        </div>
+        <div id="chatBox">
+            <div id="chatMessages"></div>
+            <input type="text" id="chatInput" maxlength="100" placeholder="Type message...">
         </div>
     </div>
 
@@ -240,7 +283,6 @@ const RESOURCE_TYPES = {
     obsidian_node: { emoji: '💎', hp: 10, gives: 'obsidian', amount: 1, color: '#2a0a3a', radius: 12 }
 };
 
-// Tool upgrades
 const TOOL_UPGRADES = {
     axe: { name: 'Axe', levels: [
         { dmg: 1, range: 60, speed: 400, cost: {} },
@@ -267,14 +309,31 @@ const TOOL_UPGRADES = {
 
 let toolLevels = { axe: 0, pick: 0, sword: 0 };
 
+const PLAYER_COLORS = [
+    '#ff006a','#00f0ff','#00ff88','#ffcc00','#ff6600','#b400ff',
+    '#ff4488','#44ffcc','#88ff44','#ffaa00','#6644ff','#ff2200',
+    '#00aaff','#ff66cc','#aaff00','#ff8844'
+];
+
+// ===== STATE =====
 let isSinglePlayer = false;
 let currentWorldId = null;
 let autoSaveTimer = 0;
 
-let isHost = false, peer = null, conn = null, gameStarted = false;
+let isHost = false;
+let peer = null;
+let connections = []; // Host keeps array of connections
+let hostConn = null;  // Client keeps single connection to host
+let gameStarted = false;
+
+let myName = '';
+let myColor = PLAYER_COLORS[0];
+let myId = '';
+
+// All remote players: { peerId: { name, color, x, y, hp, maxHp } }
+let remotePlayers = {};
 
 let localPlayer = { x: MAP_W * TILE / 2, y: MAP_H * TILE / 2, hp: 100, maxHp: 100 };
-let remotePlayer = null;
 let resources = [], walls = [], zombies = [], particles = [];
 let inventory = { wood: 0, stone: 0, metal: 0, obsidian: 0 };
 let selectedSlot = 0;
@@ -292,12 +351,14 @@ let showUpgradeMenu = false;
 let zombieSpawnTimer = 0;
 let syncTimer = 0;
 
-// Sprint
 let stamina = 100;
 const MAX_STAMINA = 100;
-const SPRINT_DRAIN = 25; // per second
-const STAMINA_REGEN = 12; // per second
+const SPRINT_DRAIN = 25;
+const STAMINA_REGEN = 12;
 let isSprinting = false;
+
+let chatMessages = [];
+let chatOpen = false;
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -306,14 +367,22 @@ function resize() { canvas.width = window.innerWidth; canvas.height = window.inn
 window.addEventListener('resize', resize);
 resize();
 
+// Load saved name
+const savedName = localStorage.getItem('sz_playerName') || '';
+document.getElementById('playerNameInput').value = savedName;
+
+function getMyName() {
+    let n = document.getElementById('playerNameInput').value.trim();
+    if (!n) n = 'Player ' + Math.floor(Math.random()*999);
+    localStorage.setItem('sz_playerName', n);
+    return n;
+}
+
 // ── TIME OF DAY ──
 function getTimeOfDay() {
-    // Map cycle to 24h clock. Day starts at 6:00 AM, night at 6:00 PM
     const cycleTime = gameTime % CYCLE_LENGTH;
     const cyclePct = cycleTime / CYCLE_LENGTH;
-    // 0.0 = 6:00 AM, 0.5 = 6:00 PM, 1.0 = 6:00 AM next day
-    const hours24 = (6 + cyclePct * 24) % 24;
-    return hours24;
+    return (6 + cyclePct * 24) % 24;
 }
 
 function formatTime(h24) {
@@ -326,73 +395,43 @@ function formatTime(h24) {
 
 function getSkyColor() {
     const h = getTimeOfDay();
-    // Realistic transitions:
-    // 5-7 AM: dawn (dark blue → orange hint)
-    // 7-10 AM: morning (warm green)
-    // 10-16: midday (bright green)
-    // 16-18: evening (warm, golden)
-    // 18-20: dusk (orange → dark)
-    // 20-5: night (very dark)
-
-    if (h >= 5 && h < 7) {
-        // Dawn
-        const t = (h - 5) / 2;
-        return lerpColor('#0a0a1a', '#2a3520', t);
-    } else if (h >= 7 && h < 10) {
-        const t = (h - 7) / 3;
-        return lerpColor('#2a3520', '#1e3a1a', t);
-    } else if (h >= 10 && h < 16) {
-        return '#1e3a1a'; // Bright midday
-    } else if (h >= 16 && h < 18) {
-        const t = (h - 16) / 2;
-        return lerpColor('#1e3a1a', '#2a2818', t);
-    } else if (h >= 18 && h < 20) {
-        const t = (h - 18) / 2;
-        return lerpColor('#2a2818', '#0a0a15', t);
-    } else {
-        return '#060610'; // Deep night
-    }
+    if (h >= 5 && h < 7) return lerpColor('#0a0a1a', '#2a3520', (h-5)/2);
+    if (h >= 7 && h < 10) return lerpColor('#2a3520', '#1e3a1a', (h-7)/3);
+    if (h >= 10 && h < 16) return '#1e3a1a';
+    if (h >= 16 && h < 18) return lerpColor('#1e3a1a', '#2a2818', (h-16)/2);
+    if (h >= 18 && h < 20) return lerpColor('#2a2818', '#0a0a15', (h-18)/2);
+    return '#060610';
 }
 
 function getGrassColor() {
     const h = getTimeOfDay();
-    if (h >= 6 && h < 8) {
-        const t = (h - 6) / 2;
-        return lerpColor('#0f1f0f', '#1a3a16', t);
-    } else if (h >= 8 && h < 16) {
-        return '#1a3a16';
-    } else if (h >= 16 && h < 19) {
-        const t = (h - 16) / 3;
-        return lerpColor('#1a3a16', '#12200e', t);
-    } else {
-        return '#080f06';
-    }
+    if (h >= 6 && h < 8) return lerpColor('#0f1f0f', '#1a3a16', (h-6)/2);
+    if (h >= 8 && h < 16) return '#1a3a16';
+    if (h >= 16 && h < 19) return lerpColor('#1a3a16', '#12200e', (h-16)/3);
+    return '#080f06';
 }
 
 function getAmbientDarkness() {
     const h = getTimeOfDay();
-    if (h >= 7 && h < 17) return 0; // No darkness during day
-    if (h >= 17 && h < 20) return (h - 17) / 3 * 0.6; // Fade in
+    if (h >= 7 && h < 17) return 0;
+    if (h >= 17 && h < 20) return (h-17)/3*0.6;
     if (h >= 20 || h < 5) return 0.6;
-    if (h >= 5 && h < 7) return (1 - (h - 5) / 2) * 0.6; // Fade out
+    if (h >= 5 && h < 7) return (1-(h-5)/2)*0.6;
     return 0;
 }
 
 function lerpColor(a, b, t) {
-    const ah = parseInt(a.slice(1), 16);
-    const bh = parseInt(b.slice(1), 16);
-    const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
-    const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
-    const rr = Math.round(ar + (br - ar) * t);
-    const rg = Math.round(ag + (bg - ag) * t);
-    const rb = Math.round(ab + (bb - ab) * t);
-    return '#' + ((rr << 16) | (rg << 8) | rb).toString(16).padStart(6, '0');
+    const ah = parseInt(a.slice(1),16), bh = parseInt(b.slice(1),16);
+    const ar=(ah>>16)&0xff,ag=(ah>>8)&0xff,ab=ah&0xff;
+    const br=(bh>>16)&0xff,bg=(bh>>8)&0xff,bb=bh&0xff;
+    const rr=Math.round(ar+(br-ar)*t),rg=Math.round(ag+(bg-ag)*t),rb=Math.round(ab+(bb-ab)*t);
+    return '#'+((rr<<16)|(rg<<8)|rb).toString(16).padStart(6,'0');
 }
 
 function getGridAlpha() {
     const h = getTimeOfDay();
     if (h >= 8 && h < 16) return 0.05;
-    if ((h >= 20 || h < 5)) return 0.015;
+    if (h >= 20 || h < 5) return 0.015;
     return 0.03;
 }
 
@@ -400,12 +439,10 @@ function getGridAlpha() {
 function getWorlds() {
     try { return JSON.parse(localStorage.getItem('sz_worlds') || '[]'); } catch { return []; }
 }
-
-function saveWorldList(worlds) {
-    localStorage.setItem('sz_worlds', JSON.stringify(worlds));
-}
+function saveWorldList(worlds) { localStorage.setItem('sz_worlds', JSON.stringify(worlds)); }
 
 function singlePlayer() {
+    myName = getMyName();
     isSinglePlayer = true;
     document.getElementById('worldSlots').style.display = 'block';
     renderWorldList();
@@ -415,8 +452,6 @@ function renderWorldList() {
     const list = document.getElementById('worldList');
     const worlds = getWorlds();
     list.innerHTML = '';
-
-    // New world button
     const newBtn = document.createElement('div');
     newBtn.className = 'world-slot';
     newBtn.style.cursor = 'pointer';
@@ -426,31 +461,19 @@ function renderWorldList() {
     newBtn.onclick = () => createNewWorld();
     list.appendChild(newBtn);
 
-    worlds.forEach((w, i) => {
+    worlds.forEach(w => {
         const slot = document.createElement('div');
         slot.className = 'world-slot';
-        slot.innerHTML = `
-            <div class="world-info">
-                <div class="world-name">${w.name}</div>
-                <div class="world-meta">Day ${w.dayCount || 1} · ${w.lastPlayed || 'never'}</div>
-            </div>
-        `;
+        slot.innerHTML = `<div class="world-info"><div class="world-name">${w.name}</div><div class="world-meta">Day ${w.dayCount||1} · ${w.lastPlayed||'never'}</div></div>`;
         const playBtn = document.createElement('button');
-        playBtn.className = 'world-play';
-        playBtn.textContent = '▶';
+        playBtn.className = 'world-play'; playBtn.textContent = '▶';
         playBtn.onclick = () => loadWorld(w.id);
-
         const exportBtn = document.createElement('button');
-        exportBtn.className = 'world-export';
-        exportBtn.textContent = '💾';
-        exportBtn.title = 'Export world file';
+        exportBtn.className = 'world-export'; exportBtn.textContent = '💾'; exportBtn.title = 'Export';
         exportBtn.onclick = (e) => { e.stopPropagation(); exportWorld(w.id); };
-
         const delBtn = document.createElement('button');
-        delBtn.className = 'world-delete';
-        delBtn.textContent = '✕';
+        delBtn.className = 'world-delete'; delBtn.textContent = '✕';
         delBtn.onclick = (e) => { e.stopPropagation(); deleteWorld(w.id); };
-
         slot.appendChild(playBtn);
         slot.appendChild(exportBtn);
         slot.appendChild(delBtn);
@@ -462,14 +485,12 @@ function createNewWorld() {
     const id = 'w_' + Date.now();
     const name = 'World ' + (getWorlds().length + 1);
     currentWorldId = id;
-
     generateMap();
-    localPlayer = { x: MAP_W * TILE / 2, y: MAP_H * TILE / 2, hp: 100, maxHp: 100 };
-    inventory = { wood: 0, stone: 0, metal: 0, obsidian: 0 };
-    toolLevels = { axe: 0, pick: 0, sword: 0 };
+    localPlayer = { x: MAP_W*TILE/2, y: MAP_H*TILE/2, hp: 100, maxHp: 100 };
+    inventory = { wood:0, stone:0, metal:0, obsidian:0 };
+    toolLevels = { axe:0, pick:0, sword:0 };
     gameTime = 0; dayCount = 1; isNight = false; nightPhase = 0;
     stamina = MAX_STAMINA;
-
     const worlds = getWorlds();
     worlds.push({ id, name, dayCount: 1, lastPlayed: new Date().toLocaleDateString() });
     saveWorldList(worlds);
@@ -481,50 +502,40 @@ function loadWorld(id) {
     currentWorldId = id;
     const data = localStorage.getItem('sz_world_' + id);
     if (!data) { createNewWorld(); return; }
-
     try {
         const save = JSON.parse(data);
         resources = save.resources || [];
         walls = save.walls || [];
         localPlayer = save.player || { x: MAP_W*TILE/2, y: MAP_H*TILE/2, hp: 100, maxHp: 100 };
-        inventory = save.inventory || { wood: 0, stone: 0, metal: 0, obsidian: 0 };
-        toolLevels = save.toolLevels || { axe: 0, pick: 0, sword: 0 };
+        inventory = save.inventory || { wood:0, stone:0, metal:0, obsidian:0 };
+        toolLevels = save.toolLevels || { axe:0, pick:0, sword:0 };
         gameTime = save.gameTime || 0;
         dayCount = save.dayCount || 1;
         isNight = save.isNight || false;
         nightPhase = save.nightPhase || 0;
-        zombies = []; // Don't save zombies — they respawn at night
+        zombies = [];
         stamina = MAX_STAMINA;
         nextId = save.nextId || 1;
         startGame();
     } catch (e) {
-        console.error('Failed to load world:', e);
+        console.error('Load failed:', e);
         createNewWorld();
     }
 }
 
 function saveWorldData() {
     if (!currentWorldId) return;
-    const save = {
-        resources, walls, player: localPlayer, inventory, toolLevels,
-        gameTime, dayCount, isNight, nightPhase, nextId
-    };
+    const save = { resources, walls, player: localPlayer, inventory, toolLevels, gameTime, dayCount, isNight, nightPhase, nextId };
     localStorage.setItem('sz_world_' + currentWorldId, JSON.stringify(save));
-
-    // Update world list metadata
     const worlds = getWorlds();
     const w = worlds.find(w => w.id === currentWorldId);
-    if (w) {
-        w.dayCount = dayCount;
-        w.lastPlayed = new Date().toLocaleDateString();
-        saveWorldList(worlds);
-    }
+    if (w) { w.dayCount = dayCount; w.lastPlayed = new Date().toLocaleDateString(); saveWorldList(worlds); }
 }
 
 function showSaveIndicator() {
     const el = document.getElementById('saveIndicator');
     el.style.opacity = '1';
-    setTimeout(() => { el.style.opacity = '0'; }, 1500);
+    setTimeout(() => el.style.opacity = '0', 1500);
 }
 
 function exportWorld(id) {
@@ -532,24 +543,18 @@ function exportWorld(id) {
     if (!data) return;
     const worlds = getWorlds();
     const meta = worlds.find(w => w.id === id);
-    const exportData = { meta, data: JSON.parse(data) };
-    const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ meta, data: JSON.parse(data) })], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `survivor-zombie-${meta ? meta.name.replace(/\s/g,'-') : 'world'}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `survivor-zombie-${meta?meta.name.replace(/\s/g,'-'):'world'}.json`;
+    a.click(); URL.revokeObjectURL(url);
 }
 
-function importWorld() {
-    document.getElementById('importFileInput').click();
-}
+function importWorld() { document.getElementById('importFileInput').click(); }
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('importFileInput').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const file = e.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
             try {
@@ -558,16 +563,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const name = (imported.meta && imported.meta.name) ? imported.meta.name + ' (imported)' : 'Imported World';
                 localStorage.setItem('sz_world_' + id, JSON.stringify(imported.data));
                 const worlds = getWorlds();
-                worlds.push({
-                    id, name,
-                    dayCount: imported.data.dayCount || 1,
-                    lastPlayed: new Date().toLocaleDateString()
-                });
+                worlds.push({ id, name, dayCount: imported.data.dayCount || 1, lastPlayed: new Date().toLocaleDateString() });
                 saveWorldList(worlds);
                 renderWorldList();
-            } catch (err) {
-                alert('Invalid world file!');
-            }
+            } catch { alert('Invalid world file!'); }
         };
         reader.readAsText(file);
         e.target.value = '';
@@ -575,10 +574,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function deleteWorld(id) {
-    if (!confirm('Delete this world? This cannot be undone!')) return;
+    if (!confirm('Delete this world?')) return;
     localStorage.removeItem('sz_world_' + id);
-    const worlds = getWorlds().filter(w => w.id !== id);
-    saveWorldList(worlds);
+    saveWorldList(getWorlds().filter(w => w.id !== id));
     renderWorldList();
 }
 
@@ -590,84 +588,300 @@ function genCode() {
     return code;
 }
 
+function copyCode() {
+    const code = document.getElementById('roomCode').textContent;
+    navigator.clipboard.writeText(code).catch(()=>{});
+}
+
+// ===== HOST =====
+// Host tracks all players: { peerId, name, color, conn }
+let lobbyPlayers = []; // { peerId, name, color, conn }
+
 function hostGame() {
+    myName = getMyName();
     const code = genCode();
     document.getElementById('menuMain').classList.add('hidden');
     document.getElementById('menuHost').classList.remove('hidden');
     document.getElementById('roomCode').textContent = code;
     isHost = true;
+    myColor = PLAYER_COLORS[0];
+
     peer = new Peer('sz-' + code, { debug: 0 });
-    peer.on('open', () => { console.log('Host ready'); });
-    peer.on('connection', (c) => {
-        conn = c;
-        conn.on('open', () => {
-            generateMap();
-            remotePlayer = { x: localPlayer.x + 60, y: localPlayer.y, hp: 100, maxHp: 100 };
-            sendState();
-            startGame();
-        });
-        conn.on('data', handleData);
-        conn.on('close', () => { remotePlayer = null; });
+
+    peer.on('open', (id) => {
+        myId = id;
+        document.getElementById('hostStatus').textContent = 'Room ready! Waiting for players...';
+        document.getElementById('hostStartBtn').style.display = 'inline-block';
+        updateHostLobby();
     });
-    peer.on('error', (e) => console.error(e));
+
+    peer.on('connection', (c) => {
+        c.on('open', () => {
+            // Ask client for their name
+            c.on('data', function onFirst(data) {
+                if (data.type === 'join') {
+                    const color = PLAYER_COLORS[(lobbyPlayers.length + 1) % PLAYER_COLORS.length];
+                    const playerInfo = { peerId: c.peer, name: data.name, color, conn: c };
+                    lobbyPlayers.push(playerInfo);
+
+                    // Confirm to joining client
+                    c.send({ type: 'welcome', color, hostName: myName, hostColor: myColor,
+                             players: lobbyPlayers.map(p => ({ peerId: p.peerId, name: p.name, color: p.color }))
+                    });
+
+                    // Notify all existing players about new roster
+                    broadcastLobbyRoster();
+                    updateHostLobby();
+
+                    // Remove first-message listener, switch to game handler
+                    c.off('data', onFirst);
+                    c.on('data', (d) => handleHostData(d, c.peer));
+                }
+            });
+        });
+        c.on('close', () => {
+            lobbyPlayers = lobbyPlayers.filter(p => p.peerId !== c.peer);
+            delete remotePlayers[c.peer];
+            broadcastLobbyRoster();
+            updateHostLobby();
+            if (gameStarted) broadcastToAll({ type: 'player_left', peerId: c.peer });
+        });
+    });
+
+    peer.on('error', (e) => {
+        console.error('PeerJS error:', e);
+        document.getElementById('hostStatus').textContent = 'Error: ' + e.type;
+    });
 }
 
+function updateHostLobby() {
+    const el = document.getElementById('hostPlayerList');
+    let html = `<div class="pl-item"><span class="pl-dot" style="background:${myColor}"></span> ${myName} (you - host)</div>`;
+    lobbyPlayers.forEach(p => {
+        html += `<div class="pl-item"><span class="pl-dot" style="background:${p.color}"></span> ${p.name}</div>`;
+    });
+    html += `<div style="color:#555;margin-top:6px;font-size:0.7rem;">${lobbyPlayers.length + 1} player(s) in lobby</div>`;
+    el.innerHTML = html;
+}
+
+function broadcastLobbyRoster() {
+    const roster = lobbyPlayers.map(p => ({ peerId: p.peerId, name: p.name, color: p.color }));
+    lobbyPlayers.forEach(p => {
+        if (p.conn && p.conn.open) {
+            p.conn.send({ type: 'roster', players: roster, hostName: myName, hostColor: myColor });
+        }
+    });
+}
+
+function broadcastToAll(data) {
+    lobbyPlayers.forEach(p => {
+        if (p.conn && p.conn.open) p.conn.send(data);
+    });
+}
+
+function hostStartGame() {
+    generateMap();
+    // Spawn positions around center
+    const cx = MAP_W * TILE / 2, cy = MAP_H * TILE / 2;
+    localPlayer = { x: cx, y: cy, hp: 100, maxHp: 100 };
+
+    const allPlayers = lobbyPlayers.map((p, i) => {
+        const angle = (i / (lobbyPlayers.length + 1)) * Math.PI * 2;
+        return { peerId: p.peerId, name: p.name, color: p.color,
+                 x: cx + Math.cos(angle) * 80, y: cy + Math.sin(angle) * 80 };
+    });
+
+    // Initialize remote players
+    allPlayers.forEach(p => {
+        remotePlayers[p.peerId] = { name: p.name, color: p.color, x: p.x, y: p.y, hp: 100, maxHp: 100 };
+    });
+
+    // Send start to all clients
+    broadcastToAll({
+        type: 'game_start',
+        resources, walls, gameTime, dayCount, isNight, nightPhase,
+        players: allPlayers,
+        hostName: myName, hostColor: myColor,
+        hostX: localPlayer.x, hostY: localPlayer.y
+    });
+
+    startGame();
+}
+
+function handleHostData(data, fromPeerId) {
+    if (data.type === 'pos') {
+        if (!remotePlayers[fromPeerId]) return;
+        remotePlayers[fromPeerId].x = data.x;
+        remotePlayers[fromPeerId].y = data.y;
+        remotePlayers[fromPeerId].hp = data.hp;
+        // Relay to other clients
+        broadcastToAll({ type: 'player_pos', peerId: fromPeerId, x: data.x, y: data.y, hp: data.hp });
+    } else if (data.type === 'hit_resource') {
+        const r = resources.find(res => res.id === data.id);
+        if (r) { r.hp -= (data.dmg || 1); if (r.hp <= 0) resources = resources.filter(res => res.id !== data.id); }
+        broadcastToAll({ type: 'hit_resource', id: data.id, dmg: data.dmg || 1 });
+    } else if (data.type === 'place_wall') {
+        walls.push(data.wall);
+        broadcastToAll({ type: 'place_wall', wall: data.wall });
+    } else if (data.type === 'hit_zombie') {
+        const z = zombies.find(zz => zz.id === data.id);
+        if (z) {
+            z.hp -= data.dmg;
+            if (z.hp <= 0) zombies = zombies.filter(zz => zz.id !== data.id);
+        }
+        broadcastToAll({ type: 'hit_zombie', id: data.id, dmg: data.dmg });
+    } else if (data.type === 'chat') {
+        const p = lobbyPlayers.find(p => p.peerId === fromPeerId);
+        const name = p ? p.name : 'Unknown';
+        const color = p ? p.color : '#888';
+        addChat(name, data.msg, color);
+        broadcastToAll({ type: 'chat', name, msg: data.msg, color });
+    }
+}
+
+// ===== CLIENT (JOINER) =====
 function showJoin() {
     document.getElementById('menuMain').classList.add('hidden');
     document.getElementById('menuJoin').classList.remove('hidden');
 }
 
 function joinGame() {
+    myName = getMyName();
     const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
     if (code.length < 4) return;
     document.getElementById('joinStatus').classList.remove('hidden');
+    document.getElementById('joinStatus').textContent = 'Connecting...';
     isHost = false;
+
     peer = new Peer(undefined, { debug: 0 });
-    peer.on('open', () => {
-        conn = peer.connect('sz-' + code, { reliable: true });
-        conn.on('open', () => console.log('Connected'));
-        conn.on('data', handleData);
-        conn.on('close', () => { remotePlayer = null; });
+    peer.on('open', (id) => {
+        myId = id;
+        hostConn = peer.connect('sz-' + code, { reliable: true });
+        hostConn.on('open', () => {
+            // Send name to host
+            hostConn.send({ type: 'join', name: myName });
+        });
+        hostConn.on('data', handleClientData);
+        hostConn.on('close', () => {
+            remotePlayers = {};
+            if (gameStarted) addChat('SYSTEM', 'Disconnected from host', '#ff006a');
+        });
+        hostConn.on('error', (e) => {
+            document.getElementById('joinStatus').textContent = 'Error: ' + e;
+        });
+    });
+    peer.on('error', (e) => {
+        document.getElementById('joinStatus').textContent = 'Error: ' + e.type;
     });
 }
 
-function handleData(data) {
-    if (data.type === 'state') {
-        resources = data.resources; walls = data.walls; zombies = data.zombies || [];
-        gameTime = data.gameTime; dayCount = data.dayCount; isNight = data.isNight; nightPhase = data.nightPhase;
-        if (isHost) {
-            remotePlayer = { x: data.px, y: data.py, hp: data.hp, maxHp: 100 };
+function handleClientData(data) {
+    if (data.type === 'welcome') {
+        myColor = data.color;
+        document.getElementById('joinStatus').textContent = 'Connected! Waiting for host to start...';
+        updateJoinLobby(data.hostName, data.hostColor, data.players);
+    } else if (data.type === 'roster') {
+        updateJoinLobby(data.hostName, data.hostColor, data.players);
+    } else if (data.type === 'game_start') {
+        resources = data.resources;
+        walls = data.walls;
+        gameTime = data.gameTime;
+        dayCount = data.dayCount;
+        isNight = data.isNight;
+        nightPhase = data.nightPhase;
+
+        // Find my spawn position
+        const me = data.players.find(p => p.peerId === myId);
+        if (me) {
+            localPlayer = { x: me.x, y: me.y, hp: 100, maxHp: 100 };
         } else {
-            remotePlayer = { x: data.hostX, y: data.hostY, hp: data.hostHp, maxHp: 100 };
-            if (!gameStarted) startGame();
+            localPlayer = { x: MAP_W*TILE/2, y: MAP_H*TILE/2, hp: 100, maxHp: 100 };
         }
-    } else if (data.type === 'pos') {
-        if (!remotePlayer) remotePlayer = { x: 0, y: 0, hp: 100, maxHp: 100 };
-        remotePlayer.x = data.x; remotePlayer.y = data.y; remotePlayer.hp = data.hp;
+
+        // Set up remote players (host + others)
+        remotePlayers = {};
+        remotePlayers['host'] = { name: data.hostName, color: data.hostColor, x: data.hostX, y: data.hostY, hp: 100, maxHp: 100 };
+        data.players.forEach(p => {
+            if (p.peerId !== myId) {
+                remotePlayers[p.peerId] = { name: p.name, color: p.color, x: p.x, y: p.y, hp: 100, maxHp: 100 };
+            }
+        });
+
+        startGame();
+    } else if (data.type === 'state') {
+        // Full state sync from host
+        resources = data.resources;
+        walls = data.walls;
+        zombies = data.zombies || [];
+        gameTime = data.gameTime;
+        dayCount = data.dayCount;
+        isNight = data.isNight;
+        nightPhase = data.nightPhase;
+        if (data.hostX !== undefined) {
+            if (!remotePlayers['host']) remotePlayers['host'] = { name: 'Host', color: PLAYER_COLORS[0], hp: 100, maxHp: 100 };
+            remotePlayers['host'].x = data.hostX;
+            remotePlayers['host'].y = data.hostY;
+            remotePlayers['host'].hp = data.hostHp;
+        }
+    } else if (data.type === 'player_pos') {
+        if (data.peerId !== myId) {
+            if (!remotePlayers[data.peerId]) remotePlayers[data.peerId] = { name: '???', color: '#888', hp: 100, maxHp: 100 };
+            remotePlayers[data.peerId].x = data.x;
+            remotePlayers[data.peerId].y = data.y;
+            remotePlayers[data.peerId].hp = data.hp;
+        }
+    } else if (data.type === 'player_left') {
+        delete remotePlayers[data.peerId];
     } else if (data.type === 'hit_resource') {
         const r = resources.find(res => res.id === data.id);
-        if (r) { r.hp--; if (r.hp <= 0) resources = resources.filter(res => res.id !== data.id); }
+        if (r) { r.hp -= (data.dmg || 1); if (r.hp <= 0) resources = resources.filter(res => res.id !== data.id); }
     } else if (data.type === 'place_wall') {
         walls.push(data.wall);
     } else if (data.type === 'hit_zombie') {
         const z = zombies.find(zz => zz.id === data.id);
         if (z) { z.hp -= data.dmg; if (z.hp <= 0) zombies = zombies.filter(zz => zz.id !== data.id); }
+    } else if (data.type === 'chat') {
+        addChat(data.name, data.msg, data.color);
+    }
+}
+
+function updateJoinLobby(hostName, hostColor, players) {
+    const el = document.getElementById('joinPlayerList');
+    let html = `<div class="pl-item"><span class="pl-dot" style="background:${hostColor}"></span> ${hostName} (host)</div>`;
+    players.forEach(p => {
+        const isMe = p.peerId === myId;
+        html += `<div class="pl-item"><span class="pl-dot" style="background:${p.color}"></span> ${p.name}${isMe?' (you)':''}</div>`;
+    });
+    html += `<div style="color:#555;margin-top:6px;font-size:0.7rem;">${players.length + 1} player(s) in lobby</div>`;
+    el.innerHTML = html;
+}
+
+// ===== SEND FUNCTIONS =====
+function sendPos() {
+    const msg = { type: 'pos', x: localPlayer.x, y: localPlayer.y, hp: localPlayer.hp };
+    if (isHost) {
+        broadcastToAll({ type: 'player_pos', peerId: 'host', x: localPlayer.x, y: localPlayer.y, hp: localPlayer.hp });
+    } else if (hostConn && hostConn.open) {
+        hostConn.send(msg);
+    }
+}
+
+function sendToHost(data) {
+    if (isHost) {
+        // Process locally
+        handleHostData(data, 'host');
+    } else if (hostConn && hostConn.open) {
+        hostConn.send(data);
     }
 }
 
 function sendState() {
-    if (!conn || !conn.open) return;
-    if (isHost) {
-        conn.send({
-            type: 'state', resources, walls, zombies, gameTime, dayCount, isNight, nightPhase,
-            hostX: localPlayer.x, hostY: localPlayer.y, hostHp: localPlayer.hp
-        });
-    }
-}
-
-function sendPos() {
-    if (!conn || !conn.open) return;
-    conn.send({ type: 'pos', x: localPlayer.x, y: localPlayer.y, hp: localPlayer.hp });
+    if (!isHost) return;
+    broadcastToAll({
+        type: 'state', resources, walls, zombies: zombies.slice(0, 200),
+        gameTime, dayCount, isNight, nightPhase,
+        hostX: localPlayer.x, hostY: localPlayer.y, hostHp: localPlayer.hp
+    });
 }
 
 // ── MAP ──
@@ -685,7 +899,6 @@ function startGame() {
     gameStarted = true;
     document.getElementById('menu').classList.add('hidden');
     document.getElementById('gameContainer').classList.remove('hidden');
-    if (isHost) generateMap();
     buildInventoryUI();
     requestAnimationFrame(gameLoop);
 }
@@ -693,7 +906,6 @@ function startGame() {
 function buildInventoryUI() {
     const inv = document.getElementById('inventory');
     inv.innerHTML = '';
-    const toolNames = ['axe','pick','sword'];
     const slots = [
         { emoji: '🪓', label: '1', tool: 'axe' },
         { emoji: '⛏️', label: '2', tool: 'pick' },
@@ -704,9 +916,7 @@ function buildInventoryUI() {
         const el = document.createElement('div');
         el.className = `inv-slot${i === selectedSlot ? ' active' : ''}`;
         let lvlHtml = '';
-        if (s.tool && toolLevels[s.tool] > 0) {
-            lvlHtml = `<span class="lvl">Lv${toolLevels[s.tool] + 1}</span>`;
-        }
+        if (s.tool && toolLevels[s.tool] > 0) lvlHtml = `<span class="lvl">Lv${toolLevels[s.tool]+1}</span>`;
         el.innerHTML = `<span class="key">${s.label}</span>${s.emoji}${lvlHtml}`;
         inv.appendChild(el);
     });
@@ -725,19 +935,17 @@ function buildUpgradeUI() {
         const next = toolData.levels[nextLvl];
         const costStr = Object.entries(next.cost).map(([r,a]) => `${a} ${r}`).join(', ');
         const canAfford = Object.entries(next.cost).every(([r,a]) => (inventory[r]||0) >= a);
-
         const row = document.createElement('div');
         row.className = 'upgrade-row';
         row.innerHTML = `<span>${toolData.name} → Lv${nextLvl+1}<br><span style="color:#888;font-size:0.6rem;">${costStr}</span></span>`;
         const btn = document.createElement('button');
-        btn.className = `upgrade-btn${canAfford ? '' : ' cant'}`;
+        btn.className = `upgrade-btn${canAfford?'':' cant'}`;
         btn.textContent = '⬆';
         if (canAfford) {
             btn.onclick = () => {
                 for (const [r,a] of Object.entries(next.cost)) inventory[r] -= a;
                 toolLevels[toolKey]++;
-                buildUpgradeUI();
-                buildInventoryUI();
+                buildUpgradeUI(); buildInventoryUI();
             };
         }
         row.appendChild(btn);
@@ -747,7 +955,8 @@ function buildUpgradeUI() {
 
 // ── ZOMBIES ──
 function spawnZombies() {
-    const count = Math.floor(3 + nightPhase * 2);
+    const playerCount = 1 + Object.keys(remotePlayers).length;
+    const count = Math.floor((3 + nightPhase * 2) * (1 + (playerCount - 1) * 0.5));
     const baseHp = 20 + nightPhase * 10;
     const baseDmg = 5 + Math.floor(nightPhase / 2) * 3;
     const baseSpeed = 1 + Math.min(nightPhase * 0.1, 2);
@@ -775,6 +984,33 @@ function canZombieBreak(wallType) {
     return false;
 }
 
+// ── CHAT ──
+function addChat(name, msg, color) {
+    chatMessages.push({ name, msg, color, time: Date.now() });
+    if (chatMessages.length > 50) chatMessages.shift();
+    renderChat();
+}
+
+function renderChat() {
+    const el = document.getElementById('chatMessages');
+    // Only show last 8 messages
+    const recent = chatMessages.slice(-8);
+    el.innerHTML = recent.map(m =>
+        `<div class="chat-msg"><span class="sender" style="color:${m.color}">${m.name}:</span> ${m.msg}</div>`
+    ).join('');
+    el.scrollTop = el.scrollHeight;
+}
+
+function sendChat(msg) {
+    if (!msg.trim()) return;
+    addChat(myName, msg, myColor);
+    if (isHost) {
+        broadcastToAll({ type: 'chat', name: myName, msg, color: myColor });
+    } else if (hostConn && hostConn.open) {
+        hostConn.send({ type: 'chat', msg });
+    }
+}
+
 // ── GAME LOOP ──
 let lastTime = 0;
 function gameLoop(timestamp) {
@@ -794,43 +1030,40 @@ function update(dt) {
 
     if (!wasNight && isNight) {
         nightPhase++;
-        if (isHost) spawnZombies();
+        if (isHost || isSinglePlayer) spawnZombies();
     }
 
     // Sprint
     isSprinting = keys['shift'] && stamina > 0 && (keys['a']||keys['d']||keys['w']||keys['s']||keys['arrowup']||keys['arrowdown']||keys['arrowleft']||keys['arrowright']);
-    if (isSprinting) {
-        stamina = Math.max(0, stamina - SPRINT_DRAIN * dt);
-    } else {
-        stamina = Math.min(MAX_STAMINA, stamina + STAMINA_REGEN * dt);
+    if (isSprinting) stamina = Math.max(0, stamina - SPRINT_DRAIN * dt);
+    else stamina = Math.min(MAX_STAMINA, stamina + STAMINA_REGEN * dt);
+
+    // Movement (skip if chat open)
+    if (!chatOpen) {
+        const baseSpeed = 160;
+        const speed = isSprinting ? baseSpeed * 1.7 : baseSpeed;
+        let dx = 0, dy = 0;
+        if (keys['a']||keys['arrowleft']) dx -= 1;
+        if (keys['d']||keys['arrowright']) dx += 1;
+        if (keys['w']||keys['arrowup']) dy -= 1;
+        if (keys['s']||keys['arrowdown']) dy += 1;
+        if (dx && dy) { dx *= 0.707; dy *= 0.707; }
+        let nx = localPlayer.x + dx * speed * dt;
+        let ny = localPlayer.y + dy * speed * dt;
+        if (!collidesWall(nx, localPlayer.y, 14)) localPlayer.x = nx;
+        if (!collidesWall(localPlayer.x, ny, 14)) localPlayer.y = ny;
+        localPlayer.x = Math.max(14, Math.min(MAP_W*TILE-14, localPlayer.x));
+        localPlayer.y = Math.max(14, Math.min(MAP_H*TILE-14, localPlayer.y));
     }
-
-    // Movement
-    const baseSpeed = 160;
-    const speed = isSprinting ? baseSpeed * 1.7 : baseSpeed;
-    let dx = 0, dy = 0;
-    if (keys['a']||keys['arrowleft']) dx -= 1;
-    if (keys['d']||keys['arrowright']) dx += 1;
-    if (keys['w']||keys['arrowup']) dy -= 1;
-    if (keys['s']||keys['arrowdown']) dy += 1;
-    if (dx && dy) { dx *= 0.707; dy *= 0.707; }
-
-    let nx = localPlayer.x + dx * speed * dt;
-    let ny = localPlayer.y + dy * speed * dt;
-    if (!collidesWall(nx, localPlayer.y, 14)) localPlayer.x = nx;
-    if (!collidesWall(localPlayer.x, ny, 14)) localPlayer.y = ny;
-    localPlayer.x = Math.max(14, Math.min(MAP_W*TILE-14, localPlayer.x));
-    localPlayer.y = Math.max(14, Math.min(MAP_H*TILE-14, localPlayer.y));
 
     camera.x = localPlayer.x - canvas.width / 2;
     camera.y = localPlayer.y - canvas.height / 2;
 
-    // Tool stats
     const currentTool = selectedSlot === 0 ? 'axe' : selectedSlot === 1 ? 'pick' : selectedSlot === 2 ? 'sword' : null;
     const toolStats = currentTool ? TOOL_UPGRADES[currentTool].levels[toolLevels[currentTool]] : null;
     const attackSpeed = toolStats ? toolStats.speed : 400;
 
-    if (mouse.down && Date.now() - lastAttack > attackSpeed) {
+    if (mouse.down && Date.now() - lastAttack > attackSpeed && !chatOpen) {
         lastAttack = Date.now();
         const wx = mouse.x + camera.x;
         const wy = mouse.y + camera.y;
@@ -839,7 +1072,7 @@ function update(dt) {
         else if (selectedSlot === 2) hitZombie(wx, wy);
     }
 
-    if (isHost) {
+    if (isHost || isSinglePlayer) {
         updateZombies(dt);
         zombieSpawnTimer += dt;
         if (isNight && zombieSpawnTimer > 15) { zombieSpawnTimer = 0; spawnZombies(); }
@@ -848,16 +1081,15 @@ function update(dt) {
     particles = particles.filter(p => { p.life -= dt; p.x += p.vx*dt; p.y += p.vy*dt; return p.life > 0; });
 
     syncTimer += dt;
-    if (syncTimer > 0.1) { syncTimer = 0; sendPos(); if (isHost && conn && conn.open) sendState(); }
+    if (syncTimer > 0.1) {
+        syncTimer = 0;
+        sendPos();
+        if (isHost) sendState();
+    }
 
-    // Auto-save singleplayer every 15 seconds
     if (isSinglePlayer) {
         autoSaveTimer += dt;
-        if (autoSaveTimer > 15) {
-            autoSaveTimer = 0;
-            saveWorldData();
-            showSaveIndicator();
-        }
+        if (autoSaveTimer > 15) { autoSaveTimer = 0; saveWorldData(); showSaveIndicator(); }
     }
 
     // HUD
@@ -868,11 +1100,10 @@ function update(dt) {
     document.getElementById('hudHP').textContent = Math.ceil(localPlayer.hp);
     document.getElementById('hudDay').innerHTML = (isNight ? '🌙' : '☀️') + ` Day ${dayCount}`;
     document.getElementById('hudDay').style.color = isNight ? '#ff006a' : '#ffcc00';
-    document.getElementById('hudPlayers').textContent = '👥 ' + (remotePlayer ? 2 : 1);
-
+    const totalPlayers = 1 + Object.keys(remotePlayers).length;
+    document.getElementById('hudPlayers').textContent = '👥 ' + totalPlayers;
     document.getElementById('staminaFill').style.width = (stamina / MAX_STAMINA * 100) + '%';
     document.getElementById('staminaFill').style.background = isSprinting ? '#ff8800' : '#ffcc00';
-
     document.getElementById('timeDisplay').textContent = formatTime(getTimeOfDay());
 
     const fill = document.getElementById('dayNightFill');
@@ -885,6 +1116,18 @@ function update(dt) {
     }
 
     if (showUpgradeMenu) buildUpgradeUI();
+
+    // Online list overlay
+    updateOnlineList();
+}
+
+function updateOnlineList() {
+    const el = document.getElementById('onlineList');
+    let html = `<div class="online-item"><span class="online-dot" style="background:${myColor}"></span> <span style="color:${myColor}">${myName}</span></div>`;
+    for (const [id, p] of Object.entries(remotePlayers)) {
+        html += `<div class="online-item"><span class="online-dot" style="background:${p.color}"></span> <span style="color:${p.color}">${p.name}</span></div>`;
+    }
+    el.innerHTML = html;
 }
 
 function collidesWall(x, y, r) {
@@ -911,7 +1154,7 @@ function hitResource(wx, wy) {
             resources = resources.filter(res => res.id !== r.id);
             spawnParticles(r.x, r.y, info.color, 8);
         }
-        if (conn && conn.open) conn.send({ type: 'hit_resource', id: r.id });
+        sendToHost({ type: 'hit_resource', id: r.id, dmg: stats.dmg });
         break;
     }
 }
@@ -924,7 +1167,7 @@ function hitZombie(wx, wy) {
         z.hp -= stats.dmg;
         spawnParticles(z.x, z.y, '#ff0000', 4);
         if (z.hp <= 0) { zombies = zombies.filter(zz => zz.id !== z.id); spawnParticles(z.x, z.y, '#ff0000', 10); }
-        if (conn && conn.open) conn.send({ type: 'hit_zombie', id: z.id, dmg: stats.dmg });
+        sendToHost({ type: 'hit_zombie', id: z.id, dmg: stats.dmg });
         break;
     }
 }
@@ -940,7 +1183,7 @@ function placeBuild(wx, wy) {
     for (const [res,amt] of Object.entries(cost)) inventory[res] -= amt;
     const wall = { x: gx, y: gy, type: buildMode, hp: WALL_HP[buildMode], maxHp: WALL_HP[buildMode] };
     walls.push(wall);
-    if (conn && conn.open) conn.send({ type: 'place_wall', wall });
+    sendToHost({ type: 'place_wall', wall });
 }
 
 function selectBuild(type) {
@@ -951,7 +1194,8 @@ function selectBuild(type) {
 // ── ZOMBIE AI ──
 function updateZombies(dt) {
     const targets = [localPlayer];
-    if (remotePlayer) targets.push(remotePlayer);
+    for (const p of Object.values(remotePlayers)) targets.push(p);
+
     for (const z of zombies) {
         let closest = null, closestDist = Infinity;
         for (const t of targets) { const d = Math.hypot(t.x-z.x,t.y-z.y); if (d<closestDist){closestDist=d;closest=t;} }
@@ -981,7 +1225,10 @@ function updateZombies(dt) {
             if (z.attackCd <= 0) { z.attackCd = 1;
                 if (closest === localPlayer) {
                     localPlayer.hp -= z.dmg; spawnParticles(localPlayer.x,localPlayer.y,'#ff0000',4);
-                    if (localPlayer.hp<=0){localPlayer.hp=100;localPlayer.x=MAP_W*TILE/2;localPlayer.y=MAP_H*TILE/2;inventory={wood:0,stone:0,metal:0,obsidian:0};}
+                    if (localPlayer.hp<=0){ localPlayer.hp=100; localPlayer.x=MAP_W*TILE/2; localPlayer.y=MAP_H*TILE/2;
+                        inventory={wood:0,stone:0,metal:0,obsidian:0};
+                        addChat('SYSTEM', myName + ' was killed by zombies!', '#ff006a');
+                    }
                 }
             }
         }
@@ -999,59 +1246,45 @@ function spawnParticles(x, y, color, count) {
 // ── RENDER ──
 function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Sky — realistic time-based
     ctx.fillStyle = getSkyColor();
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
     ctx.translate(-camera.x, -camera.y);
 
-    // Grass tiles
+    // Grass
     const grassColor = getGrassColor();
     const sx = Math.floor(camera.x / TILE) * TILE;
     const sy = Math.floor(camera.y / TILE) * TILE;
     for (let x = sx; x < camera.x + canvas.width + TILE; x += TILE) {
         for (let y = sy; y < camera.y + canvas.height + TILE; y += TILE) {
-            // Slight variation per tile
             const hash = ((x * 7 + y * 13) & 0xff) / 255;
             const r = parseInt(grassColor.slice(1,3),16);
             const g = parseInt(grassColor.slice(3,5),16);
             const b = parseInt(grassColor.slice(5,7),16);
-            const vr = Math.max(0,Math.min(255, r + Math.floor((hash-0.5)*8)));
-            const vg = Math.max(0,Math.min(255, g + Math.floor((hash-0.5)*12)));
-            const vb = Math.max(0,Math.min(255, b + Math.floor((hash-0.5)*6)));
-            ctx.fillStyle = `rgb(${vr},${vg},${vb})`;
+            ctx.fillStyle = `rgb(${Math.max(0,Math.min(255,r+Math.floor((hash-.5)*8)))},${Math.max(0,Math.min(255,g+Math.floor((hash-.5)*12)))},${Math.max(0,Math.min(255,b+Math.floor((hash-.5)*6)))})`;
             ctx.fillRect(x, y, TILE, TILE);
         }
     }
 
-    // Grid lines
+    // Grid
     const gridA = getGridAlpha();
     ctx.strokeStyle = `rgba(255,255,255,${gridA})`;
     ctx.lineWidth = 1;
-    for (let x = sx; x < camera.x + canvas.width + TILE; x += TILE) {
-        ctx.beginPath(); ctx.moveTo(x,camera.y); ctx.lineTo(x,camera.y+canvas.height); ctx.stroke();
-    }
-    for (let y = sy; y < camera.y + canvas.height + TILE; y += TILE) {
-        ctx.beginPath(); ctx.moveTo(camera.x,y); ctx.lineTo(camera.x+canvas.width,y); ctx.stroke();
-    }
+    for (let x = sx; x < camera.x + canvas.width + TILE; x += TILE) { ctx.beginPath(); ctx.moveTo(x,camera.y); ctx.lineTo(x,camera.y+canvas.height); ctx.stroke(); }
+    for (let y = sy; y < camera.y + canvas.height + TILE; y += TILE) { ctx.beginPath(); ctx.moveTo(camera.x,y); ctx.lineTo(camera.x+canvas.width,y); ctx.stroke(); }
 
-    // Resources — add shadow during golden hour
+    // Resources
     for (const r of resources) {
         if (r.x<camera.x-30||r.x>camera.x+canvas.width+30||r.y<camera.y-30||r.y>camera.y+canvas.height+30) continue;
         const info = RESOURCE_TYPES[r.type];
-        // Shadow
         const h = getTimeOfDay();
         if (h >= 7 && h < 18) {
-            ctx.globalAlpha = 0.15;
-            ctx.fillStyle = '#000';
-            ctx.beginPath();
-            ctx.ellipse(r.x + 6, r.y + info.radius, info.radius * 0.7, info.radius * 0.3, 0, 0, Math.PI*2);
-            ctx.fill();
+            ctx.globalAlpha = 0.15; ctx.fillStyle = '#000';
+            ctx.beginPath(); ctx.ellipse(r.x+6,r.y+info.radius,info.radius*0.7,info.radius*0.3,0,0,Math.PI*2); ctx.fill();
             ctx.globalAlpha = 1;
         }
-        ctx.font = `${info.radius * 2}px serif`;
+        ctx.font = `${info.radius*2}px serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(info.emoji, r.x, r.y);
     }
@@ -1061,17 +1294,14 @@ function render() {
         if (w.x+TILE<camera.x||w.x>camera.x+canvas.width||w.y+TILE<camera.y||w.y>camera.y+canvas.height) continue;
         ctx.fillStyle = WALL_COLORS[w.type];
         ctx.fillRect(w.x, w.y, TILE, TILE);
-        // 3D edge highlight
         ctx.fillStyle = 'rgba(255,255,255,0.08)';
-        ctx.fillRect(w.x, w.y, TILE, 3);
-        ctx.fillRect(w.x, w.y, 3, TILE);
+        ctx.fillRect(w.x, w.y, TILE, 3); ctx.fillRect(w.x, w.y, 3, TILE);
         ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.fillRect(w.x, w.y+TILE-3, TILE, 3);
-        ctx.fillRect(w.x+TILE-3, w.y, 3, TILE);
+        ctx.fillRect(w.x, w.y+TILE-3, TILE, 3); ctx.fillRect(w.x+TILE-3, w.y, 3, TILE);
         ctx.strokeStyle = WALL_BORDER[w.type]; ctx.lineWidth = 2;
         ctx.strokeRect(w.x, w.y, TILE, TILE);
         if (w.hp < w.maxHp) {
-            const pct = w.hp / w.maxHp;
+            const pct = w.hp/w.maxHp;
             ctx.fillStyle = '#000'; ctx.fillRect(w.x+2,w.y-6,TILE-4,4);
             ctx.fillStyle = pct>0.5?'#00ff88':pct>0.25?'#ffcc00':'#ff006a';
             ctx.fillRect(w.x+2,w.y-6,(TILE-4)*pct,4);
@@ -1081,7 +1311,6 @@ function render() {
     // Zombies
     for (const z of zombies) {
         if (z.x<camera.x-30||z.x>camera.x+canvas.width+30||z.y<camera.y-30||z.y>camera.y+canvas.height+30) continue;
-        // Shadow
         ctx.globalAlpha = 0.2; ctx.fillStyle = '#000';
         ctx.beginPath(); ctx.ellipse(z.x+3,z.y+14,10,4,0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
         ctx.fillStyle = '#4a7a2a';
@@ -1097,36 +1326,68 @@ function render() {
         }
     }
 
-    // Remote player
-    if (remotePlayer) {
+    // Remote players
+    for (const [id, p] of Object.entries(remotePlayers)) {
+        if (!p.x && !p.y) continue;
+        // Shadow
         ctx.globalAlpha = 0.2; ctx.fillStyle = '#000';
-        ctx.beginPath(); ctx.ellipse(remotePlayer.x+3,remotePlayer.y+16,12,4,0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
-        ctx.fillStyle = '#00f0ff';
-        ctx.beginPath(); ctx.arc(remotePlayer.x,remotePlayer.y,16,0,Math.PI*2); ctx.fill();
-        ctx.strokeStyle = '#008faa'; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = '#fff'; ctx.font = '10px Courier New'; ctx.textAlign = 'center';
-        ctx.fillText('P2', remotePlayer.x, remotePlayer.y+4);
+        ctx.beginPath(); ctx.ellipse(p.x+3,p.y+16,12,4,0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
+        // Body
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x,p.y,16,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2; ctx.stroke();
+        // Eyes
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(p.x-5,p.y-3,3,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x+5,p.y-3,3,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(p.x-4,p.y-3,1.5,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x+6,p.y-3,1.5,0,Math.PI*2); ctx.fill();
+        // Name tag
+        ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillText(p.name, p.x+1, p.y-23);
+        ctx.fillStyle = p.color;
+        ctx.fillText(p.name, p.x, p.y-24);
+        // HP bar
+        if (p.hp < (p.maxHp||100)) {
+            const pct = p.hp/(p.maxHp||100);
+            ctx.fillStyle = '#000'; ctx.fillRect(p.x-16,p.y-18,32,3);
+            ctx.fillStyle = pct>0.5?'#00ff88':pct>0.25?'#ffcc00':'#ff006a';
+            ctx.fillRect(p.x-16,p.y-18,32*pct,3);
+        }
     }
 
     // Local player
     ctx.globalAlpha = 0.2; ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(localPlayer.x+3,localPlayer.y+16,12,4,0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
-    ctx.fillStyle = isSprinting ? '#ff3388' : '#ff006a';
+    ctx.fillStyle = isSprinting ? lightenColor(myColor, 30) : myColor;
     ctx.beginPath(); ctx.arc(localPlayer.x,localPlayer.y,16,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle = '#aa0044'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2; ctx.stroke();
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(localPlayer.x-5,localPlayer.y-3,3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(localPlayer.x+5,localPlayer.y-3,3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(localPlayer.x-4,localPlayer.y-3,1.5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(localPlayer.x+6,localPlayer.y-3,1.5,0,Math.PI*2); ctx.fill();
     // Sprint trail
     if (isSprinting) {
-        ctx.globalAlpha = 0.15; ctx.fillStyle = '#ff006a';
-        ctx.beginPath(); ctx.arc(localPlayer.x - mouse.x*0.01, localPlayer.y - mouse.y*0.01, 12, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 0.15; ctx.fillStyle = myColor;
+        ctx.beginPath(); ctx.arc(localPlayer.x-mouse.x*0.01,localPlayer.y-mouse.y*0.01,12,0,Math.PI*2); ctx.fill();
         ctx.globalAlpha = 1;
     }
-    ctx.fillStyle = '#fff'; ctx.font = '10px Courier New'; ctx.textAlign = 'center';
-    ctx.fillText('P1', localPlayer.x, localPlayer.y+4);
-
+    // Name tag
+    ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillText(myName, localPlayer.x+1, localPlayer.y-23);
+    ctx.fillStyle = myColor;
+    ctx.fillText(myName, localPlayer.x, localPlayer.y-24);
+    // HP bar
     const hpPct = localPlayer.hp / localPlayer.maxHp;
-    ctx.fillStyle = '#000'; ctx.fillRect(localPlayer.x-16,localPlayer.y-26,32,4);
+    ctx.fillStyle = '#000'; ctx.fillRect(localPlayer.x-16,localPlayer.y-18,32,4);
     ctx.fillStyle = hpPct>0.5?'#00ff88':hpPct>0.25?'#ffcc00':'#ff006a';
-    ctx.fillRect(localPlayer.x-16,localPlayer.y-26,32*hpPct,4);
+    ctx.fillRect(localPlayer.x-16,localPlayer.y-18,32*hpPct,4);
 
     // Build preview
     if (buildMode) {
@@ -1145,25 +1406,66 @@ function render() {
     }
     ctx.globalAlpha = 1;
 
-    // Ambient darkness overlay (time-based)
+    // Darkness
     const darkness = getAmbientDarkness();
     if (darkness > 0) {
         ctx.fillStyle = `rgba(0,0,10,${darkness})`;
         ctx.fillRect(camera.x,camera.y,canvas.width,canvas.height);
-
-        // Light circle around players
-        const grad = ctx.createRadialGradient(localPlayer.x,localPlayer.y,40,localPlayer.x,localPlayer.y,220);
-        grad.addColorStop(0, 'rgba(0,0,10,0)');
-        grad.addColorStop(1, `rgba(0,0,10,${darkness * 0.8})`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(camera.x,camera.y,canvas.width,canvas.height);
+        // Light around all players
+        const allLightSources = [localPlayer, ...Object.values(remotePlayers)];
+        for (const src of allLightSources) {
+            if (!src.x) continue;
+            const grad = ctx.createRadialGradient(src.x,src.y,40,src.x,src.y,220);
+            grad.addColorStop(0, 'rgba(0,0,10,0)');
+            grad.addColorStop(1, `rgba(0,0,10,${darkness*0.8})`);
+            ctx.fillStyle = grad;
+            ctx.fillRect(camera.x,camera.y,canvas.width,canvas.height);
+        }
     }
 
     ctx.restore();
+
+    // Fade old chat messages
+    const now = Date.now();
+    const chatEl = document.getElementById('chatMessages');
+    chatEl.style.opacity = chatOpen || chatMessages.some(m => now - m.time < 5000) ? '1' : '0.3';
+}
+
+function lightenColor(hex, amt) {
+    let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    r = Math.min(255, r+amt); g = Math.min(255, g+amt); b = Math.min(255, b+amt);
+    return '#'+((r<<16)|(g<<8)|b).toString(16).padStart(6,'0');
 }
 
 // ── INPUT ──
 document.addEventListener('keydown', (e) => {
+    // Chat input handling
+    if (e.key === 'Enter') {
+        const chatInput = document.getElementById('chatInput');
+        if (chatOpen) {
+            sendChat(chatInput.value);
+            chatInput.value = '';
+            chatInput.style.display = 'none';
+            chatOpen = false;
+            chatInput.blur();
+        } else if (gameStarted) {
+            chatOpen = true;
+            chatInput.style.display = 'block';
+            chatInput.focus();
+        }
+        e.preventDefault();
+        return;
+    }
+
+    if (e.key === 'Escape' && chatOpen) {
+        document.getElementById('chatInput').style.display = 'none';
+        chatOpen = false;
+        document.getElementById('chatInput').blur();
+        return;
+    }
+
+    if (chatOpen) return; // Don't process game keys while chatting
+
     keys[e.key.toLowerCase()] = true;
     if (e.key === 'Shift') keys['shift'] = true;
     if (['arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
@@ -1193,6 +1495,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 document.addEventListener('keyup', (e) => {
+    if (chatOpen) return;
     keys[e.key.toLowerCase()] = false;
     if (e.key === 'Shift') keys['shift'] = false;
 });
@@ -1202,7 +1505,6 @@ canvas.addEventListener('mousedown',(e)=>{mouse.down=true;mouse.x=e.clientX;mous
 canvas.addEventListener('mouseup',()=>{mouse.down=false;});
 canvas.addEventListener('contextmenu',(e)=>e.preventDefault());
 
-// Save on page leave
 window.addEventListener('beforeunload', () => {
     if (isSinglePlayer && gameStarted) saveWorldData();
 });
