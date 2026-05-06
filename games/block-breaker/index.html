@@ -6,263 +6,475 @@
 <title>Block Breaker Idle — PatGames</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0a1a;color:#eee;font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center}
-#topBar{width:100%;max-width:900px;display:flex;justify-content:space-between;align-items:center;padding:10px 16px;flex-shrink:0}
-#topBar h1{font-size:1.1rem;color:#f0c040}
-#topBar .stats{display:flex;gap:16px;font-size:.85rem}
-.stat{display:flex;align-items:center;gap:4px}
-.stat .icon{font-size:1rem}
-#main{display:flex;gap:12px;width:100%;max-width:900px;flex:1;padding:0 12px 12px;min-height:0}
-canvas{background:#12122a;border-radius:12px;flex:1;min-width:0}
-#shop{width:220px;flex-shrink:0;background:#16162e;border-radius:12px;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
-#shop h2{font-size:.9rem;color:#f0c040;margin-bottom:4px;text-align:center}
-.upgrade-btn{background:#1e1e40;border:2px solid #333;border-radius:8px;padding:8px 10px;color:#eee;cursor:pointer;text-align:left;transition:.2s;font-size:.75rem}
-.upgrade-btn:hover{border-color:#f0c040;background:#2a2a50}
-.upgrade-btn.maxed{opacity:.5;cursor:default;border-color:#555}
-.upgrade-btn .name{font-weight:bold;color:#f0c040;font-size:.8rem}
-.upgrade-btn .desc{color:#aaa;margin:2px 0}
-.upgrade-btn .cost{color:#4f4;font-weight:bold}
-#levelInfo{text-align:center;padding:6px;font-size:.8rem;color:#aaa}
-#homeBtn{color:#aaa;text-decoration:none;font-size:.8rem;transition:.2s}
-#homeBtn:hover{color:#f0c040}
-#comboPopup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2.5rem;font-weight:bold;color:#f0c040;pointer-events:none;opacity:0;transition:opacity .3s;text-shadow:0 0 20px #f0c040}
+body{background:#b8b0a0;color:#222;font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+
+#frame{
+  width:95vw;max-width:960px;height:92vh;max-height:680px;
+  background:#888;border-radius:6px;padding:6px;
+  box-shadow:inset 0 0 0 3px #666,0 4px 20px rgba(0,0,0,.4);
+  display:flex;flex-direction:column;
+}
+#topBar{
+  background:#d8d0c0;border:2px solid #999;border-radius:4px;
+  display:flex;align-items:center;gap:6px;padding:4px 8px;margin-bottom:4px;flex-shrink:0;min-height:42px;
+}
+.tb-section{
+  background:#eee8d8;border:2px solid #aaa;border-radius:3px;
+  padding:3px 8px;font-size:.72rem;font-weight:bold;display:flex;align-items:center;gap:4px;
+  cursor:pointer;user-select:none;white-space:nowrap;
+}
+.tb-section:hover{background:#fff8e0}
+.tb-section.active{background:#ffe080;border-color:#c90}
+.ball-icon{width:16px;height:16px;border-radius:50%;border:2px solid #aaa;display:inline-block;flex-shrink:0}
+.tb-label{font-size:.6rem;color:#666;text-align:center;line-height:1}
+.tb-spacer{flex:1}
+#moneyBox{
+  background:#2a2;color:#fff;border:2px solid #060;border-radius:3px;
+  padding:3px 10px;font-size:.85rem;font-weight:bold;font-family:monospace;
+  display:flex;align-items:center;gap:4px;margin-left:auto;
+}
+#moneyBox .dollar{color:#ff0;font-size:1rem}
+
+#playArea{
+  flex:1;background:#e8e0c8;border:3px solid #999;border-radius:4px;
+  position:relative;overflow:hidden;
+}
+canvas{width:100%;height:100%;display:block}
+
+/* Modal overlay */
+.modal-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);
+  display:none;z-index:100;align-items:center;justify-content:center;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:#e8e0c8;border:4px solid #888;border-radius:8px;padding:20px;
+  max-width:420px;width:90%;max-height:80vh;overflow-y:auto;
+  box-shadow:0 8px 30px rgba(0,0,0,.4);
+}
+.modal h2{text-align:center;margin-bottom:12px;color:#333;font-size:1.1rem}
+.upgrade-btn{
+  background:#d8d0b8;border:2px solid #aaa;border-radius:6px;padding:8px 10px;
+  cursor:pointer;text-align:left;transition:.15s;font-size:.75rem;width:100%;margin-bottom:6px;display:block;
+}
+.upgrade-btn:hover{border-color:#c90;background:#ffe8a0}
+.upgrade-btn.maxed{opacity:.5;cursor:default}
+.upgrade-btn .name{font-weight:bold;color:#333;font-size:.8rem}
+.upgrade-btn .desc{color:#666;margin:2px 0}
+.upgrade-btn .cost{color:#2a2;font-weight:bold}
+.prestige-btn{
+  background:#f44;color:#fff;border:2px solid #a00;border-radius:6px;
+  padding:10px;text-align:center;cursor:pointer;font-weight:bold;font-size:.85rem;width:100%;margin-top:8px;
+}
+.prestige-btn:hover{background:#f66}
+.modal .close-btn{
+  display:block;margin:12px auto 0;background:#888;color:#fff;border:none;
+  border-radius:4px;padding:6px 20px;cursor:pointer;font-size:.8rem;
+}
+.modal .close-btn:hover{background:#666}
+#homeBtn{position:fixed;top:6px;left:10px;color:#666;text-decoration:none;font-size:.7rem;z-index:50}
+#homeBtn:hover{color:#333}
 </style>
 </head>
 <body>
-<div id="topBar">
-  <a id="homeBtn" href="../../">← PatGames</a>
-  <h1>Block Breaker Idle</h1>
-  <div class="stats">
-    <div class="stat"><span class="icon">💰</span><span id="goldDisplay">0</span></div>
-    <div class="stat"><span class="icon">⭐</span>Lv <span id="levelDisplay">1</span></div>
+<a id="homeBtn" href="../../">← PatGames</a>
+
+<div id="frame">
+  <div id="topBar">
+    <!-- Ball type selectors -->
+    <div class="tb-section active" data-ball="normal" onclick="selectBallType('normal')">
+      <span class="ball-icon" style="background:#ee0"></span>
+      <div class="tb-label">BALL</div>
+    </div>
+    <div class="tb-section" data-ball="fire" onclick="selectBallType('fire')">
+      <span class="ball-icon" style="background:#f60"></span>
+      <div class="tb-label">FIRE</div>
+    </div>
+    <div class="tb-section" data-ball="sniper" onclick="selectBallType('sniper')">
+      <span class="ball-icon" style="background:#ccc;border-color:#666"></span>
+      <div class="tb-label">SNIPER</div>
+    </div>
+    <div class="tb-section" data-ball="plasma" onclick="selectBallType('plasma')">
+      <span class="ball-icon" style="background:#c0f"></span>
+      <div class="tb-label">PLASMA</div>
+    </div>
+    <div class="tb-section" data-ball="poison" onclick="selectBallType('poison')">
+      <span class="ball-icon" style="background:#0c0"></span>
+      <div class="tb-label">POISON</div>
+    </div>
+
+    <div class="tb-section" style="cursor:default">
+      LEVEL<br><span id="levelDisplay" style="font-size:1rem;color:#c00">1</span>
+    </div>
+
+    <div class="tb-section" onclick="openModal('upgrades')">UPGRADES</div>
+    <div class="tb-section" onclick="openModal('prestige')">PRESTIGE</div>
+
+    <div class="tb-spacer"></div>
+
+    <div id="moneyBox">
+      <span class="dollar">$</span>
+      <span id="goldDisplay">0</span>
+    </div>
+  </div>
+
+  <div id="playArea">
+    <canvas id="c"></canvas>
   </div>
 </div>
-<div id="levelInfo">Level <span id="lvlNum">1</span> — Blocks remaining: <span id="blocksLeft">0</span></div>
-<div id="main">
-  <canvas id="c"></canvas>
-  <div id="shop">
+
+<!-- Upgrades Modal -->
+<div class="modal-overlay" id="upgradesModal">
+  <div class="modal">
     <h2>⚡ UPGRADES</h2>
     <div id="upgradeList"></div>
+    <button class="close-btn" onclick="closeModal('upgrades')">CLOSE</button>
   </div>
 </div>
-<div id="comboPopup"></div>
+
+<!-- Prestige Modal -->
+<div class="modal-overlay" id="prestigeModal">
+  <div class="modal">
+    <h2>🌟 PRESTIGE</h2>
+    <p style="text-align:center;font-size:.8rem;color:#555;margin-bottom:12px">
+      Reset your progress for permanent bonuses.<br>
+      Prestige tokens multiply ALL damage by 1.5x each.
+    </p>
+    <p style="text-align:center;font-size:1rem;margin-bottom:8px">
+      Current tokens: <b id="prestigeCount">0</b> (×<span id="prestigeMult">1.0</span> damage)
+    </p>
+    <p style="text-align:center;font-size:.75rem;color:#888;margin-bottom:12px">
+      Requires level <span id="prestigeReq">25</span>+
+    </p>
+    <button class="prestige-btn" id="prestigeBtn" onclick="doPrestige()">🌟 PRESTIGE NOW</button>
+    <button class="close-btn" onclick="closeModal('prestige')">CLOSE</button>
+  </div>
+</div>
 
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
-const comboPopup = document.getElementById('comboPopup');
 
 // --- GAME STATE ---
 let gold = 0;
 let level = 1;
 let ballDmg = 1;
-let ballSpeed = 3;
-let ballCount = 1;
+let ballSpeed = 2.5;
+let ballCount = 3;
 let critChance = 0.05;
 let critMult = 2;
 let goldMult = 1;
-let paddleW = 100;
+let prestigeTokens = 0;
 let combo = 0;
-let maxCombo = 0;
+let comboTimer = 0;
+let activeBallType = 'normal';
+
+// Ball types unlocked
+let unlockedBalls = {normal:true, fire:false, sniper:false, plasma:false, poison:false};
 
 // Upgrade definitions
 const upgrades = [
   {id:'dmg', name:'⚔️ Damage', desc:'Ball damage +1', baseCost:10, costMult:1.6, level:0, max:100, apply:()=>{ballDmg++}},
-  {id:'spd', name:'💨 Ball Speed', desc:'Ball speed +0.5', baseCost:25, costMult:1.8, level:0, max:30, apply:()=>{ballSpeed+=0.5}},
-  {id:'multi', name:'🔮 Multi Ball', desc:'+1 ball', baseCost:100, costMult:3, level:0, max:10, apply:()=>{ballCount++;spawnBall()}},
+  {id:'spd', name:'💨 Ball Speed', desc:'Ball speed +0.3', baseCost:25, costMult:1.8, level:0, max:30, apply:()=>{ballSpeed+=0.3}},
+  {id:'multi', name:'🔮 Multi Ball', desc:'+1 ball', baseCost:80, costMult:2.8, level:0, max:20, apply:()=>{ballCount++;spawnBall()}},
   {id:'crit', name:'🎯 Crit Chance', desc:'+3% crit chance', baseCost:50, costMult:1.7, level:0, max:25, apply:()=>{critChance+=0.03}},
   {id:'critdmg', name:'💥 Crit Damage', desc:'+0.5x crit multiplier', baseCost:75, costMult:1.8, level:0, max:20, apply:()=>{critMult+=0.5}},
   {id:'gold', name:'💰 Gold Bonus', desc:'+25% gold', baseCost:40, costMult:1.5, level:0, max:30, apply:()=>{goldMult+=0.25}},
-  {id:'paddle', name:'📏 Wider Paddle', desc:'Paddle +15px', baseCost:30, costMult:1.5, level:0, max:15, apply:()=>{paddleW+=15}},
+  {id:'fire', name:'🔥 Unlock Fire Ball', desc:'Splash damage on hit', baseCost:500, costMult:1, level:0, max:1, apply:()=>{unlockedBalls.fire=true;updateBallTabs()}},
+  {id:'sniper', name:'🎯 Unlock Sniper Ball', desc:'2x damage, slower', baseCost:1000, costMult:1, level:0, max:1, apply:()=>{unlockedBalls.sniper=true;updateBallTabs()}},
+  {id:'plasma', name:'💜 Unlock Plasma Ball', desc:'Pierces through blocks', baseCost:2500, costMult:1, level:0, max:1, apply:()=>{unlockedBalls.plasma=true;updateBallTabs()}},
+  {id:'poison', name:'☠️ Unlock Poison Ball', desc:'Blocks take DOT', baseCost:5000, costMult:1, level:0, max:1, apply:()=>{unlockedBalls.poison=true;updateBallTabs()}},
 ];
 
 function getCost(u){return Math.floor(u.baseCost*Math.pow(u.costMult,u.level))}
 
+// Block color palette (bright, matching reference)
+const BLOCK_COLORS = [
+  '#e04040', // red
+  '#40c040', // green
+  '#4080e0', // blue
+  '#e0c020', // yellow
+  '#20c0c0', // cyan
+  '#e060c0', // magenta/pink
+  '#e08020', // orange
+  '#80d040', // lime
+  '#c040e0', // purple
+];
+
 // --- BLOCKS ---
 let blocks = [];
-let blockRows, blockCols, blockW, blockH, blockPad=4, blockTop=10;
+let W, H; // canvas dims
 
 function makeBlocks(){
-  blocks=[];
-  blockCols = Math.min(8, 5 + Math.floor(level/5));
-  blockRows = Math.min(7, 3 + Math.floor(level/3));
-  blockW = (canvas.width - (blockCols+1)*blockPad) / blockCols;
-  blockH = 28;
-  for(let r=0;r<blockRows;r++){
-    for(let c=0;c<blockCols;c++){
-      let hp = Math.floor((level*2 + r*level*0.5) * (1 + Math.random()*0.3));
-      if(hp<1)hp=1;
-      let hue = (r*40 + c*20 + level*10) % 360;
-      blocks.push({
-        x: blockPad + c*(blockW+blockPad),
-        y: blockTop + r*(blockH+blockPad),
-        w: blockW, h: blockH,
-        hp, maxHp: hp,
-        hue, alive:true
+  blocks = [];
+  W = canvas.width;
+  H = canvas.height;
+
+  // Create multiple clusters like in the reference image
+  let numClusters = Math.min(6, 2 + Math.floor(level / 4));
+  let clusterMinCols = 4, clusterMaxCols = 6;
+  let clusterMinRows = 3, clusterMaxRows = 6;
+  let blockW = 48, blockH = 22, pad = 2;
+
+  // Define grid zones to place clusters without too much overlap
+  let zones = [];
+  let cols = numClusters <= 3 ? numClusters : Math.ceil(numClusters/2);
+  let rows = numClusters <= 3 ? 1 : 2;
+  let zoneW = W / cols;
+  let zoneH = (H - 20) / rows;
+
+  for(let r = 0; r < rows; r++){
+    for(let c = 0; c < cols; c++){
+      if(zones.length >= numClusters) break;
+      zones.push({
+        cx: zoneW * c + zoneW/2,
+        cy: zoneH * r + zoneH/2 + 10,
+        w: zoneW, h: zoneH
       });
     }
   }
-  updateBlocksLeft();
-}
 
-function updateBlocksLeft(){
-  document.getElementById('blocksLeft').textContent = blocks.filter(b=>b.alive).length;
-}
+  zones.forEach((zone, zi) => {
+    let bCols = clusterMinCols + Math.floor(Math.random() * (clusterMaxCols - clusterMinCols + 1));
+    let bRows = clusterMinRows + Math.floor(Math.random() * (clusterMaxRows - clusterMinRows + 1));
+    let clusterW = bCols * (blockW + pad);
+    let clusterH = bRows * (blockH + pad);
+    let startX = zone.cx - clusterW/2 + (Math.random()-0.5) * (zone.w * 0.15);
+    let startY = zone.cy - clusterH/2 + (Math.random()-0.5) * (zone.h * 0.15);
 
-// --- PADDLE ---
-let paddle = {x:0, y:0, w:100, h:12};
-let mouseX = 0;
+    // Clamp within canvas
+    startX = Math.max(10, Math.min(W - clusterW - 10, startX));
+    startY = Math.max(10, Math.min(H - clusterH - 10, startY));
+
+    for(let r = 0; r < bRows; r++){
+      for(let c = 0; c < bCols; c++){
+        // Random chance to skip a block for irregular shapes
+        if(Math.random() < 0.12) continue;
+
+        let hp = Math.floor((level * 2 + r * level * 0.3) * (1 + Math.random() * 0.4));
+        if(hp < 1) hp = 1;
+        let color = BLOCK_COLORS[(zi * 3 + r + c) % BLOCK_COLORS.length];
+
+        blocks.push({
+          x: startX + c * (blockW + pad),
+          y: startY + r * (blockH + pad),
+          w: blockW, h: blockH,
+          hp, maxHp: hp,
+          color, alive: true,
+          poison: 0 // DOT timer
+        });
+      }
+    }
+  });
+}
 
 // --- BALLS ---
 let balls = [];
 function spawnBall(){
-  let angle = -Math.PI/2 + (Math.random()-0.5)*1.2;
+  let angle = Math.random() * Math.PI * 2;
+  let type = activeBallType;
+  let sp = ballSpeed * (type === 'sniper' ? 0.6 : 1);
   balls.push({
-    x: canvas.width/2,
-    y: canvas.height - 40,
-    vx: Math.cos(angle)*ballSpeed,
-    vy: Math.sin(angle)*ballSpeed,
-    r: 6, trail:[]
+    x: W/2 + (Math.random()-0.5)*100,
+    y: H/2 + (Math.random()-0.5)*100,
+    vx: Math.cos(angle) * sp,
+    vy: Math.sin(angle) * sp,
+    r: type === 'sniper' ? 5 : (type === 'fire' ? 8 : 6),
+    type: type,
+    trail: []
   });
+}
+
+function getBallColor(type){
+  switch(type){
+    case 'fire': return '#ff6600';
+    case 'sniper': return '#cccccc';
+    case 'plasma': return '#cc00ff';
+    case 'poison': return '#00cc00';
+    default: return '#eecc00';
+  }
+}
+
+function getBallGlow(type){
+  switch(type){
+    case 'fire': return '#ff3300';
+    case 'sniper': return '#ffffff';
+    case 'plasma': return '#8800cc';
+    case 'poison': return '#00ff00';
+    default: return '#ffee00';
+  }
 }
 
 // --- PARTICLES ---
 let particles = [];
-function spawnParticles(x,y,hue,count){
-  for(let i=0;i<count;i++){
-    let angle=Math.random()*Math.PI*2, speed=1+Math.random()*3;
-    particles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:1,hue,size:2+Math.random()*3});
+function spawnParticles(x, y, color, count){
+  for(let i = 0; i < count; i++){
+    let angle = Math.random() * Math.PI * 2, speed = 1 + Math.random() * 3;
+    particles.push({x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, life:1, color, size:2+Math.random()*3});
   }
 }
 
 // --- DAMAGE NUMBERS ---
 let dmgNums = [];
-function spawnDmgNum(x,y,val,isCrit){
-  dmgNums.push({x,y,val,isCrit,life:1,vy:-2});
+function spawnDmgNum(x, y, val, isCrit){
+  dmgNums.push({x, y, val, isCrit, life:1, vy:-2});
 }
 
 // --- RESIZE ---
 function resize(){
-  const main = document.getElementById('main');
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
-  paddle.y = canvas.height - 24;
-  if(blocks.length===0) makeBlocks();
+  const area = document.getElementById('playArea');
+  canvas.width = area.clientWidth;
+  canvas.height = area.clientHeight;
+  W = canvas.width;
+  H = canvas.height;
+  if(blocks.length === 0) makeBlocks();
 }
 
-// --- INPUT ---
-canvas.addEventListener('mousemove', e=>{
-  const rect=canvas.getBoundingClientRect();
-  mouseX = e.clientX - rect.left;
-});
-canvas.addEventListener('touchmove', e=>{
-  e.preventDefault();
-  const rect=canvas.getBoundingClientRect();
-  mouseX = e.touches[0].clientX - rect.left;
-},{passive:false});
+// --- BALL TYPE SELECTION ---
+function selectBallType(type){
+  if(!unlockedBalls[type]) return;
+  activeBallType = type;
+  document.querySelectorAll('.tb-section[data-ball]').forEach(el => {
+    el.classList.toggle('active', el.dataset.ball === type);
+  });
+}
+
+function updateBallTabs(){
+  document.querySelectorAll('.tb-section[data-ball]').forEach(el => {
+    let type = el.dataset.ball;
+    el.style.opacity = unlockedBalls[type] ? '1' : '0.4';
+    el.style.pointerEvents = unlockedBalls[type] ? 'auto' : 'none';
+  });
+}
+
+// --- MODALS ---
+function openModal(id){
+  if(id === 'upgrades') renderShop();
+  if(id === 'prestige') renderPrestige();
+  document.getElementById(id+'Modal').classList.add('open');
+}
+function closeModal(id){
+  document.getElementById(id+'Modal').classList.remove('open');
+}
 
 // --- COMBO ---
-let comboTimer = 0;
 function addCombo(){
   combo++;
   comboTimer = 120;
-  if(combo > maxCombo) maxCombo = combo;
-  if(combo >= 5 && combo % 5 === 0){
-    comboPopup.textContent = `🔥 ${combo}x COMBO!`;
-    comboPopup.style.opacity = '1';
-    setTimeout(()=>comboPopup.style.opacity='0', 800);
-  }
 }
 
 // --- MAIN LOOP ---
 function update(){
-  // Paddle
-  paddle.w = paddleW;
-  paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, mouseX - paddle.w/2));
-
   // Combo timer
   if(comboTimer > 0) comboTimer--;
   else combo = 0;
 
-  // Balls
-  balls.forEach(ball=>{
+  // Balls — fully automatic, bounce off all walls
+  balls.forEach(ball => {
     ball.trail.push({x:ball.x, y:ball.y});
-    if(ball.trail.length > 8) ball.trail.shift();
+    if(ball.trail.length > 10) ball.trail.shift();
+
+    let sp = ballSpeed * (ball.type === 'sniper' ? 0.6 : 1);
 
     ball.x += ball.vx;
     ball.y += ball.vy;
 
-    // Wall bounce
-    if(ball.x - ball.r < 0){ball.x = ball.r; ball.vx = Math.abs(ball.vx);}
-    if(ball.x + ball.r > canvas.width){ball.x = canvas.width - ball.r; ball.vx = -Math.abs(ball.vx);}
-    if(ball.y - ball.r < 0){ball.y = ball.r; ball.vy = Math.abs(ball.vy);}
+    // Wall bounce (all 4 sides)
+    if(ball.x - ball.r < 0){ ball.x = ball.r; ball.vx = Math.abs(ball.vx); }
+    if(ball.x + ball.r > W){ ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); }
+    if(ball.y - ball.r < 0){ ball.y = ball.r; ball.vy = Math.abs(ball.vy); }
+    if(ball.y + ball.r > H){ ball.y = H - ball.r; ball.vy = -Math.abs(ball.vy); }
 
-    // Paddle bounce
-    if(ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y + ball.r <= paddle.y + paddle.h + ball.vy*2
-       && ball.x >= paddle.x && ball.x <= paddle.x + paddle.w){
-      ball.vy = -Math.abs(ball.vy);
-      let offset = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
-      ball.vx = offset * ballSpeed * 1.2;
-      ball.y = paddle.y - ball.r;
-      // Normalize speed
-      let sp = Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy);
-      ball.vx = ball.vx/sp*ballSpeed;
-      ball.vy = ball.vy/sp*ballSpeed;
-    }
-
-    // Fall off bottom — respawn
-    if(ball.y - ball.r > canvas.height){
-      ball.x = paddle.x + paddle.w/2;
-      ball.y = paddle.y - 20;
-      let angle = -Math.PI/2 + (Math.random()-0.5)*0.8;
-      ball.vx = Math.cos(angle)*ballSpeed;
-      ball.vy = Math.sin(angle)*ballSpeed;
-      combo = 0;
+    // Normalize speed
+    let curSp = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
+    if(curSp > 0.1){
+      ball.vx = ball.vx/curSp * sp;
+      ball.vy = ball.vy/curSp * sp;
     }
 
     // Block collision
-    blocks.forEach(block=>{
+    blocks.forEach(block => {
       if(!block.alive) return;
       if(ball.x + ball.r > block.x && ball.x - ball.r < block.x + block.w &&
          ball.y + ball.r > block.y && ball.y - ball.r < block.y + block.h){
-        // Damage
+
         let isCrit = Math.random() < critChance;
         let dmg = isCrit ? Math.floor(ballDmg * critMult) : ballDmg;
-        let comboBonus = 1 + combo * 0.05;
-        dmg = Math.floor(dmg * comboBonus);
+        let prestigeBonus = 1 + prestigeTokens * 0.5;
+        let comboBonus = 1 + combo * 0.03;
+        let typeMult = ball.type === 'sniper' ? 2 : 1;
+        dmg = Math.floor(dmg * comboBonus * prestigeBonus * typeMult);
+
         block.hp -= dmg;
         spawnDmgNum(ball.x, block.y, dmg, isCrit);
         addCombo();
+
+        // Fire ball splash
+        if(ball.type === 'fire'){
+          let splashDmg = Math.floor(dmg * 0.3);
+          blocks.forEach(nb => {
+            if(!nb.alive || nb === block) return;
+            let dx = (nb.x+nb.w/2) - (block.x+block.w/2);
+            let dy = (nb.y+nb.h/2) - (block.y+block.h/2);
+            if(Math.sqrt(dx*dx+dy*dy) < 80){
+              nb.hp -= splashDmg;
+              if(nb.hp <= 0){ nb.alive = false; gold += Math.floor((nb.maxHp*0.5+level)*goldMult); spawnParticles(nb.x+nb.w/2,nb.y+nb.h/2,nb.color,8);}
+            }
+          });
+          spawnParticles(block.x+block.w/2, block.y+block.h/2, '#ff6600', 8);
+        }
+
+        // Poison ball DOT
+        if(ball.type === 'poison'){
+          block.poison = 180; // 3 seconds at 60fps
+        }
 
         if(block.hp <= 0){
           block.alive = false;
           let reward = Math.floor((block.maxHp * 0.5 + level) * goldMult);
           gold += reward;
-          spawnParticles(block.x+block.w/2, block.y+block.h/2, block.hue, 12);
-          updateBlocksLeft();
+          spawnParticles(block.x+block.w/2, block.y+block.h/2, block.color, 12);
         } else {
-          spawnParticles(ball.x, ball.y, block.hue, 4);
+          spawnParticles(ball.x, ball.y, block.color, 4);
         }
 
-        // Bounce
-        let overlapX = Math.min(ball.x+ball.r - block.x, block.x+block.w - (ball.x-ball.r));
-        let overlapY = Math.min(ball.y+ball.r - block.y, block.y+block.h - (ball.y-ball.r));
-        if(overlapX < overlapY) ball.vx = -ball.vx;
-        else ball.vy = -ball.vy;
+        // Bounce (plasma pierces)
+        if(ball.type !== 'plasma'){
+          let overlapX = Math.min(ball.x+ball.r - block.x, block.x+block.w - (ball.x-ball.r));
+          let overlapY = Math.min(ball.y+ball.r - block.y, block.y+block.h - (ball.y-ball.r));
+          if(overlapX < overlapY) ball.vx = -ball.vx;
+          else ball.vy = -ball.vy;
+        }
       }
     });
   });
 
+  // Poison DOT on blocks
+  blocks.forEach(block => {
+    if(!block.alive || block.poison <= 0) return;
+    block.poison--;
+    if(block.poison % 20 === 0){
+      let dotDmg = Math.max(1, Math.floor(ballDmg * 0.2 * (1 + prestigeTokens * 0.5)));
+      block.hp -= dotDmg;
+      spawnDmgNum(block.x + block.w/2, block.y, dotDmg, false);
+      if(block.hp <= 0){
+        block.alive = false;
+        gold += Math.floor((block.maxHp*0.5+level)*goldMult);
+        spawnParticles(block.x+block.w/2, block.y+block.h/2, '#00cc00', 8);
+      }
+    }
+  });
+
   // Particles
-  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.05;p.life-=0.025;});
-  particles = particles.filter(p=>p.life>0);
+  particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life-=0.025; });
+  particles = particles.filter(p => p.life > 0);
 
   // Damage numbers
-  dmgNums.forEach(d=>{d.y+=d.vy;d.vy-=0.02;d.life-=0.02;});
-  dmgNums = dmgNums.filter(d=>d.life>0);
+  dmgNums.forEach(d => { d.y+=d.vy; d.vy-=0.02; d.life-=0.02; });
+  dmgNums = dmgNums.filter(d => d.life > 0);
 
-  // Level complete check
-  if(blocks.every(b=>!b.alive)){
+  // Level complete
+  if(blocks.every(b => !b.alive)){
     level++;
     gold += Math.floor(level * 10 * goldMult);
     makeBlocks();
@@ -271,117 +483,156 @@ function update(){
   // UI
   document.getElementById('goldDisplay').textContent = formatNum(gold);
   document.getElementById('levelDisplay').textContent = level;
-  document.getElementById('lvlNum').textContent = level;
 }
 
 function formatNum(n){
-  if(n>=1e6) return (n/1e6).toFixed(1)+'M';
-  if(n>=1e3) return (n/1e3).toFixed(1)+'K';
+  if(n >= 1e9) return (n/1e9).toFixed(1)+'B';
+  if(n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if(n >= 1e3) return (n/1e3).toFixed(1)+'K';
   return n;
 }
 
 function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#e8e0c8';
+  ctx.fillRect(0, 0, W, H);
 
   // Blocks
-  blocks.forEach(block=>{
+  blocks.forEach(block => {
     if(!block.alive) return;
     let pct = block.hp / block.maxHp;
-    ctx.fillStyle = `hsla(${block.hue},70%,${30+pct*25}%,1)`;
-    ctx.beginPath();
-    roundRect(ctx, block.x, block.y, block.w, block.h, 4);
-    ctx.fill();
-    // HP bar
-    ctx.fillStyle = `hsla(${block.hue},80%,60%,0.8)`;
-    ctx.fillRect(block.x+2, block.y+block.h-4, (block.w-4)*pct, 3);
-    // HP text
-    if(block.w > 30){
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(formatNum(block.hp), block.x+block.w/2, block.y+block.h/2+3);
+
+    // Block fill
+    ctx.fillStyle = block.color;
+    ctx.fillRect(block.x, block.y, block.w, block.h);
+
+    // Lighter inner border
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(block.x+1, block.y+1, block.w-2, block.h-2);
+
+    // Darker outer border
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(block.x, block.y, block.w, block.h);
+
+    // Poison glow
+    if(block.poison > 0){
+      ctx.fillStyle = 'rgba(0,200,0,0.25)';
+      ctx.fillRect(block.x, block.y, block.w, block.h);
     }
-  });
 
-  // Paddle
-  let grad = ctx.createLinearGradient(paddle.x,paddle.y,paddle.x+paddle.w,paddle.y);
-  grad.addColorStop(0,'#f0c040');
-  grad.addColorStop(1,'#e08020');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  roundRect(ctx, paddle.x, paddle.y, paddle.w, paddle.h, 6);
-  ctx.fill();
-
-  // Balls
-  balls.forEach(ball=>{
-    // Trail
-    ball.trail.forEach((t,i)=>{
-      let alpha = i/ball.trail.length * 0.3;
-      ctx.fillStyle = `rgba(240,192,64,${alpha})`;
-      ctx.beginPath();
-      ctx.arc(t.x,t.y,ball.r*(i/ball.trail.length),0,Math.PI*2);
-      ctx.fill();
-    });
-    // Ball glow
-    ctx.shadowColor = '#f0c040';
-    ctx.shadowBlur = 12;
+    // HP text on block
     ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
-    ctx.fill();
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 2;
+    ctx.fillText(formatNum(block.hp), block.x + block.w/2, block.y + block.h/2);
     ctx.shadowBlur = 0;
   });
 
+  // Balls
+  balls.forEach(ball => {
+    let col = getBallColor(ball.type);
+    let glow = getBallGlow(ball.type);
+
+    // Trail
+    ball.trail.forEach((t, i) => {
+      let alpha = (i / ball.trail.length) * 0.25;
+      ctx.fillStyle = col;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, ball.r * (i/ball.trail.length), 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    // Glow
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 10;
+
+    // Ball body
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+    ctx.fill();
+
+    // Highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.beginPath();
+    ctx.arc(ball.x - ball.r*0.25, ball.y - ball.r*0.25, ball.r*0.4, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // Sniper crosshair
+    if(ball.type === 'sniper'){
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(ball.x - ball.r*1.5, ball.y);
+      ctx.lineTo(ball.x + ball.r*1.5, ball.y);
+      ctx.moveTo(ball.x, ball.y - ball.r*1.5);
+      ctx.lineTo(ball.x, ball.y + ball.r*1.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.r*1.3, 0, Math.PI*2);
+      ctx.stroke();
+    }
+
+    // Fire effect
+    if(ball.type === 'fire' && Math.random() < 0.3){
+      spawnParticles(ball.x, ball.y, '#ff6600', 1);
+    }
+  });
+
   // Particles
-  particles.forEach(p=>{
+  particles.forEach(p => {
     ctx.globalAlpha = p.life;
-    ctx.fillStyle = `hsl(${p.hue},80%,60%)`;
-    ctx.fillRect(p.x-p.size/2, p.y-p.size/2, p.size, p.size);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
   });
   ctx.globalAlpha = 1;
 
   // Damage numbers
-  dmgNums.forEach(d=>{
+  dmgNums.forEach(d => {
     ctx.globalAlpha = d.life;
-    ctx.font = d.isCrit ? 'bold 16px sans-serif' : '12px sans-serif';
-    ctx.fillStyle = d.isCrit ? '#ff4444' : '#fff';
+    ctx.font = d.isCrit ? 'bold 14px sans-serif' : '11px sans-serif';
+    ctx.fillStyle = d.isCrit ? '#ff2222' : '#333';
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillText(d.val, d.x, d.y);
   });
   ctx.globalAlpha = 1;
 
   // Combo display
-  if(combo >= 3){
-    ctx.fillStyle = `rgba(240,192,64,${0.3+Math.sin(Date.now()/200)*0.1})`;
-    ctx.font = 'bold 18px sans-serif';
+  if(combo >= 5){
+    ctx.fillStyle = 'rgba(200,100,0,0.7)';
+    ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`🔥 ${combo}x`, 10, canvas.height - 10);
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('🔥 ' + combo + 'x COMBO', 10, H - 10);
   }
-}
-
-function roundRect(ctx,x,y,w,h,r){
-  ctx.moveTo(x+r,y);
-  ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);
-  ctx.arcTo(x,y,x+w,y,r);
-  ctx.closePath();
 }
 
 // --- SHOP ---
 function renderShop(){
   const list = document.getElementById('upgradeList');
   list.innerHTML = '';
-  upgrades.forEach(u=>{
+  upgrades.forEach(u => {
     let cost = getCost(u);
     let maxed = u.level >= u.max;
     let btn = document.createElement('button');
-    btn.className = 'upgrade-btn' + (maxed?' maxed':'');
-    btn.innerHTML = `<div class="name">${u.name} (${u.level}/${u.max})</div>
+    btn.className = 'upgrade-btn' + (maxed ? ' maxed' : '');
+    btn.innerHTML = `<div class="name">${u.name} ${u.max>1?'('+u.level+'/'+u.max+')':''}</div>
       <div class="desc">${u.desc}</div>
-      <div class="cost">${maxed?'MAXED':'💰 '+formatNum(cost)}</div>`;
+      <div class="cost">${maxed ? '✅ OWNED' : '$ '+formatNum(cost)}</div>`;
     if(!maxed){
-      btn.onclick = ()=>{
+      btn.onclick = () => {
         if(gold >= cost){
           gold -= cost;
           u.level++;
@@ -395,11 +646,44 @@ function renderShop(){
   });
 }
 
+// --- PRESTIGE ---
+function renderPrestige(){
+  let req = 25 + prestigeTokens * 25;
+  document.getElementById('prestigeCount').textContent = prestigeTokens;
+  document.getElementById('prestigeMult').textContent = (1 + prestigeTokens * 0.5).toFixed(1);
+  document.getElementById('prestigeReq').textContent = req;
+  document.getElementById('prestigeBtn').disabled = level < req;
+  document.getElementById('prestigeBtn').style.opacity = level >= req ? '1' : '0.4';
+}
+
+function doPrestige(){
+  let req = 25 + prestigeTokens * 25;
+  if(level < req) return;
+  prestigeTokens++;
+  // Reset
+  gold = 0;
+  level = 1;
+  ballDmg = 1;
+  ballSpeed = 2.5;
+  ballCount = 3;
+  critChance = 0.05;
+  critMult = 2;
+  goldMult = 1;
+  upgrades.forEach(u => u.level = 0);
+  // Keep unlocked ball types & prestige tokens
+  balls = [];
+  makeBlocks();
+  for(let i = 0; i < ballCount; i++) spawnBall();
+  closeModal('prestige');
+  saveGame();
+}
+
 // --- SAVE/LOAD ---
 function saveGame(){
   const data = {
-    gold, level, ballDmg, ballSpeed, ballCount, critChance, critMult, goldMult, paddleW,
-    upgrades: upgrades.map(u=>u.level)
+    gold, level, ballDmg, ballSpeed, ballCount, critChance, critMult, goldMult, prestigeTokens,
+    activeBallType, unlockedBalls,
+    upgrades: upgrades.map(u => u.level)
   };
   localStorage.setItem('blockBreakerIdle', JSON.stringify(data));
 }
@@ -408,17 +692,19 @@ function loadGame(){
   try{
     const data = JSON.parse(localStorage.getItem('blockBreakerIdle'));
     if(!data) return;
-    gold = data.gold||0;
-    level = data.level||1;
-    ballDmg = data.ballDmg||1;
-    ballSpeed = data.ballSpeed||3;
-    ballCount = data.ballCount||1;
-    critChance = data.critChance||0.05;
-    critMult = data.critMult||2;
-    goldMult = data.goldMult||1;
-    paddleW = data.paddleW||100;
+    gold = data.gold || 0;
+    level = data.level || 1;
+    ballDmg = data.ballDmg || 1;
+    ballSpeed = data.ballSpeed || 2.5;
+    ballCount = data.ballCount || 3;
+    critChance = data.critChance || 0.05;
+    critMult = data.critMult || 2;
+    goldMult = data.goldMult || 1;
+    prestigeTokens = data.prestigeTokens || 0;
+    activeBallType = data.activeBallType || 'normal';
+    if(data.unlockedBalls) Object.assign(unlockedBalls, data.unlockedBalls);
     if(data.upgrades){
-      data.upgrades.forEach((lv,i)=>{
+      data.upgrades.forEach((lv, i) => {
         if(upgrades[i]) upgrades[i].level = lv;
       });
     }
@@ -429,11 +715,11 @@ function loadGame(){
 function init(){
   loadGame();
   resize();
-  // Spawn balls
-  for(let i=0;i<ballCount;i++) spawnBall();
-  renderShop();
+  updateBallTabs();
+  selectBallType(activeBallType);
 
-  // Auto-save every 30s
+  for(let i = 0; i < ballCount; i++) spawnBall();
+
   setInterval(saveGame, 30000);
 
   function loop(){
@@ -444,7 +730,7 @@ function init(){
   loop();
 }
 
-window.addEventListener('resize', ()=>{
+window.addEventListener('resize', () => {
   resize();
   makeBlocks();
 });
