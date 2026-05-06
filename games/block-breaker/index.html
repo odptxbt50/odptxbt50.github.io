@@ -2,639 +2,1100 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Block Breaker Idle — PatGames</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#b8b0a0;color:#222;font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+html,body{background:#050510;color:#eee;font-family:'Rajdhani',sans-serif;overflow:hidden;height:100%;width:100%}
+body{display:flex;flex-direction:column}
 
-#frame{
-  width:95vw;max-width:960px;height:92vh;max-height:680px;
-  background:#888;border-radius:6px;padding:6px;
-  box-shadow:inset 0 0 0 3px #666,0 4px 20px rgba(0,0,0,.4);
-  display:flex;flex-direction:column;
+/* ===== TOP HUD ===== */
+#hud{
+  height:52px;flex-shrink:0;
+  background:linear-gradient(180deg,#0c0c20 0%,#08081a 100%);
+  border-bottom:2px solid #1a1a3a;
+  display:flex;align-items:center;padding:0 12px;gap:8px;
+  box-shadow:0 2px 20px rgba(0,200,255,.1);
+  z-index:10;
 }
-#topBar{
-  background:#d8d0c0;border:2px solid #999;border-radius:4px;
-  display:flex;align-items:center;gap:6px;padding:4px 8px;margin-bottom:4px;flex-shrink:0;min-height:42px;
-}
-.tb-section{
-  background:#eee8d8;border:2px solid #aaa;border-radius:3px;
-  padding:3px 8px;font-size:.72rem;font-weight:bold;display:flex;align-items:center;gap:4px;
-  cursor:pointer;user-select:none;white-space:nowrap;
-}
-.tb-section:hover{background:#fff8e0}
-.tb-section.active{background:#ffe080;border-color:#c90}
-.ball-icon{width:16px;height:16px;border-radius:50%;border:2px solid #aaa;display:inline-block;flex-shrink:0}
-.tb-label{font-size:.6rem;color:#666;text-align:center;line-height:1}
-.tb-spacer{flex:1}
-#moneyBox{
-  background:#2a2;color:#fff;border:2px solid #060;border-radius:3px;
-  padding:3px 10px;font-size:.85rem;font-weight:bold;font-family:monospace;
-  display:flex;align-items:center;gap:4px;margin-left:auto;
-}
-#moneyBox .dollar{color:#ff0;font-size:1rem}
-
-#playArea{
-  flex:1;background:#e8e0c8;border:3px solid #999;border-radius:4px;
+.hud-block{
+  background:#0a0a20;border:1px solid #222;border-radius:6px;
+  padding:4px 10px;display:flex;align-items:center;gap:6px;
+  font-family:'Orbitron',monospace;font-size:.7rem;letter-spacing:.5px;
   position:relative;overflow:hidden;
 }
-canvas{width:100%;height:100%;display:block}
+.hud-block::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,200,255,.3),transparent)}
+.hud-label{font-size:.5rem;color:#556;text-transform:uppercase;letter-spacing:1px}
+.hud-val{color:#0ff;font-weight:700;font-size:.85rem}
+.hud-val.gold{color:#ffd700}
+.hud-val.red{color:#f44}
+.hud-val.green{color:#0f0}
 
-/* Modal overlay */
+.ball-selector{
+  display:flex;gap:3px;
+}
+.ball-sel{
+  width:30px;height:30px;border-radius:50%;border:2px solid #333;
+  cursor:pointer;position:relative;transition:.2s;
+  display:flex;align-items:center;justify-content:center;
+}
+.ball-sel:hover{transform:scale(1.15);border-color:#888}
+.ball-sel.active{border-color:#fff;box-shadow:0 0 12px var(--glow)}
+.ball-sel.locked{opacity:.25;cursor:default;filter:grayscale(1)}
+.ball-sel .inner{width:16px;height:16px;border-radius:50%}
+.ball-sel .lock{position:absolute;font-size:8px;bottom:-2px;right:-2px}
+
+.hud-btn{
+  background:linear-gradient(180deg,#1a1a3a,#0c0c20);
+  border:1px solid #333;border-radius:6px;
+  padding:6px 14px;color:#aaa;font-family:'Orbitron',monospace;
+  font-size:.6rem;cursor:pointer;letter-spacing:1px;text-transform:uppercase;
+  transition:.2s;position:relative;overflow:hidden;
+}
+.hud-btn::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,200,255,.4),transparent)}
+.hud-btn:hover{border-color:#0ff;color:#0ff;box-shadow:0 0 15px rgba(0,255,255,.15)}
+.hud-btn.prestige-btn{border-color:#a040ff55}
+.hud-btn.prestige-btn:hover{border-color:#a040ff;color:#a040ff;box-shadow:0 0 15px rgba(160,64,255,.2)}
+
+.hud-spacer{flex:1}
+
+#homeBtn{color:#445;text-decoration:none;font-size:.65rem;font-family:'Orbitron',monospace;letter-spacing:1px;transition:.2s}
+#homeBtn:hover{color:#0ff}
+
+/* ===== GAME AREA ===== */
+#gameWrap{flex:1;position:relative;overflow:hidden}
+canvas{width:100%;height:100%;display:block;background:#050510}
+
+/* ===== WAVE BANNER ===== */
+#waveBanner{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+  font-family:'Orbitron',monospace;font-size:2.5rem;font-weight:900;
+  color:#fff;text-shadow:0 0 30px #0ff,0 0 60px #0088ff;
+  pointer-events:none;opacity:0;z-index:20;
+  transition:all .4s cubic-bezier(.17,.67,.35,1.2);
+}
+#waveBanner.show{transform:translate(-50%,-50%) scale(1);opacity:1}
+#waveBanner .sub{font-size:.7rem;color:#0ff;letter-spacing:3px;display:block;text-align:center;margin-top:4px}
+
+/* ===== BOSS HP BAR ===== */
+#bossBar{
+  position:absolute;top:56px;left:50%;transform:translateX(-50%);
+  width:60%;max-width:400px;display:none;z-index:15;
+}
+#bossBar .boss-name{font-family:'Orbitron',monospace;font-size:.6rem;color:#f44;letter-spacing:2px;text-align:center;margin-bottom:2px;text-shadow:0 0 10px #f00}
+#bossBar .bar-outer{height:8px;background:#1a0000;border:1px solid #f44;border-radius:4px;overflow:hidden}
+#bossBar .bar-inner{height:100%;background:linear-gradient(90deg,#f00,#ff4400);border-radius:4px;transition:width .1s}
+
+/* ===== POWER-UP FLASH ===== */
+#powerFlash{
+  position:absolute;top:60px;left:50%;transform:translateX(-50%);
+  font-family:'Orbitron',monospace;font-size:.8rem;font-weight:700;
+  color:#ffd700;text-shadow:0 0 20px #ffd700;
+  pointer-events:none;opacity:0;transition:opacity .3s;z-index:20;
+}
+
+/* ===== COMBO METER ===== */
+#comboMeter{
+  position:absolute;bottom:12px;left:12px;z-index:15;
+  font-family:'Orbitron',monospace;
+}
+#comboCount{font-size:1.4rem;font-weight:900;color:#ff6600;text-shadow:0 0 15px #f60}
+#comboLabel{font-size:.5rem;color:#884400;letter-spacing:2px}
+#comboBar{width:100px;height:3px;background:#221100;border-radius:2px;margin-top:2px}
+#comboBarFill{height:100%;background:linear-gradient(90deg,#f60,#ff0);border-radius:2px;width:0%;transition:width .1s}
+
+/* ===== DPS METER ===== */
+#dpsMeter{
+  position:absolute;bottom:12px;right:12px;z-index:15;
+  font-family:'Orbitron',monospace;text-align:right;
+}
+#dpsVal{font-size:1rem;font-weight:700;color:#0f0;text-shadow:0 0 10px #0f0}
+#dpsLabel{font-size:.45rem;color:#084;letter-spacing:2px}
+
+/* ===== MODAL ===== */
 .modal-overlay{
-  position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.85);backdrop-filter:blur(4px);
   display:none;z-index:100;align-items:center;justify-content:center;
 }
 .modal-overlay.open{display:flex}
 .modal{
-  background:#e8e0c8;border:4px solid #888;border-radius:8px;padding:20px;
-  max-width:420px;width:90%;max-height:80vh;overflow-y:auto;
-  box-shadow:0 8px 30px rgba(0,0,0,.4);
+  background:#0a0a20;border:1px solid #1a1a4a;border-radius:12px;
+  padding:24px;max-width:500px;width:92%;max-height:85vh;overflow-y:auto;
+  box-shadow:0 0 60px rgba(0,100,255,.15);position:relative;
 }
-.modal h2{text-align:center;margin-bottom:12px;color:#333;font-size:1.1rem}
-.upgrade-btn{
-  background:#d8d0b8;border:2px solid #aaa;border-radius:6px;padding:8px 10px;
-  cursor:pointer;text-align:left;transition:.15s;font-size:.75rem;width:100%;margin-bottom:6px;display:block;
+.modal::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#0ff,transparent)}
+.modal h2{text-align:center;margin-bottom:16px;color:#0ff;font-family:'Orbitron',monospace;font-size:1rem;letter-spacing:3px;text-shadow:0 0 20px rgba(0,255,255,.3)}
+.modal-tabs{display:flex;gap:4px;margin-bottom:12px}
+.modal-tab{
+  flex:1;padding:8px;text-align:center;background:#0c0c25;border:1px solid #222;
+  border-radius:6px;cursor:pointer;font-family:'Orbitron',monospace;font-size:.55rem;
+  color:#556;letter-spacing:1px;transition:.2s;
 }
-.upgrade-btn:hover{border-color:#c90;background:#ffe8a0}
-.upgrade-btn.maxed{opacity:.5;cursor:default}
-.upgrade-btn .name{font-weight:bold;color:#333;font-size:.8rem}
-.upgrade-btn .desc{color:#666;margin:2px 0}
-.upgrade-btn .cost{color:#2a2;font-weight:bold}
-.prestige-btn{
-  background:#f44;color:#fff;border:2px solid #a00;border-radius:6px;
-  padding:10px;text-align:center;cursor:pointer;font-weight:bold;font-size:.85rem;width:100%;margin-top:8px;
+.modal-tab:hover{border-color:#0ff55}
+.modal-tab.active{border-color:#0ff;color:#0ff;background:#0a1a2a;box-shadow:0 0 10px rgba(0,255,255,.1)}
+
+.upgrade-card{
+  background:#0c0c25;border:1px solid #1a1a3a;border-radius:8px;
+  padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:.2s;
+  display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;
 }
-.prestige-btn:hover{background:#f66}
-.modal .close-btn{
-  display:block;margin:12px auto 0;background:#888;color:#fff;border:none;
-  border-radius:4px;padding:6px 20px;cursor:pointer;font-size:.8rem;
+.upgrade-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent,#0ff)22,transparent)}
+.upgrade-card:hover{border-color:var(--accent,#0ff);box-shadow:0 0 15px rgba(0,255,255,.08)}
+.upgrade-card.maxed{opacity:.4;cursor:default}
+.upgrade-card.affordable{border-color:#0f0;box-shadow:0 0 10px rgba(0,255,0,.08)}
+.upg-icon{font-size:1.3rem;width:32px;text-align:center;flex-shrink:0}
+.upg-info{flex:1;min-width:0}
+.upg-name{font-weight:700;color:#ddd;font-size:.8rem}
+.upg-desc{color:#556;font-size:.65rem;margin-top:1px}
+.upg-right{text-align:right;flex-shrink:0}
+.upg-cost{color:#ffd700;font-weight:700;font-size:.75rem;font-family:'Orbitron',monospace}
+.upg-level{color:#445;font-size:.55rem;font-family:'Orbitron',monospace;margin-top:2px}
+
+.close-x{
+  position:absolute;top:12px;right:16px;background:none;border:none;
+  color:#445;font-size:1.2rem;cursor:pointer;transition:.2s;
 }
-.modal .close-btn:hover{background:#666}
-#homeBtn{position:fixed;top:6px;left:10px;color:#666;text-decoration:none;font-size:.7rem;z-index:50}
-#homeBtn:hover{color:#333}
+.close-x:hover{color:#f44}
+
+/* Prestige modal */
+.prestige-info{text-align:center;margin-bottom:16px}
+.prestige-tokens{font-family:'Orbitron',monospace;font-size:2rem;color:#a040ff;text-shadow:0 0 30px rgba(160,64,255,.4)}
+.prestige-mult{font-size:.75rem;color:#7730aa;margin-top:4px}
+.prestige-go{
+  display:block;width:100%;padding:14px;margin-top:12px;
+  background:linear-gradient(180deg,#6020aa,#4010aa);border:1px solid #8040dd;
+  border-radius:8px;color:#fff;font-family:'Orbitron',monospace;font-size:.8rem;
+  cursor:pointer;letter-spacing:2px;transition:.2s;
+}
+.prestige-go:hover{box-shadow:0 0 30px rgba(160,64,255,.3);border-color:#bb66ff}
+.prestige-go:disabled{opacity:.3;cursor:default}
+
+/* Stats modal */
+.stat-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #111;font-size:.75rem}
+.stat-row .label{color:#556}
+.stat-row .val{color:#0ff;font-family:'Orbitron',monospace}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:#050510}
+::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
 </style>
 </head>
 <body>
-<a id="homeBtn" href="../../">← PatGames</a>
 
-<div id="frame">
-  <div id="topBar">
-    <!-- Ball type selectors -->
-    <div class="tb-section active" data-ball="normal" onclick="selectBallType('normal')">
-      <span class="ball-icon" style="background:#ee0"></span>
-      <div class="tb-label">BALL</div>
-    </div>
-    <div class="tb-section" data-ball="fire" onclick="selectBallType('fire')">
-      <span class="ball-icon" style="background:#f60"></span>
-      <div class="tb-label">FIRE</div>
-    </div>
-    <div class="tb-section" data-ball="sniper" onclick="selectBallType('sniper')">
-      <span class="ball-icon" style="background:#ccc;border-color:#666"></span>
-      <div class="tb-label">SNIPER</div>
-    </div>
-    <div class="tb-section" data-ball="plasma" onclick="selectBallType('plasma')">
-      <span class="ball-icon" style="background:#c0f"></span>
-      <div class="tb-label">PLASMA</div>
-    </div>
-    <div class="tb-section" data-ball="poison" onclick="selectBallType('poison')">
-      <span class="ball-icon" style="background:#0c0"></span>
-      <div class="tb-label">POISON</div>
-    </div>
+<!-- HUD -->
+<div id="hud">
+  <a id="homeBtn" href="../../">◂ PATGAMES</a>
 
-    <div class="tb-section" style="cursor:default">
-      LEVEL<br><span id="levelDisplay" style="font-size:1rem;color:#c00">1</span>
-    </div>
+  <div class="ball-selector" id="ballSelector"></div>
 
-    <div class="tb-section" onclick="openModal('upgrades')">UPGRADES</div>
-    <div class="tb-section" onclick="openModal('prestige')">PRESTIGE</div>
-
-    <div class="tb-spacer"></div>
-
-    <div id="moneyBox">
-      <span class="dollar">$</span>
-      <span id="goldDisplay">0</span>
-    </div>
+  <div class="hud-block">
+    <div><div class="hud-label">WAVE</div><div class="hud-val red" id="levelDisplay">1</div></div>
+  </div>
+  <div class="hud-block">
+    <div><div class="hud-label">DPS</div><div class="hud-val green" id="dpsDisplay">0</div></div>
   </div>
 
-  <div id="playArea">
-    <canvas id="c"></canvas>
+  <div class="hud-spacer"></div>
+
+  <button class="hud-btn" onclick="openModal('shop')">UPGRADES</button>
+  <button class="hud-btn prestige-btn" onclick="openModal('prestige')">PRESTIGE</button>
+  <button class="hud-btn" onclick="openModal('stats')">STATS</button>
+
+  <div class="hud-block" style="border-color:#ffd70033">
+    <div><div class="hud-label">GOLD</div><div class="hud-val gold" id="goldDisplay">0</div></div>
   </div>
 </div>
 
-<!-- Upgrades Modal -->
-<div class="modal-overlay" id="upgradesModal">
+<!-- GAME -->
+<div id="gameWrap">
+  <canvas id="c"></canvas>
+  <div id="waveBanner"><span id="waveText"></span><span class="sub" id="waveSub"></span></div>
+  <div id="bossBar"><div class="boss-name" id="bossName">BOSS</div><div class="bar-outer"><div class="bar-inner" id="bossHpBar"></div></div></div>
+  <div id="powerFlash"></div>
+  <div id="comboMeter">
+    <div id="comboCount" style="display:none">0</div>
+    <div id="comboLabel" style="display:none">COMBO</div>
+    <div id="comboBar" style="display:none"><div id="comboBarFill"></div></div>
+  </div>
+  <div id="dpsMeter">
+    <div id="dpsVal"></div>
+    <div id="dpsLabel">DAMAGE/SEC</div>
+  </div>
+</div>
+
+<!-- SHOP MODAL -->
+<div class="modal-overlay" id="shopModal">
   <div class="modal">
-    <h2>⚡ UPGRADES</h2>
+    <button class="close-x" onclick="closeModal('shop')">✕</button>
+    <h2>UPGRADES</h2>
+    <div class="modal-tabs">
+      <div class="modal-tab active" onclick="switchTab('power')">POWER</div>
+      <div class="modal-tab" onclick="switchTab('balls')">BALLS</div>
+      <div class="modal-tab" onclick="switchTab('utility')">UTILITY</div>
+      <div class="modal-tab" onclick="switchTab('special')">SPECIAL</div>
+    </div>
     <div id="upgradeList"></div>
-    <button class="close-btn" onclick="closeModal('upgrades')">CLOSE</button>
   </div>
 </div>
 
-<!-- Prestige Modal -->
+<!-- PRESTIGE MODAL -->
 <div class="modal-overlay" id="prestigeModal">
   <div class="modal">
-    <h2>🌟 PRESTIGE</h2>
-    <p style="text-align:center;font-size:.8rem;color:#555;margin-bottom:12px">
-      Reset your progress for permanent bonuses.<br>
-      Prestige tokens multiply ALL damage by 1.5x each.
-    </p>
-    <p style="text-align:center;font-size:1rem;margin-bottom:8px">
-      Current tokens: <b id="prestigeCount">0</b> (×<span id="prestigeMult">1.0</span> damage)
-    </p>
-    <p style="text-align:center;font-size:.75rem;color:#888;margin-bottom:12px">
-      Requires level <span id="prestigeReq">25</span>+
-    </p>
-    <button class="prestige-btn" id="prestigeBtn" onclick="doPrestige()">🌟 PRESTIGE NOW</button>
-    <button class="close-btn" onclick="closeModal('prestige')">CLOSE</button>
+    <button class="close-x" onclick="closeModal('prestige')">✕</button>
+    <h2>PRESTIGE</h2>
+    <div class="prestige-info">
+      <div class="prestige-tokens" id="pTokens">0</div>
+      <div class="prestige-mult">PRESTIGE TOKENS</div>
+      <div style="margin-top:12px;font-size:.75rem;color:#556">
+        Each token: <span style="color:#a040ff">+50% ALL damage</span> &amp; <span style="color:#ffd700">+25% gold</span>
+      </div>
+      <div style="margin-top:6px;font-size:.7rem;color:#334" id="pReqText">Reach wave 25 to prestige</div>
+    </div>
+    <button class="prestige-go" id="pBtn" onclick="doPrestige()">PRESTIGE NOW</button>
+  </div>
+</div>
+
+<!-- STATS MODAL -->
+<div class="modal-overlay" id="statsModal">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('stats')">✕</button>
+    <h2>STATISTICS</h2>
+    <div id="statsList"></div>
   </div>
 </div>
 
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
+let W, H;
+let frame = 0;
+let totalDmgDealt = 0;
+let totalBlocksDestroyed = 0;
+let totalGoldEarned = 0;
+let highestWave = 1;
+let highestCombo = 0;
+let dpsTracker = [];
+let currentDPS = 0;
+let screenShake = 0;
 
-// --- GAME STATE ---
+// ===== GAME STATE =====
 let gold = 0;
 let level = 1;
 let ballDmg = 1;
-let ballSpeed = 2.5;
+let ballSpeed = 2.8;
 let ballCount = 3;
 let critChance = 0.05;
 let critMult = 2;
 let goldMult = 1;
+let magnetStr = 0;
+let explosionRadius = 0;
+let autoAim = 0;
 let prestigeTokens = 0;
 let combo = 0;
 let comboTimer = 0;
 let activeBallType = 'normal';
+let isBossWave = false;
+let bossBlock = null;
 
-// Ball types unlocked
-let unlockedBalls = {normal:true, fire:false, sniper:false, plasma:false, poison:false};
-
-// Upgrade definitions
-const upgrades = [
-  {id:'dmg', name:'⚔️ Damage', desc:'Ball damage +1', baseCost:10, costMult:1.6, level:0, max:100, apply:()=>{ballDmg++}},
-  {id:'spd', name:'💨 Ball Speed', desc:'Ball speed +0.3', baseCost:25, costMult:1.8, level:0, max:30, apply:()=>{ballSpeed+=0.3}},
-  {id:'multi', name:'🔮 Multi Ball', desc:'+1 ball', baseCost:80, costMult:2.8, level:0, max:20, apply:()=>{ballCount++;spawnBall()}},
-  {id:'crit', name:'🎯 Crit Chance', desc:'+3% crit chance', baseCost:50, costMult:1.7, level:0, max:25, apply:()=>{critChance+=0.03}},
-  {id:'critdmg', name:'💥 Crit Damage', desc:'+0.5x crit multiplier', baseCost:75, costMult:1.8, level:0, max:20, apply:()=>{critMult+=0.5}},
-  {id:'gold', name:'💰 Gold Bonus', desc:'+25% gold', baseCost:40, costMult:1.5, level:0, max:30, apply:()=>{goldMult+=0.25}},
-  {id:'fire', name:'🔥 Unlock Fire Ball', desc:'Splash damage on hit', baseCost:500, costMult:1, level:0, max:1, apply:()=>{unlockedBalls.fire=true;updateBallTabs()}},
-  {id:'sniper', name:'🎯 Unlock Sniper Ball', desc:'2x damage, slower', baseCost:1000, costMult:1, level:0, max:1, apply:()=>{unlockedBalls.sniper=true;updateBallTabs()}},
-  {id:'plasma', name:'💜 Unlock Plasma Ball', desc:'Pierces through blocks', baseCost:2500, costMult:1, level:0, max:1, apply:()=>{unlockedBalls.plasma=true;updateBallTabs()}},
-  {id:'poison', name:'☠️ Unlock Poison Ball', desc:'Blocks take DOT', baseCost:5000, costMult:1, level:0, max:1, apply:()=>{unlockedBalls.poison=true;updateBallTabs()}},
+// Ball types
+const BALL_TYPES = [
+  {id:'normal', name:'STANDARD', color:'#00ffff', glow:'#0088ff', unlocked:true, icon:'●'},
+  {id:'fire', name:'INFERNO', color:'#ff4400', glow:'#ff0000', unlocked:false, icon:'🔥'},
+  {id:'sniper', name:'RAILGUN', color:'#ffffff', glow:'#aaaaff', unlocked:false, icon:'◎'},
+  {id:'plasma', name:'PLASMA', color:'#cc00ff', glow:'#8800cc', unlocked:false, icon:'◉'},
+  {id:'poison', name:'VENOM', color:'#00ff44', glow:'#00aa00', unlocked:false, icon:'☣'},
+  {id:'lightning', name:'THUNDER', color:'#ffff00', glow:'#ffaa00', unlocked:false, icon:'⚡'},
 ];
+
+function getBallType(id){ return BALL_TYPES.find(b=>b.id===id) || BALL_TYPES[0]; }
+
+// Upgrade definitions by tab
+const upgrades = [
+  // POWER
+  {id:'dmg', tab:'power', name:'Core Damage', desc:'+1 base damage per ball', icon:'⚔️', baseCost:10, costMult:1.55, level:0, max:200, accent:'#ff4444',
+    apply:()=>{ballDmg++}},
+  {id:'crit', tab:'power', name:'Crit Chance', desc:'+2% critical hit chance', icon:'🎯', baseCost:40, costMult:1.65, level:0, max:30, accent:'#ff8800',
+    apply:()=>{critChance+=0.02}},
+  {id:'critdmg', tab:'power', name:'Crit Multiplier', desc:'+0.5x critical damage', icon:'💥', baseCost:60, costMult:1.75, level:0, max:25, accent:'#ff4444',
+    apply:()=>{critMult+=0.5}},
+  {id:'explosion', tab:'power', name:'Explosion', desc:'Destroyed blocks explode (AOE)', icon:'💣', baseCost:800, costMult:2.2, level:0, max:15, accent:'#ff6600',
+    apply:()=>{explosionRadius+=12}},
+
+  // BALLS
+  {id:'spd', tab:'balls', name:'Ball Velocity', desc:'+0.3 ball speed', icon:'💨', baseCost:20, costMult:1.7, level:0, max:40, accent:'#00ccff',
+    apply:()=>{ballSpeed+=0.3}},
+  {id:'multi', tab:'balls', name:'Multi Ball', desc:'Launch an extra ball', icon:'🔮', baseCost:60, costMult:2.5, level:0, max:30, accent:'#cc00ff',
+    apply:()=>{ballCount++;spawnBall()}},
+  {id:'fire', tab:'balls', name:'Unlock Inferno', desc:'Splash damage on every hit', icon:'🔥', baseCost:400, costMult:1, level:0, max:1, accent:'#ff4400',
+    apply:()=>{let bt=BALL_TYPES.find(b=>b.id==='fire');bt.unlocked=true;buildBallSelector()}},
+  {id:'sniper', tab:'balls', name:'Unlock Railgun', desc:'3x damage, slower, pierces 1 block', icon:'◎', baseCost:1200, costMult:1, level:0, max:1, accent:'#aaaaff',
+    apply:()=>{let bt=BALL_TYPES.find(b=>b.id==='sniper');bt.unlocked=true;buildBallSelector()}},
+  {id:'plasma', tab:'balls', name:'Unlock Plasma', desc:'Pierces ALL blocks, reduced dmg', icon:'◉', baseCost:3000, costMult:1, level:0, max:1, accent:'#cc00ff',
+    apply:()=>{let bt=BALL_TYPES.find(b=>b.id==='plasma');bt.unlocked=true;buildBallSelector()}},
+  {id:'poison', tab:'balls', name:'Unlock Venom', desc:'Applies DOT: 30% dmg/sec for 3s', icon:'☣', baseCost:5000, costMult:1, level:0, max:1, accent:'#00ff44',
+    apply:()=>{let bt=BALL_TYPES.find(b=>b.id==='poison');bt.unlocked=true;buildBallSelector()}},
+  {id:'lightning', tab:'balls', name:'Unlock Thunder', desc:'Chains to 3 nearby blocks', icon:'⚡', baseCost:12000, costMult:1, level:0, max:1, accent:'#ffff00',
+    apply:()=>{let bt=BALL_TYPES.find(b=>b.id==='lightning');bt.unlocked=true;buildBallSelector()}},
+
+  // UTILITY
+  {id:'gold', tab:'utility', name:'Gold Rush', desc:'+25% gold from all sources', icon:'💰', baseCost:30, costMult:1.45, level:0, max:50, accent:'#ffd700',
+    apply:()=>{goldMult+=0.25}},
+  {id:'magnet', tab:'utility', name:'Ball Magnet', desc:'Balls curve toward blocks', icon:'🧲', baseCost:500, costMult:2, level:0, max:10, accent:'#ff00ff',
+    apply:()=>{magnetStr+=0.15}},
+  {id:'autoaim', tab:'utility', name:'Auto-Aim', desc:'Balls target lowest HP blocks', icon:'📡', baseCost:2000, costMult:2.5, level:0, max:5, accent:'#00ffff',
+    apply:()=>{autoAim+=0.1}},
+
+  // SPECIAL
+  {id:'goldstorm', tab:'special', name:'Gold Storm', desc:'Blocks drop 2x gold for 30s', icon:'🌟', baseCost:1000, costMult:1, level:0, max:999, accent:'#ffd700',
+    apply:()=>{goldStormTimer=1800;showPowerFlash('GOLD STORM ACTIVE!')}},
+  {id:'nuke', tab:'special', name:'Nuke', desc:'Destroy all blocks on screen', icon:'☢️', baseCost:2000, costMult:1.3, level:0, max:999, accent:'#ff0000',
+    apply:()=>{nukeBlocks()}},
+  {id:'frenzy', tab:'special', name:'Ball Frenzy', desc:'Double ball count for 20s', icon:'🌀', baseCost:800, costMult:1.2, level:0, max:999, accent:'#00ffff',
+    apply:()=>{ballFrenzy()}},
+];
+
+let goldStormTimer = 0;
+let currentTab = 'power';
 
 function getCost(u){return Math.floor(u.baseCost*Math.pow(u.costMult,u.level))}
 
-// Block color palette (bright, matching reference)
-const BLOCK_COLORS = [
-  '#e04040', // red
-  '#40c040', // green
-  '#4080e0', // blue
-  '#e0c020', // yellow
-  '#20c0c0', // cyan
-  '#e060c0', // magenta/pink
-  '#e08020', // orange
-  '#80d040', // lime
-  '#c040e0', // purple
+// ===== NEON BLOCK COLORS =====
+const BLOCK_PALETTES = [
+  {fill:'#ff1744', glow:'#ff0000', edge:'#ff5252'},
+  {fill:'#00e5ff', glow:'#00bcd4', edge:'#18ffff'},
+  {fill:'#76ff03', glow:'#64dd17', edge:'#b2ff59'},
+  {fill:'#ffea00', glow:'#ffd600', edge:'#ffff00'},
+  {fill:'#d500f9', glow:'#aa00ff', edge:'#ea80fc'},
+  {fill:'#ff6d00', glow:'#ff4400', edge:'#ff9e40'},
+  {fill:'#00bfa5', glow:'#009688', edge:'#1de9b6'},
+  {fill:'#f50057', glow:'#c51162', edge:'#ff4081'},
+  {fill:'#651fff', glow:'#6200ea', edge:'#b388ff'},
 ];
 
-// --- BLOCKS ---
+// ===== BLOCKS =====
 let blocks = [];
-let W, H; // canvas dims
 
 function makeBlocks(){
   blocks = [];
-  W = canvas.width;
-  H = canvas.height;
+  isBossWave = (level % 10 === 0);
 
-  // Create multiple clusters like in the reference image
-  let numClusters = Math.min(6, 2 + Math.floor(level / 4));
-  let clusterMinCols = 4, clusterMaxCols = 6;
-  let clusterMinRows = 3, clusterMaxRows = 6;
-  let blockW = 48, blockH = 22, pad = 2;
-
-  // Define grid zones to place clusters without too much overlap
-  let zones = [];
-  let cols = numClusters <= 3 ? numClusters : Math.ceil(numClusters/2);
-  let rows = numClusters <= 3 ? 1 : 2;
-  let zoneW = W / cols;
-  let zoneH = (H - 20) / rows;
-
-  for(let r = 0; r < rows; r++){
-    for(let c = 0; c < cols; c++){
-      if(zones.length >= numClusters) break;
-      zones.push({
-        cx: zoneW * c + zoneW/2,
-        cy: zoneH * r + zoneH/2 + 10,
-        w: zoneW, h: zoneH
+  if(isBossWave){
+    // BOSS WAVE — one giant block
+    let bossHp = Math.floor(level * level * 10 * (1 + level * 0.2));
+    let bw = Math.min(200, W * 0.3);
+    let bh = Math.min(80, H * 0.15);
+    bossBlock = {
+      x: W/2 - bw/2, y: H*0.3, w: bw, h: bh,
+      hp: bossHp, maxHp: bossHp,
+      palette: BLOCK_PALETTES[0], alive: true, poison: 0,
+      isBoss: true
+    };
+    blocks.push(bossBlock);
+    // Minion blocks around boss
+    for(let i = 0; i < 8 + level; i++){
+      let hp = Math.floor(level * 1.5);
+      let bW = 36, bH = 18;
+      blocks.push({
+        x: Math.random() * (W - bW - 20) + 10,
+        y: Math.random() * (H * 0.7 - bH) + H*0.1,
+        w: bW, h: bH, hp, maxHp: hp,
+        palette: BLOCK_PALETTES[Math.floor(Math.random()*BLOCK_PALETTES.length)],
+        alive: true, poison: 0, isBoss: false
       });
     }
-  }
+    document.getElementById('bossBar').style.display = 'block';
+    document.getElementById('bossName').textContent = '⚠ WAVE ' + level + ' BOSS ⚠';
+    showWaveBanner('BOSS WAVE', 'DESTROY THE CORE');
+  } else {
+    bossBlock = null;
+    document.getElementById('bossBar').style.display = 'none';
 
-  zones.forEach((zone, zi) => {
-    let bCols = clusterMinCols + Math.floor(Math.random() * (clusterMaxCols - clusterMinCols + 1));
-    let bRows = clusterMinRows + Math.floor(Math.random() * (clusterMaxRows - clusterMinRows + 1));
-    let clusterW = bCols * (blockW + pad);
-    let clusterH = bRows * (blockH + pad);
-    let startX = zone.cx - clusterW/2 + (Math.random()-0.5) * (zone.w * 0.15);
-    let startY = zone.cy - clusterH/2 + (Math.random()-0.5) * (zone.h * 0.15);
+    // Normal wave — scattered clusters
+    let numClusters = Math.min(6, 2 + Math.floor(level / 3));
+    let blockW = 46, blockH = 20, pad = 2;
 
-    // Clamp within canvas
-    startX = Math.max(10, Math.min(W - clusterW - 10, startX));
-    startY = Math.max(10, Math.min(H - clusterH - 10, startY));
+    let cols = numClusters <= 3 ? numClusters : Math.ceil(numClusters/2);
+    let rows = numClusters <= 3 ? 1 : 2;
+    let zoneW = W / cols;
+    let zoneH = (H - 20) / rows;
 
-    for(let r = 0; r < bRows; r++){
-      for(let c = 0; c < bCols; c++){
-        // Random chance to skip a block for irregular shapes
-        if(Math.random() < 0.12) continue;
+    for(let zr = 0; zr < rows; zr++){
+      for(let zc = 0; zc < cols; zc++){
+        if(blocks.length / 10 >= numClusters) break;
+        let cx = zoneW * zc + zoneW/2;
+        let cy = zoneH * zr + zoneH/2 + 10;
 
-        let hp = Math.floor((level * 2 + r * level * 0.3) * (1 + Math.random() * 0.4));
-        if(hp < 1) hp = 1;
-        let color = BLOCK_COLORS[(zi * 3 + r + c) % BLOCK_COLORS.length];
+        let bCols = 4 + Math.floor(Math.random()*3);
+        let bRows = 3 + Math.floor(Math.random()*4);
+        let clusterW = bCols * (blockW+pad);
+        let clusterH = bRows * (blockH+pad);
+        let sx = cx - clusterW/2 + (Math.random()-.5)*zoneW*0.1;
+        let sy = cy - clusterH/2 + (Math.random()-.5)*zoneH*0.1;
+        sx = Math.max(5, Math.min(W-clusterW-5, sx));
+        sy = Math.max(5, Math.min(H-clusterH-5, sy));
 
-        blocks.push({
-          x: startX + c * (blockW + pad),
-          y: startY + r * (blockH + pad),
-          w: blockW, h: blockH,
-          hp, maxHp: hp,
-          color, alive: true,
-          poison: 0 // DOT timer
-        });
+        let pal = BLOCK_PALETTES[(zr*3+zc)%BLOCK_PALETTES.length];
+
+        for(let r=0;r<bRows;r++){
+          for(let c=0;c<bCols;c++){
+            if(Math.random()<0.1) continue;
+            let hp = Math.floor((level*2 + r*level*0.4) * (1 + Math.random()*0.5));
+            if(hp<1) hp=1;
+            let rowPal = BLOCK_PALETTES[(zr*3+zc+r)%BLOCK_PALETTES.length];
+            blocks.push({
+              x: sx + c*(blockW+pad), y: sy + r*(blockH+pad),
+              w:blockW, h:blockH, hp, maxHp:hp,
+              palette: rowPal, alive:true, poison:0, isBoss:false
+            });
+          }
+        }
       }
     }
-  });
+    if(level > 1) showWaveBanner('WAVE '+level, blocks.length+' BLOCKS');
+  }
 }
 
-// --- BALLS ---
+// ===== BALLS =====
 let balls = [];
+
 function spawnBall(){
-  let angle = Math.random() * Math.PI * 2;
+  let angle = Math.random()*Math.PI*2;
   let type = activeBallType;
-  let sp = ballSpeed * (type === 'sniper' ? 0.6 : 1);
+  let sp = ballSpeed * (type==='sniper'?0.5:1);
   balls.push({
-    x: W/2 + (Math.random()-0.5)*100,
-    y: H/2 + (Math.random()-0.5)*100,
-    vx: Math.cos(angle) * sp,
-    vy: Math.sin(angle) * sp,
-    r: type === 'sniper' ? 5 : (type === 'fire' ? 8 : 6),
-    type: type,
-    trail: []
+    x: W/2+(Math.random()-.5)*80,
+    y: H/2+(Math.random()-.5)*80,
+    vx: Math.cos(angle)*sp,
+    vy: Math.sin(angle)*sp,
+    r: type==='sniper'?5:(type==='fire'?8:(type==='lightning'?7:6)),
+    type, trail:[], hitCooldown:{}
   });
 }
 
-function getBallColor(type){
-  switch(type){
-    case 'fire': return '#ff6600';
-    case 'sniper': return '#cccccc';
-    case 'plasma': return '#cc00ff';
-    case 'poison': return '#00cc00';
-    default: return '#eecc00';
-  }
-}
-
-function getBallGlow(type){
-  switch(type){
-    case 'fire': return '#ff3300';
-    case 'sniper': return '#ffffff';
-    case 'plasma': return '#8800cc';
-    case 'poison': return '#00ff00';
-    default: return '#ffee00';
-  }
-}
-
-// --- PARTICLES ---
+// ===== PARTICLES =====
 let particles = [];
-function spawnParticles(x, y, color, count){
-  for(let i = 0; i < count; i++){
-    let angle = Math.random() * Math.PI * 2, speed = 1 + Math.random() * 3;
-    particles.push({x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, life:1, color, size:2+Math.random()*3});
+function spawnParticles(x,y,color,count,speed){
+  speed = speed||3;
+  for(let i=0;i<count;i++){
+    let a=Math.random()*Math.PI*2,s=.5+Math.random()*speed;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color,size:1.5+Math.random()*3});
   }
 }
 
-// --- DAMAGE NUMBERS ---
+// ===== DAMAGE NUMBERS =====
 let dmgNums = [];
-function spawnDmgNum(x, y, val, isCrit){
-  dmgNums.push({x, y, val, isCrit, life:1, vy:-2});
+function spawnDmgNum(x,y,val,isCrit,color){
+  dmgNums.push({x:x+(Math.random()-.5)*10,y,val,isCrit,life:1,vy:-2.5,color:color||'#fff'});
 }
 
-// --- RESIZE ---
+// ===== GOLD PARTICLES =====
+let goldParticles = [];
+function spawnGoldParticle(x,y,amount){
+  goldParticles.push({x,y,targetX:W-60,targetY:10,t:0,amount,speed:.02+Math.random()*.02});
+}
+
+// ===== LIGHTNING CHAINS =====
+let lightningChains = [];
+function spawnLightning(x1,y1,x2,y2,color){
+  lightningChains.push({x1,y1,x2,y2,life:1,color:color||'#ffff00'});
+}
+
+// ===== SCREEN EFFECTS =====
+function showWaveBanner(text,sub){
+  let el = document.getElementById('waveBanner');
+  document.getElementById('waveText').textContent = text;
+  document.getElementById('waveSub').textContent = sub||'';
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2000);
+}
+
+function showPowerFlash(text){
+  let el = document.getElementById('powerFlash');
+  el.textContent = text;
+  el.style.opacity = '1';
+  setTimeout(()=>el.style.opacity='0', 2000);
+}
+
+// ===== SPECIAL ABILITIES =====
+function nukeBlocks(){
+  screenShake = 30;
+  blocks.forEach(b=>{
+    if(!b.alive) return;
+    b.alive = false;
+    let reward = Math.floor((b.maxHp*0.3+level)*goldMult);
+    gold += reward;
+    totalGoldEarned += reward;
+    totalBlocksDestroyed++;
+    spawnParticles(b.x+b.w/2,b.y+b.h/2,b.palette.fill,15,5);
+  });
+  showPowerFlash('☢ NUKE DEPLOYED!');
+}
+
+function ballFrenzy(){
+  let extra = balls.length;
+  for(let i=0;i<extra;i++) spawnBall();
+  showPowerFlash('🌀 BALL FRENZY!');
+  setTimeout(()=>{
+    // Remove the extra balls
+    while(balls.length > ballCount) balls.pop();
+  }, 20000);
+}
+
+// ===== RESIZE =====
 function resize(){
-  const area = document.getElementById('playArea');
-  canvas.width = area.clientWidth;
-  canvas.height = area.clientHeight;
-  W = canvas.width;
-  H = canvas.height;
-  if(blocks.length === 0) makeBlocks();
+  canvas.width = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
+  W = canvas.width; H = canvas.height;
+  if(blocks.length===0) makeBlocks();
 }
 
-// --- BALL TYPE SELECTION ---
-function selectBallType(type){
-  if(!unlockedBalls[type]) return;
-  activeBallType = type;
-  document.querySelectorAll('.tb-section[data-ball]').forEach(el => {
-    el.classList.toggle('active', el.dataset.ball === type);
+// ===== BALL SELECTOR =====
+function buildBallSelector(){
+  let el = document.getElementById('ballSelector');
+  el.innerHTML = '';
+  BALL_TYPES.forEach(bt=>{
+    let div = document.createElement('div');
+    div.className = 'ball-sel'+(bt.id===activeBallType?' active':'')+(bt.unlocked?'':' locked');
+    div.style.setProperty('--glow', bt.glow);
+    div.innerHTML = `<div class="inner" style="background:${bt.color};box-shadow:0 0 6px ${bt.glow}"></div>${bt.unlocked?'':'<span class="lock">🔒</span>'}`;
+    div.title = bt.name;
+    if(bt.unlocked){
+      div.onclick = ()=>{
+        activeBallType = bt.id;
+        buildBallSelector();
+      };
+    }
+    el.appendChild(div);
   });
 }
 
-function updateBallTabs(){
-  document.querySelectorAll('.tb-section[data-ball]').forEach(el => {
-    let type = el.dataset.ball;
-    el.style.opacity = unlockedBalls[type] ? '1' : '0.4';
-    el.style.pointerEvents = unlockedBalls[type] ? 'auto' : 'none';
-  });
-}
-
-// --- MODALS ---
+// ===== MODALS =====
 function openModal(id){
-  if(id === 'upgrades') renderShop();
-  if(id === 'prestige') renderPrestige();
+  if(id==='shop') renderShop();
+  if(id==='prestige') renderPrestige();
+  if(id==='stats') renderStats();
   document.getElementById(id+'Modal').classList.add('open');
 }
 function closeModal(id){
   document.getElementById(id+'Modal').classList.remove('open');
 }
 
-// --- COMBO ---
-function addCombo(){
-  combo++;
-  comboTimer = 120;
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.modal-tab').forEach(t=>t.classList.toggle('active',t.textContent.toLowerCase()===tab));
+  renderShop();
 }
 
-// --- MAIN LOOP ---
+// ===== COMBO =====
+function addCombo(){
+  combo++;
+  comboTimer = 90; // 1.5 sec
+  if(combo > highestCombo) highestCombo = combo;
+}
+
+// ===== UPDATE =====
 function update(){
-  // Combo timer
-  if(comboTimer > 0) comboTimer--;
-  else combo = 0;
+  frame++;
 
-  // Balls — fully automatic, bounce off all walls
-  balls.forEach(ball => {
-    ball.trail.push({x:ball.x, y:ball.y});
-    if(ball.trail.length > 10) ball.trail.shift();
+  // Combo
+  if(comboTimer>0) comboTimer--;
+  else combo=0;
 
-    let sp = ballSpeed * (ball.type === 'sniper' ? 0.6 : 1);
+  // Gold storm
+  if(goldStormTimer>0) goldStormTimer--;
+
+  // DPS tracking
+  if(frame%60===0){
+    let recent = dpsTracker.reduce((a,b)=>a+b,0);
+    currentDPS = recent;
+    dpsTracker = [];
+  }
+
+  // Balls
+  balls.forEach(ball=>{
+    ball.trail.push({x:ball.x,y:ball.y});
+    if(ball.trail.length>12) ball.trail.shift();
+
+    let sp = ballSpeed*(ball.type==='sniper'?0.5:1);
+
+    // Magnet: steer toward nearest alive block
+    if(magnetStr > 0 || autoAim > 0){
+      let nearest = null, nd = Infinity;
+      blocks.forEach(b=>{
+        if(!b.alive) return;
+        let dx=b.x+b.w/2-ball.x, dy=b.y+b.h/2-ball.y;
+        let d=dx*dx+dy*dy;
+        if(autoAim > 0){
+          // Prefer low HP
+          d *= (b.hp/b.maxHp);
+        }
+        if(d<nd){nd=d;nearest=b;}
+      });
+      if(nearest){
+        let dx=nearest.x+nearest.w/2-ball.x, dy=nearest.y+nearest.h/2-ball.y;
+        let dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist>1){
+          let str = (magnetStr*0.008 + autoAim*0.015);
+          ball.vx += (dx/dist)*str*sp;
+          ball.vy += (dy/dist)*str*sp;
+        }
+      }
+    }
 
     ball.x += ball.vx;
     ball.y += ball.vy;
 
-    // Wall bounce (all 4 sides)
-    if(ball.x - ball.r < 0){ ball.x = ball.r; ball.vx = Math.abs(ball.vx); }
-    if(ball.x + ball.r > W){ ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); }
-    if(ball.y - ball.r < 0){ ball.y = ball.r; ball.vy = Math.abs(ball.vy); }
-    if(ball.y + ball.r > H){ ball.y = H - ball.r; ball.vy = -Math.abs(ball.vy); }
+    // Wall bounce
+    if(ball.x-ball.r<0){ball.x=ball.r;ball.vx=Math.abs(ball.vx);}
+    if(ball.x+ball.r>W){ball.x=W-ball.r;ball.vx=-Math.abs(ball.vx);}
+    if(ball.y-ball.r<0){ball.y=ball.r;ball.vy=Math.abs(ball.vy);}
+    if(ball.y+ball.r>H){ball.y=H-ball.r;ball.vy=-Math.abs(ball.vy);}
 
-    // Normalize speed
-    let curSp = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
-    if(curSp > 0.1){
-      ball.vx = ball.vx/curSp * sp;
-      ball.vy = ball.vy/curSp * sp;
-    }
+    // Normalize
+    let cs=Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy);
+    if(cs>0.1){ball.vx=ball.vx/cs*sp;ball.vy=ball.vy/cs*sp;}
 
     // Block collision
-    blocks.forEach(block => {
+    let piercedOne = false;
+    blocks.forEach(block=>{
       if(!block.alive) return;
-      if(ball.x + ball.r > block.x && ball.x - ball.r < block.x + block.w &&
-         ball.y + ball.r > block.y && ball.y - ball.r < block.y + block.h){
+      // Cooldown per block
+      let coolKey = block.x+'_'+block.y;
+      if(ball.hitCooldown[coolKey]>0){ball.hitCooldown[coolKey]--;return;}
 
-        let isCrit = Math.random() < critChance;
-        let dmg = isCrit ? Math.floor(ballDmg * critMult) : ballDmg;
-        let prestigeBonus = 1 + prestigeTokens * 0.5;
-        let comboBonus = 1 + combo * 0.03;
-        let typeMult = ball.type === 'sniper' ? 2 : 1;
-        dmg = Math.floor(dmg * comboBonus * prestigeBonus * typeMult);
+      if(ball.x+ball.r>block.x && ball.x-ball.r<block.x+block.w &&
+         ball.y+ball.r>block.y && ball.y-ball.r<block.y+block.h){
+
+        ball.hitCooldown[coolKey] = 5;
+
+        let isCrit = Math.random()<critChance;
+        let dmg = isCrit ? Math.floor(ballDmg*critMult) : ballDmg;
+        let pBonus = 1+prestigeTokens*0.5;
+        let cBonus = 1+combo*0.02;
+        let tMult = ball.type==='sniper'?3:(ball.type==='plasma'?0.6:1);
+        dmg = Math.floor(dmg*cBonus*pBonus*tMult);
+        if(dmg<1)dmg=1;
 
         block.hp -= dmg;
-        spawnDmgNum(ball.x, block.y, dmg, isCrit);
+        totalDmgDealt += dmg;
+        dpsTracker.push(dmg);
+        let numColor = isCrit?'#ff4444':getBallType(ball.type).color;
+        spawnDmgNum(ball.x,block.y-4,dmg,isCrit,numColor);
         addCombo();
 
-        // Fire ball splash
-        if(ball.type === 'fire'){
-          let splashDmg = Math.floor(dmg * 0.3);
-          blocks.forEach(nb => {
-            if(!nb.alive || nb === block) return;
-            let dx = (nb.x+nb.w/2) - (block.x+block.w/2);
-            let dy = (nb.y+nb.h/2) - (block.y+block.h/2);
-            if(Math.sqrt(dx*dx+dy*dy) < 80){
-              nb.hp -= splashDmg;
-              if(nb.hp <= 0){ nb.alive = false; gold += Math.floor((nb.maxHp*0.5+level)*goldMult); spawnParticles(nb.x+nb.w/2,nb.y+nb.h/2,nb.color,8);}
+        // Fire splash
+        if(ball.type==='fire'){
+          let sDmg = Math.floor(dmg*0.4);
+          blocks.forEach(nb=>{
+            if(!nb.alive||nb===block)return;
+            let dx=(nb.x+nb.w/2)-(block.x+block.w/2);
+            let dy=(nb.y+nb.h/2)-(block.y+block.h/2);
+            if(Math.sqrt(dx*dx+dy*dy)<90){
+              nb.hp-=sDmg;
+              spawnDmgNum(nb.x+nb.w/2,nb.y,sDmg,false,'#ff6600');
+              if(nb.hp<=0){killBlock(nb);}
             }
           });
-          spawnParticles(block.x+block.w/2, block.y+block.h/2, '#ff6600', 8);
+          spawnParticles(block.x+block.w/2,block.y+block.h/2,'#ff4400',6,4);
         }
 
-        // Poison ball DOT
-        if(ball.type === 'poison'){
-          block.poison = 180; // 3 seconds at 60fps
+        // Lightning chain
+        if(ball.type==='lightning'){
+          let targets=[];
+          blocks.forEach(nb=>{
+            if(!nb.alive||nb===block)return;
+            let dx=(nb.x+nb.w/2)-(block.x+block.w/2);
+            let dy=(nb.y+nb.h/2)-(block.y+block.h/2);
+            let dist=Math.sqrt(dx*dx+dy*dy);
+            if(dist<150) targets.push({b:nb,dist});
+          });
+          targets.sort((a,b)=>a.dist-b.dist);
+          let prev = {x:block.x+block.w/2,y:block.y+block.h/2};
+          for(let i=0;i<Math.min(3,targets.length);i++){
+            let t=targets[i].b;
+            let cDmg=Math.floor(dmg*0.5);
+            t.hp-=cDmg;
+            spawnLightning(prev.x,prev.y,t.x+t.w/2,t.y+t.h/2);
+            spawnDmgNum(t.x+t.w/2,t.y,cDmg,false,'#ffff00');
+            if(t.hp<=0)killBlock(t);
+            prev={x:t.x+t.w/2,y:t.y+t.h/2};
+          }
         }
 
-        if(block.hp <= 0){
-          block.alive = false;
-          let reward = Math.floor((block.maxHp * 0.5 + level) * goldMult);
-          gold += reward;
-          spawnParticles(block.x+block.w/2, block.y+block.h/2, block.color, 12);
+        // Poison
+        if(ball.type==='poison') block.poison=180;
+
+        if(block.hp<=0){
+          killBlock(block);
         } else {
-          spawnParticles(ball.x, ball.y, block.color, 4);
+          spawnParticles(ball.x,ball.y,block.palette.fill,3,2);
         }
 
-        // Bounce (plasma pierces)
-        if(ball.type !== 'plasma'){
-          let overlapX = Math.min(ball.x+ball.r - block.x, block.x+block.w - (ball.x-ball.r));
-          let overlapY = Math.min(ball.y+ball.r - block.y, block.y+block.h - (ball.y-ball.r));
-          if(overlapX < overlapY) ball.vx = -ball.vx;
-          else ball.vy = -ball.vy;
+        // Bounce logic
+        if(ball.type==='plasma'){
+          // Pierce all
+        } else if(ball.type==='sniper' && !piercedOne){
+          piercedOne = true; // Pierce 1
+        } else {
+          let oX=Math.min(ball.x+ball.r-block.x,block.x+block.w-(ball.x-ball.r));
+          let oY=Math.min(ball.y+ball.r-block.y,block.y+block.h-(ball.y-ball.r));
+          if(oX<oY)ball.vx=-ball.vx; else ball.vy=-ball.vy;
         }
       }
     });
   });
 
-  // Poison DOT on blocks
-  blocks.forEach(block => {
-    if(!block.alive || block.poison <= 0) return;
-    block.poison--;
-    if(block.poison % 20 === 0){
-      let dotDmg = Math.max(1, Math.floor(ballDmg * 0.2 * (1 + prestigeTokens * 0.5)));
-      block.hp -= dotDmg;
-      spawnDmgNum(block.x + block.w/2, block.y, dotDmg, false);
-      if(block.hp <= 0){
-        block.alive = false;
-        gold += Math.floor((block.maxHp*0.5+level)*goldMult);
-        spawnParticles(block.x+block.w/2, block.y+block.h/2, '#00cc00', 8);
-      }
+  // Poison DOT
+  blocks.forEach(b=>{
+    if(!b.alive||b.poison<=0)return;
+    b.poison--;
+    if(b.poison%15===0){
+      let dot=Math.max(1,Math.floor(ballDmg*0.3*(1+prestigeTokens*0.5)));
+      b.hp-=dot;
+      totalDmgDealt+=dot;
+      dpsTracker.push(dot);
+      spawnDmgNum(b.x+b.w/2,b.y,dot,false,'#00ff44');
+      if(b.hp<=0)killBlock(b);
     }
   });
 
   // Particles
-  particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life-=0.025; });
-  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.04;p.life-=0.03;});
+  particles=particles.filter(p=>p.life>0);
 
   // Damage numbers
-  dmgNums.forEach(d => { d.y+=d.vy; d.vy-=0.02; d.life-=0.02; });
-  dmgNums = dmgNums.filter(d => d.life > 0);
+  dmgNums.forEach(d=>{d.y+=d.vy;d.vy-=0.015;d.life-=0.025;});
+  dmgNums=dmgNums.filter(d=>d.life>0);
+
+  // Gold particles
+  goldParticles.forEach(gp=>{
+    gp.t+=gp.speed;
+    if(gp.t>=1){gold+=gp.amount;gp.t=2;}
+  });
+  goldParticles=goldParticles.filter(gp=>gp.t<1);
+
+  // Lightning chains
+  lightningChains.forEach(l=>l.life-=0.1);
+  lightningChains=lightningChains.filter(l=>l.life>0);
+
+  // Screen shake
+  if(screenShake>0) screenShake--;
+
+  // Boss HP bar
+  if(bossBlock && bossBlock.alive){
+    let pct = Math.max(0,bossBlock.hp/bossBlock.maxHp)*100;
+    document.getElementById('bossHpBar').style.width = pct+'%';
+  }
 
   // Level complete
-  if(blocks.every(b => !b.alive)){
+  if(blocks.every(b=>!b.alive)){
     level++;
-    gold += Math.floor(level * 10 * goldMult);
+    if(level>highestWave) highestWave=level;
+    let bonus = Math.floor(level*15*goldMult*(goldStormTimer>0?2:1));
+    gold+=bonus;
+    totalGoldEarned+=bonus;
     makeBlocks();
   }
 
-  // UI
+  // UI updates
   document.getElementById('goldDisplay').textContent = formatNum(gold);
   document.getElementById('levelDisplay').textContent = level;
+  document.getElementById('dpsDisplay').textContent = formatNum(currentDPS);
+
+  // Combo UI
+  if(combo>=3){
+    document.getElementById('comboCount').style.display='block';
+    document.getElementById('comboLabel').style.display='block';
+    document.getElementById('comboBar').style.display='block';
+    document.getElementById('comboCount').textContent=combo+'x';
+    document.getElementById('comboBarFill').style.width=(comboTimer/90*100)+'%';
+    let hue = Math.min(combo*3,60);
+    document.getElementById('comboCount').style.color=`hsl(${30-hue},100%,55%)`;
+  } else {
+    document.getElementById('comboCount').style.display='none';
+    document.getElementById('comboLabel').style.display='none';
+    document.getElementById('comboBar').style.display='none';
+  }
+  document.getElementById('dpsVal').textContent=formatNum(currentDPS);
+}
+
+function killBlock(block){
+  block.alive=false;
+  let goldMod = goldStormTimer>0?2:1;
+  let reward=Math.floor((block.maxHp*0.5+level)*goldMult*goldMod);
+  totalGoldEarned+=reward;
+  totalBlocksDestroyed++;
+  spawnGoldParticle(block.x+block.w/2,block.y+block.h/2,reward);
+  spawnParticles(block.x+block.w/2,block.y+block.h/2,block.palette.fill,14,4);
+
+  // Explosion chain
+  if(explosionRadius>0){
+    blocks.forEach(nb=>{
+      if(!nb.alive||nb===block)return;
+      let dx=(nb.x+nb.w/2)-(block.x+block.w/2);
+      let dy=(nb.y+nb.h/2)-(block.y+block.h/2);
+      if(Math.sqrt(dx*dx+dy*dy)<explosionRadius){
+        let eDmg=Math.floor(block.maxHp*0.2);
+        nb.hp-=eDmg;
+        spawnDmgNum(nb.x+nb.w/2,nb.y,eDmg,false,'#ff8800');
+        if(nb.hp<=0)killBlock(nb);
+      }
+    });
+    spawnParticles(block.x+block.w/2,block.y+block.h/2,'#ff8800',8,5);
+  }
+
+  if(block.isBoss){
+    screenShake=40;
+    spawnParticles(block.x+block.w/2,block.y+block.h/2,'#ffffff',40,8);
+    showPowerFlash('💀 BOSS DEFEATED! +'+formatNum(reward)+' GOLD');
+  }
 }
 
 function formatNum(n){
-  if(n >= 1e9) return (n/1e9).toFixed(1)+'B';
-  if(n >= 1e6) return (n/1e6).toFixed(1)+'M';
-  if(n >= 1e3) return (n/1e3).toFixed(1)+'K';
-  return n;
+  if(n>=1e12)return(n/1e12).toFixed(1)+'T';
+  if(n>=1e9)return(n/1e9).toFixed(1)+'B';
+  if(n>=1e6)return(n/1e6).toFixed(1)+'M';
+  if(n>=1e3)return(n/1e3).toFixed(1)+'K';
+  return Math.floor(n);
 }
 
+// ===== DRAW =====
 function draw(){
-  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+
+  // Screen shake
+  if(screenShake>0){
+    let sx=(Math.random()-.5)*screenShake*0.5;
+    let sy=(Math.random()-.5)*screenShake*0.5;
+    ctx.translate(sx,sy);
+  }
 
   // Background
-  ctx.fillStyle = '#e8e0c8';
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle='#050510';
+  ctx.fillRect(-10,-10,W+20,H+20);
+
+  // Grid lines (subtle)
+  ctx.strokeStyle='#0a0a20';
+  ctx.lineWidth=1;
+  for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 
   // Blocks
-  blocks.forEach(block => {
-    if(!block.alive) return;
-    let pct = block.hp / block.maxHp;
+  blocks.forEach(block=>{
+    if(!block.alive)return;
+    let pal=block.palette;
+    let pct=block.hp/block.maxHp;
 
-    // Block fill
-    ctx.fillStyle = block.color;
-    ctx.fillRect(block.x, block.y, block.w, block.h);
+    // Glow underneath
+    ctx.shadowColor=pal.glow;
+    ctx.shadowBlur=block.isBoss?25:10;
 
-    // Lighter inner border
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(block.x+1, block.y+1, block.w-2, block.h-2);
+    // Fill
+    ctx.fillStyle=pal.fill;
+    ctx.beginPath();
+    roundRect(ctx,block.x,block.y,block.w,block.h,3);
+    ctx.fill();
+    ctx.shadowBlur=0;
 
-    // Darker outer border
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(block.x, block.y, block.w, block.h);
+    // Gradient overlay (3D effect)
+    let grad=ctx.createLinearGradient(block.x,block.y,block.x,block.y+block.h);
+    grad.addColorStop(0,'rgba(255,255,255,0.2)');
+    grad.addColorStop(0.5,'rgba(255,255,255,0)');
+    grad.addColorStop(1,'rgba(0,0,0,0.2)');
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    roundRect(ctx,block.x,block.y,block.w,block.h,3);
+    ctx.fill();
 
-    // Poison glow
-    if(block.poison > 0){
-      ctx.fillStyle = 'rgba(0,200,0,0.25)';
-      ctx.fillRect(block.x, block.y, block.w, block.h);
+    // Edge highlight
+    ctx.strokeStyle=pal.edge;
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    roundRect(ctx,block.x+.5,block.y+.5,block.w-1,block.h-1,3);
+    ctx.stroke();
+
+    // HP bar at bottom
+    if(!block.isBoss){
+      ctx.fillStyle='rgba(0,0,0,0.5)';
+      ctx.fillRect(block.x+2,block.y+block.h-4,block.w-4,3);
+      ctx.fillStyle=pal.edge;
+      ctx.fillRect(block.x+2,block.y+block.h-4,(block.w-4)*pct,3);
     }
 
-    // HP text on block
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 2;
-    ctx.fillText(formatNum(block.hp), block.x + block.w/2, block.y + block.h/2);
-    ctx.shadowBlur = 0;
+    // Poison overlay
+    if(block.poison>0){
+      ctx.fillStyle=`rgba(0,255,68,${0.15+Math.sin(frame*0.1)*0.05})`;
+      ctx.beginPath();
+      roundRect(ctx,block.x,block.y,block.w,block.h,3);
+      ctx.fill();
+    }
+
+    // HP text
+    ctx.fillStyle='#fff';
+    ctx.font=block.isBoss?'bold 16px Orbitron':'bold 10px Rajdhani';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.shadowColor='rgba(0,0,0,0.8)';
+    ctx.shadowBlur=3;
+    ctx.fillText(formatNum(block.hp),block.x+block.w/2,block.y+block.h/2-(block.isBoss?0:1));
+    ctx.shadowBlur=0;
   });
 
+  // Lightning chains
+  lightningChains.forEach(l=>{
+    ctx.globalAlpha=l.life;
+    ctx.strokeStyle=l.color;
+    ctx.lineWidth=2;
+    ctx.shadowColor=l.color;
+    ctx.shadowBlur=15;
+    ctx.beginPath();
+    // Jagged line
+    let dx=l.x2-l.x1,dy=l.y2-l.y1;
+    let segs=6;
+    ctx.moveTo(l.x1,l.y1);
+    for(let i=1;i<segs;i++){
+      let t=i/segs;
+      let px=l.x1+dx*t+(Math.random()-.5)*20;
+      let py=l.y1+dy*t+(Math.random()-.5)*20;
+      ctx.lineTo(px,py);
+    }
+    ctx.lineTo(l.x2,l.y2);
+    ctx.stroke();
+    ctx.shadowBlur=0;
+  });
+  ctx.globalAlpha=1;
+
   // Balls
-  balls.forEach(ball => {
-    let col = getBallColor(ball.type);
-    let glow = getBallGlow(ball.type);
+  balls.forEach(ball=>{
+    let bt=getBallType(ball.type);
 
     // Trail
-    ball.trail.forEach((t, i) => {
-      let alpha = (i / ball.trail.length) * 0.25;
-      ctx.fillStyle = col;
-      ctx.globalAlpha = alpha;
+    ball.trail.forEach((t,i)=>{
+      let alpha=(i/ball.trail.length)*0.3;
+      ctx.globalAlpha=alpha;
+      ctx.fillStyle=bt.color;
+      ctx.shadowColor=bt.glow;
+      ctx.shadowBlur=6;
       ctx.beginPath();
-      ctx.arc(t.x, t.y, ball.r * (i/ball.trail.length), 0, Math.PI*2);
+      ctx.arc(t.x,t.y,ball.r*(i/ball.trail.length),0,Math.PI*2);
       ctx.fill();
     });
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha=1;
+    ctx.shadowBlur=0;
 
-    // Glow
-    ctx.shadowColor = glow;
-    ctx.shadowBlur = 10;
+    // Ball glow
+    ctx.shadowColor=bt.glow;
+    ctx.shadowBlur=15;
 
-    // Ball body
-    ctx.fillStyle = col;
+    // Body
+    ctx.fillStyle=bt.color;
     ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+    ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
     ctx.fill();
 
-    // Highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    // Inner highlight
+    ctx.fillStyle='rgba(255,255,255,0.5)';
     ctx.beginPath();
-    ctx.arc(ball.x - ball.r*0.25, ball.y - ball.r*0.25, ball.r*0.4, 0, Math.PI*2);
+    ctx.arc(ball.x-ball.r*.2,ball.y-ball.r*.3,ball.r*.35,0,Math.PI*2);
     ctx.fill();
 
-    ctx.shadowBlur = 0;
+    ctx.shadowBlur=0;
 
-    // Sniper crosshair
-    if(ball.type === 'sniper'){
-      ctx.strokeStyle = '#666';
-      ctx.lineWidth = 1;
+    // Crosshair for sniper
+    if(ball.type==='sniper'){
+      ctx.strokeStyle='rgba(255,255,255,0.4)';
+      ctx.lineWidth=1;
       ctx.beginPath();
-      ctx.moveTo(ball.x - ball.r*1.5, ball.y);
-      ctx.lineTo(ball.x + ball.r*1.5, ball.y);
-      ctx.moveTo(ball.x, ball.y - ball.r*1.5);
-      ctx.lineTo(ball.x, ball.y + ball.r*1.5);
+      ctx.arc(ball.x,ball.y,ball.r*1.6,0,Math.PI*2);
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.r*1.3, 0, Math.PI*2);
+      ctx.moveTo(ball.x-ball.r*2,ball.y);ctx.lineTo(ball.x+ball.r*2,ball.y);
+      ctx.moveTo(ball.x,ball.y-ball.r*2);ctx.lineTo(ball.x,ball.y+ball.r*2);
       ctx.stroke();
-    }
-
-    // Fire effect
-    if(ball.type === 'fire' && Math.random() < 0.3){
-      spawnParticles(ball.x, ball.y, '#ff6600', 1);
     }
   });
 
   // Particles
-  particles.forEach(p => {
-    ctx.globalAlpha = p.life;
-    ctx.fillStyle = p.color;
-    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  particles.forEach(p=>{
+    ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;
+    ctx.shadowColor=p.color;
+    ctx.shadowBlur=4;
+    ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
   });
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha=1;ctx.shadowBlur=0;
+
+  // Gold particles (flying to HUD)
+  goldParticles.forEach(gp=>{
+    let t=gp.t;
+    // Bezier-ish curve
+    let cx=gp.x+(gp.targetX-gp.x)*0.5,cy=gp.y-100;
+    let px=(1-t)*(1-t)*gp.x+2*(1-t)*t*cx+t*t*gp.targetX;
+    let py=(1-t)*(1-t)*gp.y+2*(1-t)*t*cy+t*t*gp.targetY;
+    ctx.fillStyle='#ffd700';
+    ctx.shadowColor='#ffd700';
+    ctx.shadowBlur=8;
+    ctx.beginPath();
+    ctx.arc(px,py,3,0,Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur=0;
+  });
 
   // Damage numbers
-  dmgNums.forEach(d => {
-    ctx.globalAlpha = d.life;
-    ctx.font = d.isCrit ? 'bold 14px sans-serif' : '11px sans-serif';
-    ctx.fillStyle = d.isCrit ? '#ff2222' : '#333';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(d.val, d.x, d.y);
+  dmgNums.forEach(d=>{
+    ctx.globalAlpha=d.life;
+    ctx.font=d.isCrit?'bold 16px Orbitron':'bold 11px Rajdhani';
+    ctx.fillStyle=d.color;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.shadowColor=d.color;
+    ctx.shadowBlur=d.isCrit?12:4;
+    let text = d.isCrit ? 'CRIT '+formatNum(d.val) : formatNum(d.val);
+    ctx.fillText(text,d.x,d.y);
+    ctx.shadowBlur=0;
   });
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha=1;
 
-  // Combo display
-  if(combo >= 5){
-    ctx.fillStyle = 'rgba(200,100,0,0.7)';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('🔥 ' + combo + 'x COMBO', 10, H - 10);
-  }
+  ctx.restore();
 }
 
-// --- SHOP ---
+function roundRect(ctx,x,y,w,h,r){
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+// ===== SHOP =====
 function renderShop(){
-  const list = document.getElementById('upgradeList');
-  list.innerHTML = '';
-  upgrades.forEach(u => {
-    let cost = getCost(u);
-    let maxed = u.level >= u.max;
-    let btn = document.createElement('button');
-    btn.className = 'upgrade-btn' + (maxed ? ' maxed' : '');
-    btn.innerHTML = `<div class="name">${u.name} ${u.max>1?'('+u.level+'/'+u.max+')':''}</div>
-      <div class="desc">${u.desc}</div>
-      <div class="cost">${maxed ? '✅ OWNED' : '$ '+formatNum(cost)}</div>`;
+  let list=document.getElementById('upgradeList');
+  list.innerHTML='';
+  upgrades.filter(u=>u.tab===currentTab).forEach(u=>{
+    let cost=getCost(u);
+    let maxed=u.level>=u.max && u.max<999;
+    let affordable=gold>=cost && !maxed;
+    let card=document.createElement('div');
+    card.className='upgrade-card'+(maxed?' maxed':'')+(affordable?' affordable':'');
+    card.style.setProperty('--accent',u.accent);
+    card.innerHTML=`
+      <div class="upg-icon">${u.icon}</div>
+      <div class="upg-info">
+        <div class="upg-name">${u.name}</div>
+        <div class="upg-desc">${u.desc}</div>
+      </div>
+      <div class="upg-right">
+        <div class="upg-cost">${maxed?'MAXED':'$'+formatNum(cost)}</div>
+        <div class="upg-level">${u.max<999?'LV '+u.level+'/'+u.max:(u.max>=999?'USES: '+u.level:'')}</div>
+      </div>`;
     if(!maxed){
-      btn.onclick = () => {
-        if(gold >= cost){
-          gold -= cost;
+      card.onclick=()=>{
+        if(gold>=cost){
+          gold-=cost;
           u.level++;
           u.apply();
           renderShop();
@@ -642,85 +1103,122 @@ function renderShop(){
         }
       };
     }
-    list.appendChild(btn);
+    list.appendChild(card);
   });
 }
 
-// --- PRESTIGE ---
+// ===== PRESTIGE =====
 function renderPrestige(){
-  let req = 25 + prestigeTokens * 25;
-  document.getElementById('prestigeCount').textContent = prestigeTokens;
-  document.getElementById('prestigeMult').textContent = (1 + prestigeTokens * 0.5).toFixed(1);
-  document.getElementById('prestigeReq').textContent = req;
-  document.getElementById('prestigeBtn').disabled = level < req;
-  document.getElementById('prestigeBtn').style.opacity = level >= req ? '1' : '0.4';
+  let req=25+prestigeTokens*25;
+  document.getElementById('pTokens').textContent=prestigeTokens;
+  document.getElementById('pReqText').textContent=level>=req?'You are ready to prestige!':'Reach wave '+req+' to prestige (currently wave '+level+')';
+  document.getElementById('pBtn').disabled=level<req;
 }
 
 function doPrestige(){
-  let req = 25 + prestigeTokens * 25;
-  if(level < req) return;
+  let req=25+prestigeTokens*25;
+  if(level<req)return;
   prestigeTokens++;
-  // Reset
-  gold = 0;
-  level = 1;
-  ballDmg = 1;
-  ballSpeed = 2.5;
-  ballCount = 3;
-  critChance = 0.05;
-  critMult = 2;
-  goldMult = 1;
-  upgrades.forEach(u => u.level = 0);
-  // Keep unlocked ball types & prestige tokens
-  balls = [];
+  gold=0;level=1;ballDmg=1;ballSpeed=2.8;ballCount=3;critChance=0.05;critMult=2;goldMult=1;magnetStr=0;explosionRadius=0;autoAim=0;
+  upgrades.forEach(u=>{
+    if(u.max<999) u.level=0;
+    // Keep ball unlocks
+    if(['fire','sniper','plasma','poison','lightning'].includes(u.id)&&u.level>0){/* already applied */}
+  });
+  // Actually re-lock ball types for true prestige
+  // No — keep them unlocked, it's more fun
+  balls=[];
   makeBlocks();
-  for(let i = 0; i < ballCount; i++) spawnBall();
+  for(let i=0;i<ballCount;i++)spawnBall();
   closeModal('prestige');
+  screenShake=20;
+  showPowerFlash('🌟 PRESTIGE! ALL DAMAGE +50%');
   saveGame();
 }
 
-// --- SAVE/LOAD ---
+// ===== STATS =====
+function renderStats(){
+  let list=document.getElementById('statsList');
+  let stats=[
+    ['Wave',level],
+    ['Highest Wave',highestWave],
+    ['Total Gold Earned',formatNum(totalGoldEarned)],
+    ['Total Damage Dealt',formatNum(totalDmgDealt)],
+    ['Blocks Destroyed',formatNum(totalBlocksDestroyed)],
+    ['Highest Combo',highestCombo],
+    ['Current DPS',formatNum(currentDPS)],
+    ['Prestige Tokens',prestigeTokens],
+    ['Prestige Bonus','×'+(1+prestigeTokens*0.5).toFixed(1)+' dmg, ×'+(1+prestigeTokens*0.25).toFixed(2)+' gold'],
+    ['Ball Count',balls.length],
+    ['Ball Speed',ballSpeed.toFixed(1)],
+    ['Crit Chance',(critChance*100).toFixed(0)+'%'],
+    ['Crit Multiplier',critMult.toFixed(1)+'x'],
+  ];
+  list.innerHTML=stats.map(s=>`<div class="stat-row"><span class="label">${s[0]}</span><span class="val">${s[1]}</span></div>`).join('');
+}
+
+// ===== SAVE / LOAD =====
 function saveGame(){
-  const data = {
-    gold, level, ballDmg, ballSpeed, ballCount, critChance, critMult, goldMult, prestigeTokens,
-    activeBallType, unlockedBalls,
-    upgrades: upgrades.map(u => u.level)
+  let data={
+    gold,level,ballDmg,ballSpeed,ballCount,critChance,critMult,goldMult,
+    magnetStr,explosionRadius,autoAim,
+    prestigeTokens,activeBallType,
+    ballUnlocks:BALL_TYPES.reduce((o,b)=>{o[b.id]=b.unlocked;return o;},{}),
+    upgradeLevels:upgrades.map(u=>u.level),
+    totalDmgDealt,totalBlocksDestroyed,totalGoldEarned,highestWave,highestCombo,
+    v:2
   };
-  localStorage.setItem('blockBreakerIdle', JSON.stringify(data));
+  localStorage.setItem('blockBreakerIdle2',JSON.stringify(data));
 }
 
 function loadGame(){
   try{
-    const data = JSON.parse(localStorage.getItem('blockBreakerIdle'));
-    if(!data) return;
-    gold = data.gold || 0;
-    level = data.level || 1;
-    ballDmg = data.ballDmg || 1;
-    ballSpeed = data.ballSpeed || 2.5;
-    ballCount = data.ballCount || 3;
-    critChance = data.critChance || 0.05;
-    critMult = data.critMult || 2;
-    goldMult = data.goldMult || 1;
-    prestigeTokens = data.prestigeTokens || 0;
-    activeBallType = data.activeBallType || 'normal';
-    if(data.unlockedBalls) Object.assign(unlockedBalls, data.unlockedBalls);
-    if(data.upgrades){
-      data.upgrades.forEach((lv, i) => {
-        if(upgrades[i]) upgrades[i].level = lv;
-      });
+    let data=JSON.parse(localStorage.getItem('blockBreakerIdle2'));
+    if(!data||data.v!==2)return;
+    gold=data.gold||0;level=data.level||1;ballDmg=data.ballDmg||1;
+    ballSpeed=data.ballSpeed||2.8;ballCount=data.ballCount||3;
+    critChance=data.critChance||.05;critMult=data.critMult||2;
+    goldMult=data.goldMult||1;magnetStr=data.magnetStr||0;
+    explosionRadius=data.explosionRadius||0;autoAim=data.autoAim||0;
+    prestigeTokens=data.prestigeTokens||0;
+    activeBallType=data.activeBallType||'normal';
+    totalDmgDealt=data.totalDmgDealt||0;totalBlocksDestroyed=data.totalBlocksDestroyed||0;
+    totalGoldEarned=data.totalGoldEarned||0;highestWave=data.highestWave||1;
+    highestCombo=data.highestCombo||0;
+    if(data.ballUnlocks){
+      BALL_TYPES.forEach(bt=>{if(data.ballUnlocks[bt.id]!==undefined)bt.unlocked=data.ballUnlocks[bt.id];});
+    }
+    if(data.upgradeLevels){
+      data.upgradeLevels.forEach((lv,i)=>{if(upgrades[i])upgrades[i].level=lv;});
     }
   }catch(e){}
 }
 
-// --- INIT ---
+// ===== CLICK TO DAMAGE (tap interaction) =====
+canvas.addEventListener('click',e=>{
+  let rect=canvas.getBoundingClientRect();
+  let mx=(e.clientX-rect.left)*(W/rect.width);
+  let my=(e.clientY-rect.top)*(H/rect.height);
+  blocks.forEach(b=>{
+    if(!b.alive)return;
+    if(mx>b.x&&mx<b.x+b.w&&my>b.y&&my<b.y+b.h){
+      let dmg=Math.max(1,Math.floor(ballDmg*0.5*(1+prestigeTokens*0.5)));
+      b.hp-=dmg;
+      spawnDmgNum(mx,my-10,dmg,false,'#ffffff');
+      spawnParticles(mx,my,b.palette.fill,6,3);
+      totalDmgDealt+=dmg;
+      if(b.hp<=0)killBlock(b);
+    }
+  });
+});
+
+// ===== INIT =====
 function init(){
   loadGame();
   resize();
-  updateBallTabs();
-  selectBallType(activeBallType);
-
-  for(let i = 0; i < ballCount; i++) spawnBall();
-
-  setInterval(saveGame, 30000);
+  buildBallSelector();
+  for(let i=0;i<ballCount;i++)spawnBall();
+  setInterval(saveGame,15000);
 
   function loop(){
     update();
@@ -730,11 +1228,7 @@ function init(){
   loop();
 }
 
-window.addEventListener('resize', () => {
-  resize();
-  makeBlocks();
-});
-
+window.addEventListener('resize',()=>{resize();makeBlocks();});
 init();
 </script>
 </body>
