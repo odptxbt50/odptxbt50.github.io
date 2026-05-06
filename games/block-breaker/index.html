@@ -181,6 +181,65 @@ canvas{width:100%;height:100%;display:block;background:#050510}
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:#050510}
 ::-webkit-scrollbar-thumb{background:#222;border-radius:2px}
+
+/* ===== ADMIN PANEL ===== */
+.admin-modal{max-width:560px}
+.admin-modal h2{color:#f44;text-shadow:0 0 20px rgba(255,50,50,.4)}
+.admin-modal::before{background:linear-gradient(90deg,transparent,#f44,transparent)}
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.admin-btn{
+  background:#1a0a0a;border:1px solid #442;border-radius:6px;
+  padding:10px 8px;color:#f88;font-family:'Orbitron',monospace;font-size:.6rem;
+  cursor:pointer;text-align:center;transition:.2s;letter-spacing:.5px;
+}
+.admin-btn:hover{border-color:#f44;color:#ff4444;box-shadow:0 0 15px rgba(255,50,50,.15);background:#200808}
+.admin-btn .icon{font-size:1.2rem;display:block;margin-bottom:4px}
+.admin-btn .label{font-size:.55rem;color:#664;margin-top:2px}
+.admin-section{
+  margin-bottom:14px;
+}
+.admin-section-title{
+  font-family:'Orbitron',monospace;font-size:.6rem;color:#f44;
+  letter-spacing:2px;margin-bottom:6px;padding-bottom:4px;
+  border-bottom:1px solid #220808;
+}
+.admin-input-row{
+  display:flex;gap:6px;align-items:center;margin-bottom:6px;
+}
+.admin-input-row label{
+  font-size:.65rem;color:#886;flex-shrink:0;width:80px;font-family:'Orbitron',monospace;
+}
+.admin-input-row input{
+  flex:1;background:#0c0808;border:1px solid #332;border-radius:4px;
+  padding:6px 8px;color:#f88;font-family:'Orbitron',monospace;font-size:.7rem;
+  outline:none;
+}
+.admin-input-row input:focus{border-color:#f44}
+.admin-input-row button{
+  background:#2a0a0a;border:1px solid #442;border-radius:4px;
+  padding:6px 12px;color:#f88;font-family:'Orbitron',monospace;font-size:.6rem;
+  cursor:pointer;transition:.2s;flex-shrink:0;
+}
+.admin-input-row button:hover{border-color:#f44;color:#f44}
+.admin-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 0;border-bottom:1px solid #110505;font-size:.7rem;
+}
+.admin-toggle .name{color:#886}
+.admin-toggle-switch{
+  width:36px;height:18px;background:#1a0a0a;border:1px solid #442;border-radius:9px;
+  cursor:pointer;position:relative;transition:.2s;
+}
+.admin-toggle-switch.on{background:#440808;border-color:#f44}
+.admin-toggle-switch::after{
+  content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;
+  background:#664;border-radius:50%;transition:.2s;
+}
+.admin-toggle-switch.on::after{left:20px;background:#f44}
+.admin-warning{
+  text-align:center;font-size:.5rem;color:#442;letter-spacing:1px;
+  margin-top:12px;padding-top:8px;border-top:1px solid #110505;
+}
 </style>
 </head>
 <body>
@@ -264,6 +323,76 @@ canvas{width:100%;height:100%;display:block;background:#050510}
     <button class="close-x" onclick="closeModal('stats')">✕</button>
     <h2>STATISTICS</h2>
     <div id="statsList"></div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL (secret: Runableiscool) -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal admin-modal">
+    <button class="close-x" onclick="closeModal('admin')">✕</button>
+    <h2>⚠ ADMIN PANEL ⚠</h2>
+
+    <div class="admin-section">
+      <div class="admin-section-title">RESOURCES</div>
+      <div class="admin-input-row">
+        <label>GOLD</label>
+        <input type="number" id="adminGold" placeholder="Amount">
+        <button onclick="adminSetGold()">SET</button>
+        <button onclick="adminAddGold()">ADD</button>
+      </div>
+      <div class="admin-input-row">
+        <label>WAVE</label>
+        <input type="number" id="adminWave" placeholder="Wave #">
+        <button onclick="adminSetWave()">SET</button>
+      </div>
+      <div class="admin-input-row">
+        <label>PRESTIGE</label>
+        <input type="number" id="adminPrestige" placeholder="Tokens">
+        <button onclick="adminSetPrestige()">SET</button>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-title">QUICK ACTIONS</div>
+      <div class="admin-grid">
+        <div class="admin-btn" onclick="adminGiveMaxGold()"><span class="icon">💰</span>MAX GOLD<span class="label">999T gold</span></div>
+        <div class="admin-btn" onclick="adminUnlockAll()"><span class="icon">🔓</span>UNLOCK ALL<span class="label">All balls + upgrades</span></div>
+        <div class="admin-btn" onclick="adminMaxUpgrades()"><span class="icon">⚡</span>MAX UPGRADES<span class="label">All to max level</span></div>
+        <div class="admin-btn" onclick="adminNukeWave()"><span class="icon">☢️</span>NUKE WAVE<span class="label">Clear all blocks</span></div>
+        <div class="admin-btn" onclick="adminSpawnBalls(10)"><span class="icon">🔮</span>+10 BALLS<span class="label">Extra balls</span></div>
+        <div class="admin-btn" onclick="adminSpawnBalls(50)"><span class="icon">🌀</span>+50 BALLS<span class="label">Ball mayhem</span></div>
+        <div class="admin-btn" onclick="adminSkipWaves(10)"><span class="icon">⏩</span>SKIP 10 WAVES<span class="label">Jump forward</span></div>
+        <div class="admin-btn" onclick="adminSkipWaves(100)"><span class="icon">🚀</span>SKIP 100 WAVES<span class="label">Jump far</span></div>
+        <div class="admin-btn" onclick="adminResetAll()"><span class="icon">🗑️</span>HARD RESET<span class="label">Wipe everything</span></div>
+        <div class="admin-btn" onclick="adminGodMode()"><span class="icon">👑</span>GOD MODE<span class="label">999x damage</span></div>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-title">TWEAKS</div>
+      <div class="admin-input-row">
+        <label>DAMAGE</label>
+        <input type="number" id="adminDmg" placeholder="Base dmg">
+        <button onclick="adminSetDmg()">SET</button>
+      </div>
+      <div class="admin-input-row">
+        <label>SPEED</label>
+        <input type="number" id="adminSpeed" placeholder="Ball speed" step="0.5">
+        <button onclick="adminSetSpeed()">SET</button>
+      </div>
+      <div class="admin-input-row">
+        <label>CRIT %</label>
+        <input type="number" id="adminCrit" placeholder="0-100" step="5">
+        <button onclick="adminSetCrit()">SET</button>
+      </div>
+      <div class="admin-input-row">
+        <label>CRIT MULT</label>
+        <input type="number" id="adminCritMult" placeholder="Multiplier" step="0.5">
+        <button onclick="adminSetCritMult()">SET</button>
+      </div>
+    </div>
+
+    <div class="admin-warning">SECRET ADMIN PANEL — CODE: RUNABLEISCOOL</div>
   </div>
 </div>
 
@@ -1192,6 +1321,123 @@ function loadGame(){
       data.upgradeLevels.forEach((lv,i)=>{if(upgrades[i])upgrades[i].level=lv;});
     }
   }catch(e){}
+}
+
+// ===== ADMIN PANEL (secret code: Runableiscool) =====
+let adminCodeBuffer = '';
+const ADMIN_CODE = 'runableiscool';
+let adminUnlocked = false;
+
+document.addEventListener('keydown', e => {
+  if(document.querySelector('.modal-overlay.open') && e.target.tagName==='INPUT') return;
+  adminCodeBuffer += e.key.toLowerCase();
+  if(adminCodeBuffer.length > 30) adminCodeBuffer = adminCodeBuffer.slice(-30);
+  if(adminCodeBuffer.includes(ADMIN_CODE)){
+    adminCodeBuffer = '';
+    adminUnlocked = true;
+    openModal('admin');
+    showPowerFlash('🔓 ADMIN ACCESS GRANTED');
+    screenShake = 10;
+  }
+});
+
+function adminSetGold(){
+  let v = parseInt(document.getElementById('adminGold').value);
+  if(!isNaN(v)){ gold = v; saveGame(); }
+}
+function adminAddGold(){
+  let v = parseInt(document.getElementById('adminGold').value);
+  if(!isNaN(v)){ gold += v; saveGame(); }
+}
+function adminSetWave(){
+  let v = parseInt(document.getElementById('adminWave').value);
+  if(!isNaN(v) && v >= 1){ level = v; if(level>highestWave)highestWave=level; balls=[]; makeBlocks(); for(let i=0;i<ballCount;i++)spawnBall(); saveGame(); }
+}
+function adminSetPrestige(){
+  let v = parseInt(document.getElementById('adminPrestige').value);
+  if(!isNaN(v) && v >= 0){ prestigeTokens = v; saveGame(); }
+}
+function adminGiveMaxGold(){
+  gold = 999999999999999;
+  showPowerFlash('💰 999T GOLD ADDED');
+  saveGame();
+}
+function adminUnlockAll(){
+  BALL_TYPES.forEach(bt => bt.unlocked = true);
+  buildBallSelector();
+  // Set unlock upgrade levels
+  upgrades.forEach(u => {
+    if(['fire','sniper','plasma','poison','lightning'].includes(u.id) && u.level === 0){
+      u.level = 1;
+    }
+  });
+  showPowerFlash('🔓 ALL BALLS UNLOCKED');
+  saveGame();
+}
+function adminMaxUpgrades(){
+  upgrades.forEach(u => {
+    if(u.max < 999){
+      while(u.level < u.max){
+        u.level++;
+        u.apply();
+      }
+    }
+  });
+  buildBallSelector();
+  // Respawn balls to match new count
+  balls = [];
+  for(let i = 0; i < ballCount; i++) spawnBall();
+  showPowerFlash('⚡ ALL UPGRADES MAXED');
+  saveGame();
+}
+function adminNukeWave(){
+  nukeBlocks();
+  saveGame();
+}
+function adminSpawnBalls(n){
+  for(let i = 0; i < n; i++) spawnBall();
+  ballCount += n;
+  showPowerFlash('🔮 +' + n + ' BALLS SPAWNED');
+}
+function adminSkipWaves(n){
+  level += n;
+  if(level > highestWave) highestWave = level;
+  gold += Math.floor(n * level * 20 * goldMult);
+  balls = [];
+  makeBlocks();
+  for(let i = 0; i < ballCount; i++) spawnBall();
+  showPowerFlash('⏩ SKIPPED TO WAVE ' + level);
+  saveGame();
+}
+function adminResetAll(){
+  if(!confirm('HARD RESET: This will wipe ALL save data. Are you sure?')) return;
+  localStorage.removeItem('blockBreakerIdle2');
+  location.reload();
+}
+function adminGodMode(){
+  ballDmg = 99999;
+  critChance = 1;
+  critMult = 50;
+  ballSpeed = 8;
+  goldMult = 100;
+  showPowerFlash('👑 GOD MODE ACTIVATED');
+  screenShake = 20;
+}
+function adminSetDmg(){
+  let v = parseInt(document.getElementById('adminDmg').value);
+  if(!isNaN(v) && v >= 1){ ballDmg = v; saveGame(); }
+}
+function adminSetSpeed(){
+  let v = parseFloat(document.getElementById('adminSpeed').value);
+  if(!isNaN(v) && v > 0){ ballSpeed = v; saveGame(); }
+}
+function adminSetCrit(){
+  let v = parseInt(document.getElementById('adminCrit').value);
+  if(!isNaN(v)){ critChance = Math.max(0, Math.min(100, v)) / 100; saveGame(); }
+}
+function adminSetCritMult(){
+  let v = parseFloat(document.getElementById('adminCritMult').value);
+  if(!isNaN(v) && v >= 1){ critMult = v; saveGame(); }
 }
 
 // ===== CLICK TO DAMAGE (tap interaction) =====
