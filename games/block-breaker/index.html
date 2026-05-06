@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Block Breaker Idle — PatGames</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#eee;font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center}
+#topBar{width:100%;max-width:900px;display:flex;justify-content:space-between;align-items:center;padding:10px 16px;flex-shrink:0}
+#topBar h1{font-size:1.1rem;color:#f0c040}
+#topBar .stats{display:flex;gap:16px;font-size:.85rem}
+.stat{display:flex;align-items:center;gap:4px}
+.stat .icon{font-size:1rem}
+#main{display:flex;gap:12px;width:100%;max-width:900px;flex:1;padding:0 12px 12px;min-height:0}
+canvas{background:#12122a;border-radius:12px;flex:1;min-width:0}
+#shop{width:220px;flex-shrink:0;background:#16162e;border-radius:12px;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+#shop h2{font-size:.9rem;color:#f0c040;margin-bottom:4px;text-align:center}
+.upgrade-btn{background:#1e1e40;border:2px solid #333;border-radius:8px;padding:8px 10px;color:#eee;cursor:pointer;text-align:left;transition:.2s;font-size:.75rem}
+.upgrade-btn:hover{border-color:#f0c040;background:#2a2a50}
+.upgrade-btn.maxed{opacity:.5;cursor:default;border-color:#555}
+.upgrade-btn .name{font-weight:bold;color:#f0c040;font-size:.8rem}
+.upgrade-btn .desc{color:#aaa;margin:2px 0}
+.upgrade-btn .cost{color:#4f4;font-weight:bold}
+#levelInfo{text-align:center;padding:6px;font-size:.8rem;color:#aaa}
+#homeBtn{color:#aaa;text-decoration:none;font-size:.8rem;transition:.2s}
+#homeBtn:hover{color:#f0c040}
+#comboPopup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2.5rem;font-weight:bold;color:#f0c040;pointer-events:none;opacity:0;transition:opacity .3s;text-shadow:0 0 20px #f0c040}
+</style>
+</head>
+<body>
+<div id="topBar">
+  <a id="homeBtn" href="../../">← PatGames</a>
+  <h1>Block Breaker Idle</h1>
+  <div class="stats">
+    <div class="stat"><span class="icon">💰</span><span id="goldDisplay">0</span></div>
+    <div class="stat"><span class="icon">⭐</span>Lv <span id="levelDisplay">1</span></div>
+  </div>
+</div>
+<div id="levelInfo">Level <span id="lvlNum">1</span> — Blocks remaining: <span id="blocksLeft">0</span></div>
+<div id="main">
+  <canvas id="c"></canvas>
+  <div id="shop">
+    <h2>⚡ UPGRADES</h2>
+    <div id="upgradeList"></div>
+  </div>
+</div>
+<div id="comboPopup"></div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const comboPopup = document.getElementById('comboPopup');
+
+// --- GAME STATE ---
+let gold = 0;
+let level = 1;
+let ballDmg = 1;
+let ballSpeed = 3;
+let ballCount = 1;
+let critChance = 0.05;
+let critMult = 2;
+let goldMult = 1;
+let paddleW = 100;
+let combo = 0;
+let maxCombo = 0;
+
+// Upgrade definitions
+const upgrades = [
+  {id:'dmg', name:'⚔️ Damage', desc:'Ball damage +1', baseCost:10, costMult:1.6, level:0, max:100, apply:()=>{ballDmg++}},
+  {id:'spd', name:'💨 Ball Speed', desc:'Ball speed +0.5', baseCost:25, costMult:1.8, level:0, max:30, apply:()=>{ballSpeed+=0.5}},
+  {id:'multi', name:'🔮 Multi Ball', desc:'+1 ball', baseCost:100, costMult:3, level:0, max:10, apply:()=>{ballCount++;spawnBall()}},
+  {id:'crit', name:'🎯 Crit Chance', desc:'+3% crit chance', baseCost:50, costMult:1.7, level:0, max:25, apply:()=>{critChance+=0.03}},
+  {id:'critdmg', name:'💥 Crit Damage', desc:'+0.5x crit multiplier', baseCost:75, costMult:1.8, level:0, max:20, apply:()=>{critMult+=0.5}},
+  {id:'gold', name:'💰 Gold Bonus', desc:'+25% gold', baseCost:40, costMult:1.5, level:0, max:30, apply:()=>{goldMult+=0.25}},
+  {id:'paddle', name:'📏 Wider Paddle', desc:'Paddle +15px', baseCost:30, costMult:1.5, level:0, max:15, apply:()=>{paddleW+=15}},
+];
+
+function getCost(u){return Math.floor(u.baseCost*Math.pow(u.costMult,u.level))}
+
+// --- BLOCKS ---
+let blocks = [];
+let blockRows, blockCols, blockW, blockH, blockPad=4, blockTop=10;
+
+function makeBlocks(){
+  blocks=[];
+  blockCols = Math.min(8, 5 + Math.floor(level/5));
+  blockRows = Math.min(7, 3 + Math.floor(level/3));
+  blockW = (canvas.width - (blockCols+1)*blockPad) / blockCols;
+  blockH = 28;
+  for(let r=0;r<blockRows;r++){
+    for(let c=0;c<blockCols;c++){
+      let hp = Math.floor((level*2 + r*level*0.5) * (1 + Math.random()*0.3));
+      if(hp<1)hp=1;
+      let hue = (r*40 + c*20 + level*10) % 360;
+      blocks.push({
+        x: blockPad + c*(blockW+blockPad),
+        y: blockTop + r*(blockH+blockPad),
+        w: blockW, h: blockH,
+        hp, maxHp: hp,
+        hue, alive:true
+      });
+    }
+  }
+  updateBlocksLeft();
+}
+
+function updateBlocksLeft(){
+  document.getElementById('blocksLeft').textContent = blocks.filter(b=>b.alive).length;
+}
+
+// --- PADDLE ---
+let paddle = {x:0, y:0, w:100, h:12};
+let mouseX = 0;
+
+// --- BALLS ---
+let balls = [];
+function spawnBall(){
+  let angle = -Math.PI/2 + (Math.random()-0.5)*1.2;
+  balls.push({
+    x: canvas.width/2,
+    y: canvas.height - 40,
+    vx: Math.cos(angle)*ballSpeed,
+    vy: Math.sin(angle)*ballSpeed,
+    r: 6, trail:[]
+  });
+}
+
+// --- PARTICLES ---
+let particles = [];
+function spawnParticles(x,y,hue,count){
+  for(let i=0;i<count;i++){
+    let angle=Math.random()*Math.PI*2, speed=1+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:1,hue,size:2+Math.random()*3});
+  }
+}
+
+// --- DAMAGE NUMBERS ---
+let dmgNums = [];
+function spawnDmgNum(x,y,val,isCrit){
+  dmgNums.push({x,y,val,isCrit,life:1,vy:-2});
+}
+
+// --- RESIZE ---
+function resize(){
+  const main = document.getElementById('main');
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+  paddle.y = canvas.height - 24;
+  if(blocks.length===0) makeBlocks();
+}
+
+// --- INPUT ---
+canvas.addEventListener('mousemove', e=>{
+  const rect=canvas.getBoundingClientRect();
+  mouseX = e.clientX - rect.left;
+});
+canvas.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect();
+  mouseX = e.touches[0].clientX - rect.left;
+},{passive:false});
+
+// --- COMBO ---
+let comboTimer = 0;
+function addCombo(){
+  combo++;
+  comboTimer = 120;
+  if(combo > maxCombo) maxCombo = combo;
+  if(combo >= 5 && combo % 5 === 0){
+    comboPopup.textContent = `🔥 ${combo}x COMBO!`;
+    comboPopup.style.opacity = '1';
+    setTimeout(()=>comboPopup.style.opacity='0', 800);
+  }
+}
+
+// --- MAIN LOOP ---
+function update(){
+  // Paddle
+  paddle.w = paddleW;
+  paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, mouseX - paddle.w/2));
+
+  // Combo timer
+  if(comboTimer > 0) comboTimer--;
+  else combo = 0;
+
+  // Balls
+  balls.forEach(ball=>{
+    ball.trail.push({x:ball.x, y:ball.y});
+    if(ball.trail.length > 8) ball.trail.shift();
+
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // Wall bounce
+    if(ball.x - ball.r < 0){ball.x = ball.r; ball.vx = Math.abs(ball.vx);}
+    if(ball.x + ball.r > canvas.width){ball.x = canvas.width - ball.r; ball.vx = -Math.abs(ball.vx);}
+    if(ball.y - ball.r < 0){ball.y = ball.r; ball.vy = Math.abs(ball.vy);}
+
+    // Paddle bounce
+    if(ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y + ball.r <= paddle.y + paddle.h + ball.vy*2
+       && ball.x >= paddle.x && ball.x <= paddle.x + paddle.w){
+      ball.vy = -Math.abs(ball.vy);
+      let offset = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
+      ball.vx = offset * ballSpeed * 1.2;
+      ball.y = paddle.y - ball.r;
+      // Normalize speed
+      let sp = Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy);
+      ball.vx = ball.vx/sp*ballSpeed;
+      ball.vy = ball.vy/sp*ballSpeed;
+    }
+
+    // Fall off bottom — respawn
+    if(ball.y - ball.r > canvas.height){
+      ball.x = paddle.x + paddle.w/2;
+      ball.y = paddle.y - 20;
+      let angle = -Math.PI/2 + (Math.random()-0.5)*0.8;
+      ball.vx = Math.cos(angle)*ballSpeed;
+      ball.vy = Math.sin(angle)*ballSpeed;
+      combo = 0;
+    }
+
+    // Block collision
+    blocks.forEach(block=>{
+      if(!block.alive) return;
+      if(ball.x + ball.r > block.x && ball.x - ball.r < block.x + block.w &&
+         ball.y + ball.r > block.y && ball.y - ball.r < block.y + block.h){
+        // Damage
+        let isCrit = Math.random() < critChance;
+        let dmg = isCrit ? Math.floor(ballDmg * critMult) : ballDmg;
+        let comboBonus = 1 + combo * 0.05;
+        dmg = Math.floor(dmg * comboBonus);
+        block.hp -= dmg;
+        spawnDmgNum(ball.x, block.y, dmg, isCrit);
+        addCombo();
+
+        if(block.hp <= 0){
+          block.alive = false;
+          let reward = Math.floor((block.maxHp * 0.5 + level) * goldMult);
+          gold += reward;
+          spawnParticles(block.x+block.w/2, block.y+block.h/2, block.hue, 12);
+          updateBlocksLeft();
+        } else {
+          spawnParticles(ball.x, ball.y, block.hue, 4);
+        }
+
+        // Bounce
+        let overlapX = Math.min(ball.x+ball.r - block.x, block.x+block.w - (ball.x-ball.r));
+        let overlapY = Math.min(ball.y+ball.r - block.y, block.y+block.h - (ball.y-ball.r));
+        if(overlapX < overlapY) ball.vx = -ball.vx;
+        else ball.vy = -ball.vy;
+      }
+    });
+  });
+
+  // Particles
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.05;p.life-=0.025;});
+  particles = particles.filter(p=>p.life>0);
+
+  // Damage numbers
+  dmgNums.forEach(d=>{d.y+=d.vy;d.vy-=0.02;d.life-=0.02;});
+  dmgNums = dmgNums.filter(d=>d.life>0);
+
+  // Level complete check
+  if(blocks.every(b=>!b.alive)){
+    level++;
+    gold += Math.floor(level * 10 * goldMult);
+    makeBlocks();
+  }
+
+  // UI
+  document.getElementById('goldDisplay').textContent = formatNum(gold);
+  document.getElementById('levelDisplay').textContent = level;
+  document.getElementById('lvlNum').textContent = level;
+}
+
+function formatNum(n){
+  if(n>=1e6) return (n/1e6).toFixed(1)+'M';
+  if(n>=1e3) return (n/1e3).toFixed(1)+'K';
+  return n;
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Blocks
+  blocks.forEach(block=>{
+    if(!block.alive) return;
+    let pct = block.hp / block.maxHp;
+    ctx.fillStyle = `hsla(${block.hue},70%,${30+pct*25}%,1)`;
+    ctx.beginPath();
+    roundRect(ctx, block.x, block.y, block.w, block.h, 4);
+    ctx.fill();
+    // HP bar
+    ctx.fillStyle = `hsla(${block.hue},80%,60%,0.8)`;
+    ctx.fillRect(block.x+2, block.y+block.h-4, (block.w-4)*pct, 3);
+    // HP text
+    if(block.w > 30){
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(formatNum(block.hp), block.x+block.w/2, block.y+block.h/2+3);
+    }
+  });
+
+  // Paddle
+  let grad = ctx.createLinearGradient(paddle.x,paddle.y,paddle.x+paddle.w,paddle.y);
+  grad.addColorStop(0,'#f0c040');
+  grad.addColorStop(1,'#e08020');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  roundRect(ctx, paddle.x, paddle.y, paddle.w, paddle.h, 6);
+  ctx.fill();
+
+  // Balls
+  balls.forEach(ball=>{
+    // Trail
+    ball.trail.forEach((t,i)=>{
+      let alpha = i/ball.trail.length * 0.3;
+      ctx.fillStyle = `rgba(240,192,64,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(t.x,t.y,ball.r*(i/ball.trail.length),0,Math.PI*2);
+      ctx.fill();
+    });
+    // Ball glow
+    ctx.shadowColor = '#f0c040';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+
+  // Particles
+  particles.forEach(p=>{
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = `hsl(${p.hue},80%,60%)`;
+    ctx.fillRect(p.x-p.size/2, p.y-p.size/2, p.size, p.size);
+  });
+  ctx.globalAlpha = 1;
+
+  // Damage numbers
+  dmgNums.forEach(d=>{
+    ctx.globalAlpha = d.life;
+    ctx.font = d.isCrit ? 'bold 16px sans-serif' : '12px sans-serif';
+    ctx.fillStyle = d.isCrit ? '#ff4444' : '#fff';
+    ctx.textAlign = 'center';
+    ctx.fillText(d.val, d.x, d.y);
+  });
+  ctx.globalAlpha = 1;
+
+  // Combo display
+  if(combo >= 3){
+    ctx.fillStyle = `rgba(240,192,64,${0.3+Math.sin(Date.now()/200)*0.1})`;
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`🔥 ${combo}x`, 10, canvas.height - 10);
+  }
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+// --- SHOP ---
+function renderShop(){
+  const list = document.getElementById('upgradeList');
+  list.innerHTML = '';
+  upgrades.forEach(u=>{
+    let cost = getCost(u);
+    let maxed = u.level >= u.max;
+    let btn = document.createElement('button');
+    btn.className = 'upgrade-btn' + (maxed?' maxed':'');
+    btn.innerHTML = `<div class="name">${u.name} (${u.level}/${u.max})</div>
+      <div class="desc">${u.desc}</div>
+      <div class="cost">${maxed?'MAXED':'💰 '+formatNum(cost)}</div>`;
+    if(!maxed){
+      btn.onclick = ()=>{
+        if(gold >= cost){
+          gold -= cost;
+          u.level++;
+          u.apply();
+          renderShop();
+          saveGame();
+        }
+      };
+    }
+    list.appendChild(btn);
+  });
+}
+
+// --- SAVE/LOAD ---
+function saveGame(){
+  const data = {
+    gold, level, ballDmg, ballSpeed, ballCount, critChance, critMult, goldMult, paddleW,
+    upgrades: upgrades.map(u=>u.level)
+  };
+  localStorage.setItem('blockBreakerIdle', JSON.stringify(data));
+}
+
+function loadGame(){
+  try{
+    const data = JSON.parse(localStorage.getItem('blockBreakerIdle'));
+    if(!data) return;
+    gold = data.gold||0;
+    level = data.level||1;
+    ballDmg = data.ballDmg||1;
+    ballSpeed = data.ballSpeed||3;
+    ballCount = data.ballCount||1;
+    critChance = data.critChance||0.05;
+    critMult = data.critMult||2;
+    goldMult = data.goldMult||1;
+    paddleW = data.paddleW||100;
+    if(data.upgrades){
+      data.upgrades.forEach((lv,i)=>{
+        if(upgrades[i]) upgrades[i].level = lv;
+      });
+    }
+  }catch(e){}
+}
+
+// --- INIT ---
+function init(){
+  loadGame();
+  resize();
+  // Spawn balls
+  for(let i=0;i<ballCount;i++) spawnBall();
+  renderShop();
+
+  // Auto-save every 30s
+  setInterval(saveGame, 30000);
+
+  function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+window.addEventListener('resize', ()=>{
+  resize();
+  makeBlocks();
+});
+
+init();
+</script>
+</body>
+</html>
