@@ -53,8 +53,20 @@
             position: absolute; top: 36px; left: 0; right: 0; height: 4px;
             background: #111; z-index: 100;
         }
-        #dayNightFill {
-            height: 100%; width: 0%; transition: width 0.5s linear;
+        #dayNightFill { height: 100%; width: 0%; transition: width 0.5s linear; }
+
+        /* Stamina bar */
+        #staminaBar {
+            position: absolute; top: 44px; left: 50%; transform: translateX(-50%);
+            width: 160px; height: 6px; background: #222; border-radius: 3px; z-index: 100;
+            overflow: hidden;
+        }
+        #staminaFill { height: 100%; width: 100%; background: #ffcc00; border-radius: 3px; transition: width 0.1s; }
+
+        /* Time display */
+        #timeDisplay {
+            position: absolute; top: 44px; right: 14px; z-index: 100;
+            font-size: 0.7rem; color: #aaa; pointer-events: none;
         }
 
         /* Inventory bar */
@@ -68,12 +80,9 @@
             align-items: center; justify-content: center; font-size: 20px; position: relative;
         }
         .inv-slot.active { border-color: #00ff88; }
-        .inv-slot .count {
-            font-size: 9px; color: #aaa; position: absolute; bottom: 2px; right: 4px;
-        }
-        .inv-slot .key {
-            font-size: 8px; color: #666; position: absolute; top: 2px; left: 4px;
-        }
+        .inv-slot .count { font-size: 9px; color: #aaa; position: absolute; bottom: 2px; right: 4px; }
+        .inv-slot .key { font-size: 8px; color: #666; position: absolute; top: 2px; left: 4px; }
+        .inv-slot .lvl { font-size: 7px; color: #ffcc00; position: absolute; bottom: 2px; left: 4px; }
 
         /* Build menu */
         #buildMenu {
@@ -87,13 +96,31 @@
             font-size: 0.75rem; cursor: pointer; text-align: center;
         }
         .build-option:hover { border-color: #00ff88; color: #00ff88; }
-        .build-option.cant { opacity: 0.4; cursor: default; }
+
+        /* Upgrade menu */
+        #upgradeMenu {
+            position: absolute; top: 60px; left: 14px; z-index: 100;
+            background: rgba(0,0,0,0.85); padding: 12px; border-radius: 8px;
+            border: 1px solid #333; display: none; width: 220px;
+        }
+        #upgradeMenu h3 { font-size: 0.85rem; color: #00ff88; margin-bottom: 8px; }
+        .upgrade-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 4px 0; font-size: 0.7rem; border-bottom: 1px solid #1a1a2e;
+        }
+        .upgrade-row:last-child { border: none; }
+        .upgrade-btn {
+            padding: 3px 8px; background: #1a1a2e; border: 1px solid #00ff88;
+            color: #00ff88; font-family: 'Courier New', monospace; font-size: 0.65rem;
+            cursor: pointer; border-radius: 4px;
+        }
+        .upgrade-btn:hover { background: #00ff88; color: #0a0a0f; }
+        .upgrade-btn.cant { opacity: 0.3; cursor: default; }
 
         canvas { display: block; }
     </style>
 </head>
 <body>
-    <!-- MENU -->
     <div id="menu">
         <h1>🧟 SURVIVOR ZOMBIE</h1>
         <p class="subtitle">Online Co-op Survival — Build, Mine, Survive!</p>
@@ -121,12 +148,11 @@
         </div>
 
         <div style="margin-top:30px;color:#555;font-size:0.7rem;text-align:center;line-height:1.8;">
-            WASD to move | 1-5 to select tool | B to open build menu<br>
+            WASD move | SHIFT sprint | 1-4 tools | B build | U upgrades<br>
             Click to use tool / place wall | Survive the nights!
         </div>
     </div>
 
-    <!-- GAME -->
     <div id="gameContainer" class="hidden" style="position:relative;width:100vw;height:100vh;">
         <canvas id="gameCanvas"></canvas>
         <div id="hud">
@@ -143,6 +169,8 @@
             </div>
         </div>
         <div id="dayNightBar"><div id="dayNightFill"></div></div>
+        <div id="staminaBar"><div id="staminaFill"></div></div>
+        <div id="timeDisplay">6:00 AM</div>
         <div id="inventory"></div>
         <div id="buildMenu">
             <div class="build-option" onclick="selectBuild('wood')">🪵 Wood Wall<br><span style="font-size:0.6rem;color:#888;">5 wood</span></div>
@@ -150,30 +178,24 @@
             <div class="build-option" onclick="selectBuild('metal')">⚙️ Metal Wall<br><span style="font-size:0.6rem;color:#888;">12 metal</span></div>
             <div class="build-option" onclick="selectBuild('obsidian')">💎 Obsidian Wall<br><span style="font-size:0.6rem;color:#888;">20 obsidian</span></div>
         </div>
+        <div id="upgradeMenu">
+            <h3>⬆ UPGRADES [U]</h3>
+            <div id="upgradeList"></div>
+        </div>
     </div>
 
 <script>
-// ═══════════════════════════════════════════════
-//  SURVIVOR ZOMBIE — Co-op Survival Game
-// ═══════════════════════════════════════════════
-
 const TILE = 40;
 const MAP_W = 80, MAP_H = 60;
-const DAY_LENGTH = 600; // 10 min in seconds
+const DAY_LENGTH = 600;
 const NIGHT_LENGTH = 600;
 const CYCLE_LENGTH = DAY_LENGTH + NIGHT_LENGTH;
 
-// Wall HP by type
 const WALL_HP = { wood: 50, stone: 150, metal: 400, obsidian: 2000 };
 const WALL_COST = { wood: { wood: 5 }, stone: { stone: 8 }, metal: { metal: 12 }, obsidian: { obsidian: 20 } };
-const WALL_COLORS = {
-    wood: '#8B5E3C', stone: '#888', metal: '#B0C4DE', obsidian: '#2a0a3a'
-};
-const WALL_BORDER = {
-    wood: '#6B3F1F', stone: '#666', metal: '#7B9DBF', obsidian: '#1a0028'
-};
+const WALL_COLORS = { wood: '#8B5E3C', stone: '#888', metal: '#B0C4DE', obsidian: '#2a0a3a' };
+const WALL_BORDER = { wood: '#6B3F1F', stone: '#666', metal: '#7B9DBF', obsidian: '#1a0028' };
 
-// Resources
 const RESOURCE_TYPES = {
     tree: { emoji: '🌲', hp: 3, gives: 'wood', amount: 3, color: '#1a5c1a', radius: 16 },
     rock: { emoji: '🪨', hp: 4, gives: 'stone', amount: 2, color: '#666', radius: 14 },
@@ -181,44 +203,159 @@ const RESOURCE_TYPES = {
     obsidian_node: { emoji: '💎', hp: 10, gives: 'obsidian', amount: 1, color: '#2a0a3a', radius: 12 }
 };
 
-// Game state
-let isHost = false;
-let peer = null;
-let conn = null;
-let gameStarted = false;
+// Tool upgrades
+const TOOL_UPGRADES = {
+    axe: { name: 'Axe', levels: [
+        { dmg: 1, range: 60, speed: 400, cost: {} },
+        { dmg: 2, range: 65, speed: 350, cost: { wood: 10 } },
+        { dmg: 3, range: 70, speed: 300, cost: { wood: 25, stone: 10 } },
+        { dmg: 4, range: 80, speed: 250, cost: { stone: 30, metal: 10 } },
+        { dmg: 5, range: 90, speed: 200, cost: { metal: 25, obsidian: 5 } },
+    ]},
+    pick: { name: 'Pickaxe', levels: [
+        { dmg: 1, range: 60, speed: 400, cost: {} },
+        { dmg: 2, range: 65, speed: 350, cost: { wood: 10, stone: 5 } },
+        { dmg: 3, range: 70, speed: 300, cost: { stone: 20, metal: 5 } },
+        { dmg: 4, range: 80, speed: 250, cost: { metal: 20, obsidian: 5 } },
+        { dmg: 5, range: 90, speed: 200, cost: { obsidian: 15 } },
+    ]},
+    sword: { name: 'Sword', levels: [
+        { dmg: 15, range: 55, speed: 400, cost: {} },
+        { dmg: 22, range: 60, speed: 350, cost: { wood: 15, stone: 10 } },
+        { dmg: 32, range: 65, speed: 300, cost: { stone: 25, metal: 15 } },
+        { dmg: 45, range: 75, speed: 250, cost: { metal: 30, obsidian: 10 } },
+        { dmg: 65, range: 85, speed: 200, cost: { obsidian: 25 } },
+    ]},
+};
+
+let toolLevels = { axe: 0, pick: 0, sword: 0 };
+
+let isHost = false, peer = null, conn = null, gameStarted = false;
 
 let localPlayer = { x: MAP_W * TILE / 2, y: MAP_H * TILE / 2, hp: 100, maxHp: 100 };
 let remotePlayer = null;
-let resources = [];
-let walls = [];
-let zombies = [];
-let particles = [];
+let resources = [], walls = [], zombies = [], particles = [];
 let inventory = { wood: 0, stone: 0, metal: 0, obsidian: 0 };
-let selectedSlot = 0; // 0=axe, 1=pick, 2=sword, 3=build, 4=empty
-let buildMode = null; // null or 'wood','stone','metal','obsidian'
-let gameTime = 0; // seconds
+let selectedSlot = 0;
+let buildMode = null;
+let gameTime = 0;
 let dayCount = 1;
 let isNight = false;
-let nightPhase = 0; // how many nights completed
+let nightPhase = 0;
 let keys = {};
 let mouse = { x: 0, y: 0, down: false };
 let camera = { x: 0, y: 0 };
 let lastAttack = 0;
 let showBuildMenu = false;
+let showUpgradeMenu = false;
 let zombieSpawnTimer = 0;
 let syncTimer = 0;
+
+// Sprint
+let stamina = 100;
+const MAX_STAMINA = 100;
+const SPRINT_DRAIN = 25; // per second
+const STAMINA_REGEN = 12; // per second
+let isSprinting = false;
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize);
 resize();
 
-// ── NETWORKING (PeerJS) ──
+// ── TIME OF DAY ──
+function getTimeOfDay() {
+    // Map cycle to 24h clock. Day starts at 6:00 AM, night at 6:00 PM
+    const cycleTime = gameTime % CYCLE_LENGTH;
+    const cyclePct = cycleTime / CYCLE_LENGTH;
+    // 0.0 = 6:00 AM, 0.5 = 6:00 PM, 1.0 = 6:00 AM next day
+    const hours24 = (6 + cyclePct * 24) % 24;
+    return hours24;
+}
+
+function formatTime(h24) {
+    const h = Math.floor(h24);
+    const m = Math.floor((h24 - h) * 60);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:${m.toString().padStart(2,'0')} ${ampm}`;
+}
+
+function getSkyColor() {
+    const h = getTimeOfDay();
+    // Realistic transitions:
+    // 5-7 AM: dawn (dark blue → orange hint)
+    // 7-10 AM: morning (warm green)
+    // 10-16: midday (bright green)
+    // 16-18: evening (warm, golden)
+    // 18-20: dusk (orange → dark)
+    // 20-5: night (very dark)
+
+    if (h >= 5 && h < 7) {
+        // Dawn
+        const t = (h - 5) / 2;
+        return lerpColor('#0a0a1a', '#2a3520', t);
+    } else if (h >= 7 && h < 10) {
+        const t = (h - 7) / 3;
+        return lerpColor('#2a3520', '#1e3a1a', t);
+    } else if (h >= 10 && h < 16) {
+        return '#1e3a1a'; // Bright midday
+    } else if (h >= 16 && h < 18) {
+        const t = (h - 16) / 2;
+        return lerpColor('#1e3a1a', '#2a2818', t);
+    } else if (h >= 18 && h < 20) {
+        const t = (h - 18) / 2;
+        return lerpColor('#2a2818', '#0a0a15', t);
+    } else {
+        return '#060610'; // Deep night
+    }
+}
+
+function getGrassColor() {
+    const h = getTimeOfDay();
+    if (h >= 6 && h < 8) {
+        const t = (h - 6) / 2;
+        return lerpColor('#0f1f0f', '#1a3a16', t);
+    } else if (h >= 8 && h < 16) {
+        return '#1a3a16';
+    } else if (h >= 16 && h < 19) {
+        const t = (h - 16) / 3;
+        return lerpColor('#1a3a16', '#12200e', t);
+    } else {
+        return '#080f06';
+    }
+}
+
+function getAmbientDarkness() {
+    const h = getTimeOfDay();
+    if (h >= 7 && h < 17) return 0; // No darkness during day
+    if (h >= 17 && h < 20) return (h - 17) / 3 * 0.6; // Fade in
+    if (h >= 20 || h < 5) return 0.6;
+    if (h >= 5 && h < 7) return (1 - (h - 5) / 2) * 0.6; // Fade out
+    return 0;
+}
+
+function lerpColor(a, b, t) {
+    const ah = parseInt(a.slice(1), 16);
+    const bh = parseInt(b.slice(1), 16);
+    const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+    const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+    const rr = Math.round(ar + (br - ar) * t);
+    const rg = Math.round(ag + (bg - ag) * t);
+    const rb = Math.round(ab + (bb - ab) * t);
+    return '#' + ((rr << 16) | (rg << 8) | rb).toString(16).padStart(6, '0');
+}
+
+function getGridAlpha() {
+    const h = getTimeOfDay();
+    if (h >= 8 && h < 16) return 0.05;
+    if ((h >= 20 || h < 5)) return 0.015;
+    return 0.03;
+}
+
+// ── NETWORKING ──
 function genCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -231,18 +368,12 @@ function hostGame() {
     document.getElementById('menuMain').classList.add('hidden');
     document.getElementById('menuHost').classList.remove('hidden');
     document.getElementById('roomCode').textContent = code;
-
     isHost = true;
     peer = new Peer('sz-' + code, { debug: 0 });
-
-    peer.on('open', () => {
-        console.log('Host ready, code:', code);
-    });
-
+    peer.on('open', () => { console.log('Host ready'); });
     peer.on('connection', (c) => {
         conn = c;
         conn.on('open', () => {
-            // Send initial game state
             generateMap();
             remotePlayer = { x: localPlayer.x + 60, y: localPlayer.y, hp: 100, maxHp: 100 };
             sendState();
@@ -251,10 +382,7 @@ function hostGame() {
         conn.on('data', handleData);
         conn.on('close', () => { remotePlayer = null; });
     });
-
-    peer.on('error', (e) => {
-        console.error('Peer error:', e);
-    });
+    peer.on('error', (e) => console.error(e));
 }
 
 function showJoin() {
@@ -266,15 +394,11 @@ function joinGame() {
     const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
     if (code.length < 4) return;
     document.getElementById('joinStatus').classList.remove('hidden');
-
     isHost = false;
     peer = new Peer(undefined, { debug: 0 });
-
     peer.on('open', () => {
         conn = peer.connect('sz-' + code, { reliable: true });
-        conn.on('open', () => {
-            console.log('Connected to host');
-        });
+        conn.on('open', () => console.log('Connected'));
         conn.on('data', handleData);
         conn.on('close', () => { remotePlayer = null; });
     });
@@ -282,14 +406,8 @@ function joinGame() {
 
 function handleData(data) {
     if (data.type === 'state') {
-        // Full state sync from host
-        resources = data.resources;
-        walls = data.walls;
-        zombies = data.zombies || [];
-        gameTime = data.gameTime;
-        dayCount = data.dayCount;
-        isNight = data.isNight;
-        nightPhase = data.nightPhase;
+        resources = data.resources; walls = data.walls; zombies = data.zombies || [];
+        gameTime = data.gameTime; dayCount = data.dayCount; isNight = data.isNight; nightPhase = data.nightPhase;
         if (isHost) {
             remotePlayer = { x: data.px, y: data.py, hp: data.hp, maxHp: 100 };
         } else {
@@ -298,25 +416,15 @@ function handleData(data) {
         }
     } else if (data.type === 'pos') {
         if (!remotePlayer) remotePlayer = { x: 0, y: 0, hp: 100, maxHp: 100 };
-        remotePlayer.x = data.x;
-        remotePlayer.y = data.y;
-        remotePlayer.hp = data.hp;
+        remotePlayer.x = data.x; remotePlayer.y = data.y; remotePlayer.hp = data.hp;
     } else if (data.type === 'hit_resource') {
         const r = resources.find(res => res.id === data.id);
-        if (r) {
-            r.hp--;
-            if (r.hp <= 0) {
-                resources = resources.filter(res => res.id !== data.id);
-            }
-        }
+        if (r) { r.hp--; if (r.hp <= 0) resources = resources.filter(res => res.id !== data.id); }
     } else if (data.type === 'place_wall') {
         walls.push(data.wall);
     } else if (data.type === 'hit_zombie') {
         const z = zombies.find(zz => zz.id === data.id);
-        if (z) {
-            z.hp -= data.dmg;
-            if (z.hp <= 0) zombies = zombies.filter(zz => zz.id !== data.id);
-        }
+        if (z) { z.hp -= data.dmg; if (z.hp <= 0) zombies = zombies.filter(zz => zz.id !== data.id); }
     }
 }
 
@@ -324,8 +432,7 @@ function sendState() {
     if (!conn || !conn.open) return;
     if (isHost) {
         conn.send({
-            type: 'state',
-            resources, walls, zombies, gameTime, dayCount, isNight, nightPhase,
+            type: 'state', resources, walls, zombies, gameTime, dayCount, isNight, nightPhase,
             hostX: localPlayer.x, hostY: localPlayer.y, hostHp: localPlayer.hp
         });
     }
@@ -336,61 +443,22 @@ function sendPos() {
     conn.send({ type: 'pos', x: localPlayer.x, y: localPlayer.y, hp: localPlayer.hp });
 }
 
-// ── MAP GENERATION ──
+// ── MAP ──
 let nextId = 1;
 function generateMap() {
-    resources = [];
-    walls = [];
-    zombies = [];
-
-    // Trees (lots)
-    for (let i = 0; i < 200; i++) {
-        resources.push({
-            id: nextId++, type: 'tree',
-            x: Math.random() * MAP_W * TILE,
-            y: Math.random() * MAP_H * TILE,
-            hp: RESOURCE_TYPES.tree.hp
-        });
-    }
-    // Rocks
-    for (let i = 0; i < 80; i++) {
-        resources.push({
-            id: nextId++, type: 'rock',
-            x: Math.random() * MAP_W * TILE,
-            y: Math.random() * MAP_H * TILE,
-            hp: RESOURCE_TYPES.rock.hp
-        });
-    }
-    // Ore (fewer, scattered)
-    for (let i = 0; i < 40; i++) {
-        resources.push({
-            id: nextId++, type: 'ore',
-            x: Math.random() * MAP_W * TILE,
-            y: Math.random() * MAP_H * TILE,
-            hp: RESOURCE_TYPES.ore.hp
-        });
-    }
-    // Obsidian nodes (rare)
-    for (let i = 0; i < 15; i++) {
-        resources.push({
-            id: nextId++, type: 'obsidian_node',
-            x: Math.random() * MAP_W * TILE,
-            y: Math.random() * MAP_H * TILE,
-            hp: RESOURCE_TYPES.obsidian_node.hp
-        });
-    }
+    resources = []; walls = []; zombies = [];
+    for (let i = 0; i < 200; i++) resources.push({ id: nextId++, type: 'tree', x: Math.random()*MAP_W*TILE, y: Math.random()*MAP_H*TILE, hp: RESOURCE_TYPES.tree.hp });
+    for (let i = 0; i < 80; i++) resources.push({ id: nextId++, type: 'rock', x: Math.random()*MAP_W*TILE, y: Math.random()*MAP_H*TILE, hp: RESOURCE_TYPES.rock.hp });
+    for (let i = 0; i < 40; i++) resources.push({ id: nextId++, type: 'ore', x: Math.random()*MAP_W*TILE, y: Math.random()*MAP_H*TILE, hp: RESOURCE_TYPES.ore.hp });
+    for (let i = 0; i < 15; i++) resources.push({ id: nextId++, type: 'obsidian_node', x: Math.random()*MAP_W*TILE, y: Math.random()*MAP_H*TILE, hp: RESOURCE_TYPES.obsidian_node.hp });
 }
 
-// ── GAME START ──
+// ── START ──
 function startGame() {
     gameStarted = true;
     document.getElementById('menu').classList.add('hidden');
     document.getElementById('gameContainer').classList.remove('hidden');
-    if (!isHost) {
-        // Client generates nothing, waits for state
-    } else {
-        generateMap();
-    }
+    if (isHost) generateMap();
     buildInventoryUI();
     requestAnimationFrame(gameLoop);
 }
@@ -398,18 +466,56 @@ function startGame() {
 function buildInventoryUI() {
     const inv = document.getElementById('inventory');
     inv.innerHTML = '';
+    const toolNames = ['axe','pick','sword'];
     const slots = [
-        { emoji: '🪓', label: '1' },
-        { emoji: '⛏️', label: '2' },
-        { emoji: '🗡️', label: '3' },
-        { emoji: '🔨', label: '4' },
+        { emoji: '🪓', label: '1', tool: 'axe' },
+        { emoji: '⛏️', label: '2', tool: 'pick' },
+        { emoji: '🗡️', label: '3', tool: 'sword' },
+        { emoji: '🔨', label: '4', tool: null },
     ];
     slots.forEach((s, i) => {
         const el = document.createElement('div');
         el.className = `inv-slot${i === selectedSlot ? ' active' : ''}`;
-        el.innerHTML = `<span class="key">${s.label}</span>${s.emoji}`;
+        let lvlHtml = '';
+        if (s.tool && toolLevels[s.tool] > 0) {
+            lvlHtml = `<span class="lvl">Lv${toolLevels[s.tool] + 1}</span>`;
+        }
+        el.innerHTML = `<span class="key">${s.label}</span>${s.emoji}${lvlHtml}`;
         inv.appendChild(el);
     });
+}
+
+function buildUpgradeUI() {
+    const list = document.getElementById('upgradeList');
+    list.innerHTML = '';
+    for (const [toolKey, toolData] of Object.entries(TOOL_UPGRADES)) {
+        const lvl = toolLevels[toolKey];
+        const nextLvl = lvl + 1;
+        if (nextLvl >= toolData.levels.length) {
+            list.innerHTML += `<div class="upgrade-row"><span>${toolData.name} Lv${lvl+1}</span><span style="color:#00ff88;font-size:0.65rem;">MAX</span></div>`;
+            continue;
+        }
+        const next = toolData.levels[nextLvl];
+        const costStr = Object.entries(next.cost).map(([r,a]) => `${a} ${r}`).join(', ');
+        const canAfford = Object.entries(next.cost).every(([r,a]) => (inventory[r]||0) >= a);
+
+        const row = document.createElement('div');
+        row.className = 'upgrade-row';
+        row.innerHTML = `<span>${toolData.name} → Lv${nextLvl+1}<br><span style="color:#888;font-size:0.6rem;">${costStr}</span></span>`;
+        const btn = document.createElement('button');
+        btn.className = `upgrade-btn${canAfford ? '' : ' cant'}`;
+        btn.textContent = '⬆';
+        if (canAfford) {
+            btn.onclick = () => {
+                for (const [r,a] of Object.entries(next.cost)) inventory[r] -= a;
+                toolLevels[toolKey]++;
+                buildUpgradeUI();
+                buildInventoryUI();
+            };
+        }
+        row.appendChild(btn);
+        list.appendChild(row);
+    }
 }
 
 // ── ZOMBIES ──
@@ -418,34 +524,27 @@ function spawnZombies() {
     const baseHp = 20 + nightPhase * 10;
     const baseDmg = 5 + Math.floor(nightPhase / 2) * 3;
     const baseSpeed = 1 + Math.min(nightPhase * 0.1, 2);
-
     for (let i = 0; i < count; i++) {
-        // Spawn from edges
         let x, y;
         const side = Math.floor(Math.random() * 4);
-        if (side === 0) { x = Math.random() * MAP_W * TILE; y = -40; }
-        else if (side === 1) { x = MAP_W * TILE + 40; y = Math.random() * MAP_H * TILE; }
-        else if (side === 2) { x = Math.random() * MAP_W * TILE; y = MAP_H * TILE + 40; }
-        else { x = -40; y = Math.random() * MAP_H * TILE; }
-
+        if (side===0) { x=Math.random()*MAP_W*TILE; y=-40; }
+        else if (side===1) { x=MAP_W*TILE+40; y=Math.random()*MAP_H*TILE; }
+        else if (side===2) { x=Math.random()*MAP_W*TILE; y=MAP_H*TILE+40; }
+        else { x=-40; y=Math.random()*MAP_H*TILE; }
         zombies.push({
-            id: nextId++, x, y,
-            hp: baseHp, maxHp: baseHp,
-            dmg: baseDmg, speed: baseSpeed,
-            attackCd: 0,
-            // Can break walls after certain nights
+            id: nextId++, x, y, hp: baseHp, maxHp: baseHp,
+            dmg: baseDmg, speed: baseSpeed, attackCd: 0,
             wallBreakPower: nightPhase >= 2 ? 1 + Math.floor(nightPhase / 2) : 0
         });
     }
 }
 
-// What walls can zombies break at current night phase?
 function canZombieBreak(wallType) {
-    if (nightPhase < 4) return false; // First 4 nights: can't break anything
+    if (nightPhase < 4) return false;
     if (wallType === 'wood' && nightPhase >= 4) return true;
     if (wallType === 'stone' && nightPhase >= 10) return true;
     if (wallType === 'metal' && nightPhase >= 20) return true;
-    if (wallType === 'obsidian' && nightPhase >= 500) return true; // day 1000 = night 1000
+    if (wallType === 'obsidian' && nightPhase >= 500) return true;
     return false;
 }
 
@@ -454,14 +553,12 @@ let lastTime = 0;
 function gameLoop(timestamp) {
     const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
     lastTime = timestamp;
-
     update(dt);
     render();
     requestAnimationFrame(gameLoop);
 }
 
 function update(dt) {
-    // Time
     gameTime += dt;
     const cycleTime = gameTime % CYCLE_LENGTH;
     const wasNight = isNight;
@@ -469,75 +566,62 @@ function update(dt) {
     dayCount = Math.floor(gameTime / CYCLE_LENGTH) + 1;
 
     if (!wasNight && isNight) {
-        // Night just started
         nightPhase++;
         if (isHost) spawnZombies();
     }
 
-    // Player movement
-    const speed = 160;
+    // Sprint
+    isSprinting = keys['shift'] && stamina > 0 && (keys['a']||keys['d']||keys['w']||keys['s']||keys['arrowup']||keys['arrowdown']||keys['arrowleft']||keys['arrowright']);
+    if (isSprinting) {
+        stamina = Math.max(0, stamina - SPRINT_DRAIN * dt);
+    } else {
+        stamina = Math.min(MAX_STAMINA, stamina + STAMINA_REGEN * dt);
+    }
+
+    // Movement
+    const baseSpeed = 160;
+    const speed = isSprinting ? baseSpeed * 1.7 : baseSpeed;
     let dx = 0, dy = 0;
-    if (keys['a'] || keys['arrowleft']) dx -= 1;
-    if (keys['d'] || keys['arrowright']) dx += 1;
-    if (keys['w'] || keys['arrowup']) dy -= 1;
-    if (keys['s'] || keys['arrowdown']) dy += 1;
+    if (keys['a']||keys['arrowleft']) dx -= 1;
+    if (keys['d']||keys['arrowright']) dx += 1;
+    if (keys['w']||keys['arrowup']) dy -= 1;
+    if (keys['s']||keys['arrowdown']) dy += 1;
     if (dx && dy) { dx *= 0.707; dy *= 0.707; }
 
     let nx = localPlayer.x + dx * speed * dt;
     let ny = localPlayer.y + dy * speed * dt;
-
-    // Wall collision for player
     if (!collidesWall(nx, localPlayer.y, 14)) localPlayer.x = nx;
     if (!collidesWall(localPlayer.x, ny, 14)) localPlayer.y = ny;
+    localPlayer.x = Math.max(14, Math.min(MAP_W*TILE-14, localPlayer.x));
+    localPlayer.y = Math.max(14, Math.min(MAP_H*TILE-14, localPlayer.y));
 
-    // Clamp to map
-    localPlayer.x = Math.max(14, Math.min(MAP_W * TILE - 14, localPlayer.x));
-    localPlayer.y = Math.max(14, Math.min(MAP_H * TILE - 14, localPlayer.y));
-
-    // Camera
     camera.x = localPlayer.x - canvas.width / 2;
     camera.y = localPlayer.y - canvas.height / 2;
 
-    // Attack / interact
-    if (mouse.down && Date.now() - lastAttack > 400) {
+    // Tool stats
+    const currentTool = selectedSlot === 0 ? 'axe' : selectedSlot === 1 ? 'pick' : selectedSlot === 2 ? 'sword' : null;
+    const toolStats = currentTool ? TOOL_UPGRADES[currentTool].levels[toolLevels[currentTool]] : null;
+    const attackSpeed = toolStats ? toolStats.speed : 400;
+
+    if (mouse.down && Date.now() - lastAttack > attackSpeed) {
         lastAttack = Date.now();
         const wx = mouse.x + camera.x;
         const wy = mouse.y + camera.y;
-
-        if (buildMode) {
-            placeBuild(wx, wy);
-        } else if (selectedSlot === 0 || selectedSlot === 1) {
-            hitResource(wx, wy);
-        } else if (selectedSlot === 2) {
-            hitZombie(wx, wy);
-        }
+        if (buildMode) placeBuild(wx, wy);
+        else if (selectedSlot === 0 || selectedSlot === 1) hitResource(wx, wy);
+        else if (selectedSlot === 2) hitZombie(wx, wy);
     }
 
-    // Zombie AI (host only)
     if (isHost) {
         updateZombies(dt);
         zombieSpawnTimer += dt;
-        if (isNight && zombieSpawnTimer > 15) {
-            zombieSpawnTimer = 0;
-            spawnZombies();
-        }
+        if (isNight && zombieSpawnTimer > 15) { zombieSpawnTimer = 0; spawnZombies(); }
     }
 
-    // Update particles
-    particles = particles.filter(p => {
-        p.life -= dt;
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        return p.life > 0;
-    });
+    particles = particles.filter(p => { p.life -= dt; p.x += p.vx*dt; p.y += p.vy*dt; return p.life > 0; });
 
-    // Sync
     syncTimer += dt;
-    if (syncTimer > 0.1) {
-        syncTimer = 0;
-        sendPos();
-        if (isHost && conn && conn.open) sendState();
-    }
+    if (syncTimer > 0.1) { syncTimer = 0; sendPos(); if (isHost && conn && conn.open) sendState(); }
 
     // HUD
     document.getElementById('hudWood').textContent = inventory.wood;
@@ -549,6 +633,11 @@ function update(dt) {
     document.getElementById('hudDay').style.color = isNight ? '#ff006a' : '#ffcc00';
     document.getElementById('hudPlayers').textContent = '👥 ' + (remotePlayer ? 2 : 1);
 
+    document.getElementById('staminaFill').style.width = (stamina / MAX_STAMINA * 100) + '%';
+    document.getElementById('staminaFill').style.background = isSprinting ? '#ff8800' : '#ffcc00';
+
+    document.getElementById('timeDisplay').textContent = formatTime(getTimeOfDay());
+
     const fill = document.getElementById('dayNightFill');
     if (isNight) {
         fill.style.width = ((cycleTime - DAY_LENGTH) / NIGHT_LENGTH * 100) + '%';
@@ -557,31 +646,31 @@ function update(dt) {
         fill.style.width = (cycleTime / DAY_LENGTH * 100) + '%';
         fill.style.background = 'linear-gradient(90deg, #ffcc00, #ff8800)';
     }
+
+    if (showUpgradeMenu) buildUpgradeUI();
 }
 
 function collidesWall(x, y, r) {
     for (const w of walls) {
-        if (x + r > w.x && x - r < w.x + TILE && y + r > w.y && y - r < w.y + TILE) {
-            return true;
-        }
+        if (x+r > w.x && x-r < w.x+TILE && y+r > w.y && y-r < w.y+TILE) return true;
     }
     return false;
 }
 
 function hitResource(wx, wy) {
-    const range = 60;
+    const tool = selectedSlot === 0 ? 'axe' : 'pick';
+    const stats = TOOL_UPGRADES[tool].levels[toolLevels[tool]];
     for (const r of resources) {
         const d = Math.hypot(r.x - localPlayer.x, r.y - localPlayer.y);
-        if (d > range) continue;
+        if (d > stats.range) continue;
         const info = RESOURCE_TYPES[r.type];
-        // Axe for trees, pick for stone/ore/obsidian
         if (selectedSlot === 0 && r.type !== 'tree') continue;
         if (selectedSlot === 1 && r.type === 'tree') continue;
-
-        r.hp--;
+        r.hp -= stats.dmg;
         spawnParticles(r.x, r.y, info.color, 3);
         if (r.hp <= 0) {
-            inventory[info.gives] = (inventory[info.gives] || 0) + info.amount;
+            const bonus = 1 + Math.floor(toolLevels[tool] * 0.5);
+            inventory[info.gives] = (inventory[info.gives]||0) + info.amount + bonus;
             resources = resources.filter(res => res.id !== r.id);
             spawnParticles(r.x, r.y, info.color, 8);
         }
@@ -591,49 +680,34 @@ function hitResource(wx, wy) {
 }
 
 function hitZombie(wx, wy) {
-    const range = 55;
+    const stats = TOOL_UPGRADES.sword.levels[toolLevels.sword];
     for (const z of zombies) {
         const d = Math.hypot(z.x - localPlayer.x, z.y - localPlayer.y);
-        if (d > range) continue;
-        const dmg = 15;
-        z.hp -= dmg;
+        if (d > stats.range) continue;
+        z.hp -= stats.dmg;
         spawnParticles(z.x, z.y, '#ff0000', 4);
-        if (z.hp <= 0) {
-            zombies = zombies.filter(zz => zz.id !== z.id);
-            spawnParticles(z.x, z.y, '#ff0000', 10);
-        }
-        if (conn && conn.open) conn.send({ type: 'hit_zombie', id: z.id, dmg });
+        if (z.hp <= 0) { zombies = zombies.filter(zz => zz.id !== z.id); spawnParticles(z.x, z.y, '#ff0000', 10); }
+        if (conn && conn.open) conn.send({ type: 'hit_zombie', id: z.id, dmg: stats.dmg });
         break;
     }
 }
 
 function placeBuild(wx, wy) {
     if (!buildMode) return;
-    const gx = Math.floor(wx / TILE) * TILE;
-    const gy = Math.floor(wy / TILE) * TILE;
-
-    // Check distance
-    if (Math.hypot(gx + TILE/2 - localPlayer.x, gy + TILE/2 - localPlayer.y) > 100) return;
-
-    // Check cost
+    const gx = Math.floor(wx/TILE)*TILE;
+    const gy = Math.floor(wy/TILE)*TILE;
+    if (Math.hypot(gx+TILE/2-localPlayer.x, gy+TILE/2-localPlayer.y) > 100) return;
     const cost = WALL_COST[buildMode];
-    for (const [res, amt] of Object.entries(cost)) {
-        if ((inventory[res] || 0) < amt) return;
-    }
-
-    // Check overlap
-    if (walls.some(w => w.x === gx && w.y === gy)) return;
-
-    // Place
-    for (const [res, amt] of Object.entries(cost)) inventory[res] -= amt;
+    for (const [res,amt] of Object.entries(cost)) { if ((inventory[res]||0) < amt) return; }
+    if (walls.some(w => w.x===gx && w.y===gy)) return;
+    for (const [res,amt] of Object.entries(cost)) inventory[res] -= amt;
     const wall = { x: gx, y: gy, type: buildMode, hp: WALL_HP[buildMode], maxHp: WALL_HP[buildMode] };
     walls.push(wall);
     if (conn && conn.open) conn.send({ type: 'place_wall', wall });
 }
 
 function selectBuild(type) {
-    buildMode = type;
-    showBuildMenu = false;
+    buildMode = type; showBuildMenu = false;
     document.getElementById('buildMenu').style.display = 'none';
 }
 
@@ -641,244 +715,211 @@ function selectBuild(type) {
 function updateZombies(dt) {
     const targets = [localPlayer];
     if (remotePlayer) targets.push(remotePlayer);
-
     for (const z of zombies) {
-        // Find nearest target (player or wall in the way)
         let closest = null, closestDist = Infinity;
-        for (const t of targets) {
-            const d = Math.hypot(t.x - z.x, t.y - z.y);
-            if (d < closestDist) { closestDist = d; closest = t; }
-        }
-
+        for (const t of targets) { const d = Math.hypot(t.x-z.x,t.y-z.y); if (d<closestDist){closestDist=d;closest=t;} }
         if (!closest) continue;
-
-        let dx = closest.x - z.x;
-        let dy = closest.y - z.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 0) { dx /= dist; dy /= dist; }
-
-        let nx = z.x + dx * z.speed * 60 * dt;
-        let ny = z.y + dy * z.speed * 60 * dt;
-
-        // Check wall collision — attack wall if blocking
+        let ddx = closest.x-z.x, ddy = closest.y-z.y;
+        const dist = Math.hypot(ddx,ddy);
+        if (dist>0){ddx/=dist;ddy/=dist;}
+        let nx = z.x+ddx*z.speed*60*dt, ny = z.y+ddy*z.speed*60*dt;
         let blocked = false;
-        for (let wi = walls.length - 1; wi >= 0; wi--) {
+        for (let wi=walls.length-1;wi>=0;wi--) {
             const w = walls[wi];
-            if (nx + 14 > w.x && nx - 14 < w.x + TILE && ny + 14 > w.y && ny - 14 < w.y + TILE) {
+            if (nx+14>w.x&&nx-14<w.x+TILE&&ny+14>w.y&&ny-14<w.y+TILE) {
                 blocked = true;
                 if (canZombieBreak(w.type)) {
                     z.attackCd -= dt;
-                    if (z.attackCd <= 0) {
-                        z.attackCd = 1;
-                        w.hp -= z.wallBreakPower;
-                        spawnParticles(w.x + TILE/2, w.y + TILE/2, WALL_COLORS[w.type], 3);
-                        if (w.hp <= 0) {
-                            walls.splice(wi, 1);
-                            spawnParticles(w.x + TILE/2, w.y + TILE/2, WALL_COLORS[w.type], 10);
-                        }
+                    if (z.attackCd <= 0) { z.attackCd = 1; w.hp -= z.wallBreakPower;
+                        spawnParticles(w.x+TILE/2,w.y+TILE/2,WALL_COLORS[w.type],3);
+                        if (w.hp<=0){walls.splice(wi,1);spawnParticles(w.x+TILE/2,w.y+TILE/2,WALL_COLORS[w.type],10);}
                     }
                 }
                 break;
             }
         }
-
-        if (!blocked) {
-            z.x = nx;
-            z.y = ny;
-        }
-
-        // Attack player
+        if (!blocked) { z.x = nx; z.y = ny; }
         if (closestDist < 24) {
             z.attackCd -= dt;
-            if (z.attackCd <= 0) {
-                z.attackCd = 1;
+            if (z.attackCd <= 0) { z.attackCd = 1;
                 if (closest === localPlayer) {
-                    localPlayer.hp -= z.dmg;
-                    spawnParticles(localPlayer.x, localPlayer.y, '#ff0000', 4);
-                    if (localPlayer.hp <= 0) {
-                        localPlayer.hp = 100;
-                        // Respawn
-                        localPlayer.x = MAP_W * TILE / 2;
-                        localPlayer.y = MAP_H * TILE / 2;
-                        inventory = { wood: 0, stone: 0, metal: 0, obsidian: 0 };
-                    }
+                    localPlayer.hp -= z.dmg; spawnParticles(localPlayer.x,localPlayer.y,'#ff0000',4);
+                    if (localPlayer.hp<=0){localPlayer.hp=100;localPlayer.x=MAP_W*TILE/2;localPlayer.y=MAP_H*TILE/2;inventory={wood:0,stone:0,metal:0,obsidian:0};}
                 }
             }
         }
     }
-
-    // Clean up dead zombies at day
-    if (!isNight && zombies.length > 0) {
-        zombies = [];
-    }
+    if (!isNight && zombies.length > 0) zombies = [];
 }
 
 function spawnParticles(x, y, color, count) {
-    for (let i = 0; i < count; i++) {
-        particles.push({
-            x, y,
-            vx: (Math.random() - 0.5) * 100,
-            vy: (Math.random() - 0.5) * 100,
-            life: 0.5 + Math.random() * 0.3,
-            color, size: 3 + Math.random() * 3
-        });
-    }
+    for (let i = 0; i < count; i++) particles.push({
+        x, y, vx:(Math.random()-0.5)*100, vy:(Math.random()-0.5)*100,
+        life: 0.5+Math.random()*0.3, color, size: 3+Math.random()*3
+    });
 }
 
 // ── RENDER ──
 function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Sky color
-    if (isNight) {
-        ctx.fillStyle = '#060612';
-    } else {
-        const cycleTime = gameTime % CYCLE_LENGTH;
-        const dayProgress = cycleTime / DAY_LENGTH;
-        if (dayProgress < 0.1) ctx.fillStyle = '#1a1a2f'; // dawn
-        else if (dayProgress > 0.9) ctx.fillStyle = '#1a1a2f'; // dusk
-        else ctx.fillStyle = '#1a2a1a';
-    }
+    // Sky — realistic time-based
+    ctx.fillStyle = getSkyColor();
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
     ctx.translate(-camera.x, -camera.y);
 
-    // Grid
-    ctx.strokeStyle = isNight ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 1;
+    // Grass tiles
+    const grassColor = getGrassColor();
     const sx = Math.floor(camera.x / TILE) * TILE;
     const sy = Math.floor(camera.y / TILE) * TILE;
     for (let x = sx; x < camera.x + canvas.width + TILE; x += TILE) {
-        ctx.beginPath(); ctx.moveTo(x, camera.y); ctx.lineTo(x, camera.y + canvas.height); ctx.stroke();
-    }
-    for (let y = sy; y < camera.y + canvas.height + TILE; y += TILE) {
-        ctx.beginPath(); ctx.moveTo(camera.x, y); ctx.lineTo(camera.x + canvas.width, y); ctx.stroke();
+        for (let y = sy; y < camera.y + canvas.height + TILE; y += TILE) {
+            // Slight variation per tile
+            const hash = ((x * 7 + y * 13) & 0xff) / 255;
+            const r = parseInt(grassColor.slice(1,3),16);
+            const g = parseInt(grassColor.slice(3,5),16);
+            const b = parseInt(grassColor.slice(5,7),16);
+            const vr = Math.max(0,Math.min(255, r + Math.floor((hash-0.5)*8)));
+            const vg = Math.max(0,Math.min(255, g + Math.floor((hash-0.5)*12)));
+            const vb = Math.max(0,Math.min(255, b + Math.floor((hash-0.5)*6)));
+            ctx.fillStyle = `rgb(${vr},${vg},${vb})`;
+            ctx.fillRect(x, y, TILE, TILE);
+        }
     }
 
-    // Resources
+    // Grid lines
+    const gridA = getGridAlpha();
+    ctx.strokeStyle = `rgba(255,255,255,${gridA})`;
+    ctx.lineWidth = 1;
+    for (let x = sx; x < camera.x + canvas.width + TILE; x += TILE) {
+        ctx.beginPath(); ctx.moveTo(x,camera.y); ctx.lineTo(x,camera.y+canvas.height); ctx.stroke();
+    }
+    for (let y = sy; y < camera.y + canvas.height + TILE; y += TILE) {
+        ctx.beginPath(); ctx.moveTo(camera.x,y); ctx.lineTo(camera.x+canvas.width,y); ctx.stroke();
+    }
+
+    // Resources — add shadow during golden hour
     for (const r of resources) {
-        if (r.x < camera.x - 30 || r.x > camera.x + canvas.width + 30 ||
-            r.y < camera.y - 30 || r.y > camera.y + canvas.height + 30) continue;
+        if (r.x<camera.x-30||r.x>camera.x+canvas.width+30||r.y<camera.y-30||r.y>camera.y+canvas.height+30) continue;
         const info = RESOURCE_TYPES[r.type];
+        // Shadow
+        const h = getTimeOfDay();
+        if (h >= 7 && h < 18) {
+            ctx.globalAlpha = 0.15;
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.ellipse(r.x + 6, r.y + info.radius, info.radius * 0.7, info.radius * 0.3, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
         ctx.font = `${info.radius * 2}px serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(info.emoji, r.x, r.y);
     }
 
     // Walls
     for (const w of walls) {
-        if (w.x + TILE < camera.x || w.x > camera.x + canvas.width ||
-            w.y + TILE < camera.y || w.y > camera.y + canvas.height) continue;
+        if (w.x+TILE<camera.x||w.x>camera.x+canvas.width||w.y+TILE<camera.y||w.y>camera.y+canvas.height) continue;
         ctx.fillStyle = WALL_COLORS[w.type];
         ctx.fillRect(w.x, w.y, TILE, TILE);
-        ctx.strokeStyle = WALL_BORDER[w.type];
-        ctx.lineWidth = 2;
+        // 3D edge highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(w.x, w.y, TILE, 3);
+        ctx.fillRect(w.x, w.y, 3, TILE);
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fillRect(w.x, w.y+TILE-3, TILE, 3);
+        ctx.fillRect(w.x+TILE-3, w.y, 3, TILE);
+        ctx.strokeStyle = WALL_BORDER[w.type]; ctx.lineWidth = 2;
         ctx.strokeRect(w.x, w.y, TILE, TILE);
-        // HP bar
         if (w.hp < w.maxHp) {
             const pct = w.hp / w.maxHp;
-            ctx.fillStyle = '#000';
-            ctx.fillRect(w.x + 2, w.y - 6, TILE - 4, 4);
-            ctx.fillStyle = pct > 0.5 ? '#00ff88' : pct > 0.25 ? '#ffcc00' : '#ff006a';
-            ctx.fillRect(w.x + 2, w.y - 6, (TILE - 4) * pct, 4);
+            ctx.fillStyle = '#000'; ctx.fillRect(w.x+2,w.y-6,TILE-4,4);
+            ctx.fillStyle = pct>0.5?'#00ff88':pct>0.25?'#ffcc00':'#ff006a';
+            ctx.fillRect(w.x+2,w.y-6,(TILE-4)*pct,4);
         }
     }
 
     // Zombies
     for (const z of zombies) {
-        if (z.x < camera.x - 30 || z.x > camera.x + canvas.width + 30 ||
-            z.y < camera.y - 30 || z.y > camera.y + canvas.height + 30) continue;
+        if (z.x<camera.x-30||z.x>camera.x+canvas.width+30||z.y<camera.y-30||z.y>camera.y+canvas.height+30) continue;
+        // Shadow
+        ctx.globalAlpha = 0.2; ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.ellipse(z.x+3,z.y+14,10,4,0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
         ctx.fillStyle = '#4a7a2a';
-        ctx.beginPath();
-        ctx.arc(z.x, z.y, 14, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#2a4a1a';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        // Eyes
+        ctx.beginPath(); ctx.arc(z.x,z.y,14,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#2a4a1a'; ctx.lineWidth = 2; ctx.stroke();
         ctx.fillStyle = '#ff0000';
-        ctx.beginPath(); ctx.arc(z.x - 4, z.y - 3, 3, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(z.x + 4, z.y - 3, 3, 0, Math.PI * 2); ctx.fill();
-        // HP bar
+        ctx.beginPath(); ctx.arc(z.x-4,z.y-3,3,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(z.x+4,z.y-3,3,0,Math.PI*2); ctx.fill();
         if (z.hp < z.maxHp) {
-            const pct = z.hp / z.maxHp;
-            ctx.fillStyle = '#000';
-            ctx.fillRect(z.x - 12, z.y - 22, 24, 4);
-            ctx.fillStyle = '#ff006a';
-            ctx.fillRect(z.x - 12, z.y - 22, 24 * pct, 4);
+            const pct = z.hp/z.maxHp;
+            ctx.fillStyle = '#000'; ctx.fillRect(z.x-12,z.y-22,24,4);
+            ctx.fillStyle = '#ff006a'; ctx.fillRect(z.x-12,z.y-22,24*pct,4);
         }
     }
 
     // Remote player
     if (remotePlayer) {
+        ctx.globalAlpha = 0.2; ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.ellipse(remotePlayer.x+3,remotePlayer.y+16,12,4,0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
         ctx.fillStyle = '#00f0ff';
-        ctx.beginPath();
-        ctx.arc(remotePlayer.x, remotePlayer.y, 16, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#008faa';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.fillStyle = '#fff';
-        ctx.font = '10px Courier New';
-        ctx.textAlign = 'center';
-        ctx.fillText('P2', remotePlayer.x, remotePlayer.y + 4);
+        ctx.beginPath(); ctx.arc(remotePlayer.x,remotePlayer.y,16,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#008faa'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = '10px Courier New'; ctx.textAlign = 'center';
+        ctx.fillText('P2', remotePlayer.x, remotePlayer.y+4);
     }
 
     // Local player
-    ctx.fillStyle = '#ff006a';
-    ctx.beginPath();
-    ctx.arc(localPlayer.x, localPlayer.y, 16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#aa0044';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle = '#fff';
-    ctx.font = '10px Courier New';
-    ctx.textAlign = 'center';
-    ctx.fillText('P1', localPlayer.x, localPlayer.y + 4);
+    ctx.globalAlpha = 0.2; ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse(localPlayer.x+3,localPlayer.y+16,12,4,0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.fillStyle = isSprinting ? '#ff3388' : '#ff006a';
+    ctx.beginPath(); ctx.arc(localPlayer.x,localPlayer.y,16,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#aa0044'; ctx.lineWidth = 2; ctx.stroke();
+    // Sprint trail
+    if (isSprinting) {
+        ctx.globalAlpha = 0.15; ctx.fillStyle = '#ff006a';
+        ctx.beginPath(); ctx.arc(localPlayer.x - mouse.x*0.01, localPlayer.y - mouse.y*0.01, 12, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = '#fff'; ctx.font = '10px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText('P1', localPlayer.x, localPlayer.y+4);
 
-    // HP bar above player
     const hpPct = localPlayer.hp / localPlayer.maxHp;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(localPlayer.x - 16, localPlayer.y - 26, 32, 4);
-    ctx.fillStyle = hpPct > 0.5 ? '#00ff88' : hpPct > 0.25 ? '#ffcc00' : '#ff006a';
-    ctx.fillRect(localPlayer.x - 16, localPlayer.y - 26, 32 * hpPct, 4);
+    ctx.fillStyle = '#000'; ctx.fillRect(localPlayer.x-16,localPlayer.y-26,32,4);
+    ctx.fillStyle = hpPct>0.5?'#00ff88':hpPct>0.25?'#ffcc00':'#ff006a';
+    ctx.fillRect(localPlayer.x-16,localPlayer.y-26,32*hpPct,4);
 
     // Build preview
     if (buildMode) {
-        const wx = mouse.x + camera.x;
-        const wy = mouse.y + camera.y;
-        const gx = Math.floor(wx / TILE) * TILE;
-        const gy = Math.floor(wy / TILE) * TILE;
-        const inRange = Math.hypot(gx + TILE/2 - localPlayer.x, gy + TILE/2 - localPlayer.y) <= 100;
-        ctx.globalAlpha = inRange ? 0.5 : 0.2;
-        ctx.fillStyle = WALL_COLORS[buildMode];
-        ctx.fillRect(gx, gy, TILE, TILE);
+        const wx = mouse.x+camera.x, wy = mouse.y+camera.y;
+        const gx = Math.floor(wx/TILE)*TILE, gy = Math.floor(wy/TILE)*TILE;
+        const inRange = Math.hypot(gx+TILE/2-localPlayer.x,gy+TILE/2-localPlayer.y)<=100;
+        ctx.globalAlpha = inRange?0.5:0.2;
+        ctx.fillStyle = WALL_COLORS[buildMode]; ctx.fillRect(gx,gy,TILE,TILE);
         ctx.globalAlpha = 1;
     }
 
     // Particles
     for (const p of particles) {
-        ctx.globalAlpha = Math.max(0, p.life * 2);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+        ctx.globalAlpha = Math.max(0,p.life*2);
+        ctx.fillStyle = p.color; ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
     }
     ctx.globalAlpha = 1;
 
-    // Night overlay
-    if (isNight) {
-        // Darkness with visibility circle around players
-        ctx.fillStyle = 'rgba(0,0,10,0.6)';
-        ctx.fillRect(camera.x, camera.y, canvas.width, canvas.height);
+    // Ambient darkness overlay (time-based)
+    const darkness = getAmbientDarkness();
+    if (darkness > 0) {
+        ctx.fillStyle = `rgba(0,0,10,${darkness})`;
+        ctx.fillRect(camera.x,camera.y,canvas.width,canvas.height);
 
-        // Light around local player
-        const grad = ctx.createRadialGradient(localPlayer.x, localPlayer.y, 50, localPlayer.x, localPlayer.y, 250);
+        // Light circle around players
+        const grad = ctx.createRadialGradient(localPlayer.x,localPlayer.y,40,localPlayer.x,localPlayer.y,220);
         grad.addColorStop(0, 'rgba(0,0,10,0)');
-        grad.addColorStop(1, 'rgba(0,0,10,0.7)');
+        grad.addColorStop(1, `rgba(0,0,10,${darkness * 0.8})`);
         ctx.fillStyle = grad;
-        ctx.fillRect(camera.x, camera.y, canvas.width, canvas.height);
+        ctx.fillRect(camera.x,camera.y,canvas.width,canvas.height);
     }
 
     ctx.restore();
@@ -887,46 +928,42 @@ function render() {
 // ── INPUT ──
 document.addEventListener('keydown', (e) => {
     keys[e.key.toLowerCase()] = true;
+    if (e.key === 'Shift') keys['shift'] = true;
     if (['arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
 
-    if (e.key === '1') { selectedSlot = 0; buildMode = null; buildInventoryUI(); }
-    if (e.key === '2') { selectedSlot = 1; buildMode = null; buildInventoryUI(); }
-    if (e.key === '3') { selectedSlot = 2; buildMode = null; buildInventoryUI(); }
-    if (e.key === '4') { selectedSlot = 3; buildInventoryUI(); }
+    if (e.key==='1'){selectedSlot=0;buildMode=null;buildInventoryUI();}
+    if (e.key==='2'){selectedSlot=1;buildMode=null;buildInventoryUI();}
+    if (e.key==='3'){selectedSlot=2;buildMode=null;buildInventoryUI();}
+    if (e.key==='4'){selectedSlot=3;buildInventoryUI();}
 
-    if (e.key.toLowerCase() === 'b') {
-        showBuildMenu = !showBuildMenu;
-        document.getElementById('buildMenu').style.display = showBuildMenu ? 'flex' : 'none';
-        if (showBuildMenu) selectedSlot = 3;
-        buildInventoryUI();
+    if (e.key.toLowerCase()==='b') {
+        showBuildMenu=!showBuildMenu;
+        document.getElementById('buildMenu').style.display=showBuildMenu?'flex':'none';
+        if(showBuildMenu)selectedSlot=3; buildInventoryUI();
     }
 
-    if (e.key === 'Escape') {
-        buildMode = null;
-        showBuildMenu = false;
-        document.getElementById('buildMenu').style.display = 'none';
+    if (e.key.toLowerCase()==='u') {
+        showUpgradeMenu=!showUpgradeMenu;
+        document.getElementById('upgradeMenu').style.display=showUpgradeMenu?'block':'none';
+        if(showUpgradeMenu) buildUpgradeUI();
+    }
+
+    if (e.key==='Escape') {
+        buildMode=null;showBuildMenu=false;showUpgradeMenu=false;
+        document.getElementById('buildMenu').style.display='none';
+        document.getElementById('upgradeMenu').style.display='none';
     }
 });
 
 document.addEventListener('keyup', (e) => {
     keys[e.key.toLowerCase()] = false;
+    if (e.key === 'Shift') keys['shift'] = false;
 });
 
-canvas.addEventListener('mousemove', (e) => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-});
-
-canvas.addEventListener('mousedown', (e) => {
-    mouse.down = true;
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-});
-
-canvas.addEventListener('mouseup', () => { mouse.down = false; });
-
-// Prevent context menu
-canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+canvas.addEventListener('mousemove',(e)=>{mouse.x=e.clientX;mouse.y=e.clientY;});
+canvas.addEventListener('mousedown',(e)=>{mouse.down=true;mouse.x=e.clientX;mouse.y=e.clientY;});
+canvas.addEventListener('mouseup',()=>{mouse.down=false;});
+canvas.addEventListener('contextmenu',(e)=>e.preventDefault());
 </script>
 </body>
 </html>
