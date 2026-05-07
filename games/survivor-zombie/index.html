@@ -594,8 +594,7 @@ function copyCode() {
 }
 
 // ===== HOST =====
-// Host tracks all players: { peerId, name, color, conn }
-let lobbyPlayers = []; // { peerId, name, color, conn }
+let lobbyPlayers = []; // { peerId, name, color, conn, joined }
 
 function hostGame() {
     myName = getMyName();
@@ -603,54 +602,118 @@ function hostGame() {
     document.getElementById('menuMain').classList.add('hidden');
     document.getElementById('menuHost').classList.remove('hidden');
     document.getElementById('roomCode').textContent = code;
+    document.getElementById('hostStatus').textContent = 'Creating room...';
     isHost = true;
     myColor = PLAYER_COLORS[0];
 
-    peer = new Peer('sz-' + code, { debug: 0 });
+    // Use random suffix to avoid stale peer IDs
+    const peerId = 'sz-' + code + '-' + Math.floor(Math.random()*9999);
+    // Store the actual code-to-peerId mapping isn't needed — clients connect to 'sz-CODE'
+    // Actually we need a fixed ID so clients can find us
+    peer = new Peer('sz-' + code, {
+        debug: 1,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun.services.mozilla.com' }
+            ]
+        }
+    });
 
     peer.on('open', (id) => {
         myId = id;
-        document.getElementById('hostStatus').textContent = 'Room ready! Waiting for players...';
+        console.log('Host peer open:', id);
+        document.getElementById('hostStatus').textContent = 'Room ready! Share the code.';
         document.getElementById('hostStartBtn').style.display = 'inline-block';
         updateHostLobby();
     });
 
-    peer.on('connection', (c) => {
-        c.on('open', () => {
-            // Ask client for their name
-            c.on('data', function onFirst(data) {
-                if (data.type === 'join') {
-                    const color = PLAYER_COLORS[(lobbyPlayers.length + 1) % PLAYER_COLORS.length];
-                    const playerInfo = { peerId: c.peer, name: data.name, color, conn: c };
-                    lobbyPlayers.push(playerInfo);
-
-                    // Confirm to joining client
-                    c.send({ type: 'welcome', color, hostName: myName, hostColor: myColor,
-                             players: lobbyPlayers.map(p => ({ peerId: p.peerId, name: p.name, color: p.color }))
-                    });
-
-                    // Notify all existing players about new roster
-                    broadcastLobbyRoster();
-                    updateHostLobby();
-
-                    // Remove first-message listener, switch to game handler
-                    c.off('data', onFirst);
-                    c.on('data', (d) => handleHostData(d, c.peer));
-                }
-            });
-        });
-        c.on('close', () => {
-            lobbyPlayers = lobbyPlayers.filter(p => p.peerId !== c.peer);
-            delete remotePlayers[c.peer];
-            broadcastLobbyRoster();
-            updateHostLobby();
-            if (gameStarted) broadcastToAll({ type: 'player_left', peerId: c.peer });
-        });
-    });
+    peer.on('connection', handleNewConnection);
 
     peer.on('error', (e) => {
-        console.error('PeerJS error:', e);
-        document.getElementById('hostStatus').textContent = 'Error: ' + e.type;
+        console.error('Host peer error:', e);
+        if (e.type === 'unavailable-id') {
+            document.getElementById('hostStatus').textContent = 'Room code taken! Refresh and try again.';
+        } else {
+            document.getElementById('hostStatus').textContent = 'Error: ' + e.type + ' — try refreshing';
+        }
+    });
+
+    peer.on('disconnected', () => {
+        console.log('Host disconnected from signaling, reconnecting...');
+        if (peer && !peer.destroyed) peer.reconnect();
+    });
+}
+
+function handleNewConnection(c) {
+    console.log('New connection from:', c.peer);
+
+    // Single flat data handler — no nesting
+    c.on('data', (data) => {
+        if (data.type === 'join' && !lobbyPlayers.find(p => p.peerId === c.peer)) {
+            // New player joining
+            const color = PLAYER_COLORS[(lobbyPlayers.length + 1) % PLAYER_COLORS.length];
+            const playerInfo = { peerId: c.peer, name: data.name, color, conn: c, joined: true };
+            lobbyPlayers.push(playerInfo);
+
+            console.log('Player joined:', data.name, c.peer);
+
+            // Send welcome
+            try {
+                c.send({
+                    type: 'welcome', color, hostName: myName, hostColor: myColor,
+                    players: lobbyPlayers.map(p => ({ peerId: p.peerId, name: p.name, color: p.color }))
+                });
+            } catch(e) { console.error('Send welcome failed:', e); }
+
+            broadcastLobbyRoster();
+            updateHostLobby();
+
+            // If game already started, let them join mid-game
+            if (gameStarted) {
+                const cx = MAP_W * TILE / 2, cy = MAP_H * TILE / 2;
+                remotePlayers[c.peer] = { name: data.name, color, x: cx, y: cy, hp: 100, maxHp: 100 };
+                try {
+                    c.send({
+                        type: 'game_start',
+                        resources, walls, gameTime, dayCount, isNight, nightPhase,
+                        players: lobbyPlayers.filter(p=>p.peerId!==c.peer).map(p => ({
+                            peerId: p.peerId, name: p.name, color: p.color,
+                            x: remotePlayers[p.peerId]?remotePlayers[p.peerId].x:cx,
+                            y: remotePlayers[p.peerId]?remotePlayers[p.peerId].y:cy
+                        })),
+                        hostName: myName, hostColor: myColor,
+                        hostX: localPlayer.x, hostY: localPlayer.y
+                    });
+                } catch(e) { console.error('Send game_start failed:', e); }
+                broadcastToAll({ type: 'chat', name: 'SYSTEM', msg: data.name + ' joined the game!', color: '#00ff88' });
+                addChat('SYSTEM', data.name + ' joined the game!', '#00ff88');
+            }
+        } else {
+            // Regular game data
+            handleHostData(data, c.peer);
+        }
+    });
+
+    c.on('close', () => {
+        console.log('Connection closed:', c.peer);
+        const p = lobbyPlayers.find(p => p.peerId === c.peer);
+        const name = p ? p.name : 'Unknown';
+        lobbyPlayers = lobbyPlayers.filter(p => p.peerId !== c.peer);
+        delete remotePlayers[c.peer];
+        broadcastLobbyRoster();
+        updateHostLobby();
+        if (gameStarted) {
+            broadcastToAll({ type: 'player_left', peerId: c.peer });
+            broadcastToAll({ type: 'chat', name: 'SYSTEM', msg: name + ' left the game.', color: '#ff006a' });
+            addChat('SYSTEM', name + ' left the game.', '#ff006a');
+        }
+    });
+
+    c.on('error', (e) => {
+        console.error('Connection error from', c.peer, e);
     });
 }
 
@@ -667,36 +730,33 @@ function updateHostLobby() {
 function broadcastLobbyRoster() {
     const roster = lobbyPlayers.map(p => ({ peerId: p.peerId, name: p.name, color: p.color }));
     lobbyPlayers.forEach(p => {
-        if (p.conn && p.conn.open) {
-            p.conn.send({ type: 'roster', players: roster, hostName: myName, hostColor: myColor });
-        }
+        try { if (p.conn && p.conn.open) p.conn.send({ type: 'roster', players: roster, hostName: myName, hostColor: myColor }); }
+        catch(e) {}
     });
 }
 
 function broadcastToAll(data) {
     lobbyPlayers.forEach(p => {
-        if (p.conn && p.conn.open) p.conn.send(data);
+        try { if (p.conn && p.conn.open) p.conn.send(data); }
+        catch(e) {}
     });
 }
 
 function hostStartGame() {
     generateMap();
-    // Spawn positions around center
     const cx = MAP_W * TILE / 2, cy = MAP_H * TILE / 2;
     localPlayer = { x: cx, y: cy, hp: 100, maxHp: 100 };
 
     const allPlayers = lobbyPlayers.map((p, i) => {
-        const angle = (i / (lobbyPlayers.length + 1)) * Math.PI * 2;
+        const angle = ((i + 1) / (lobbyPlayers.length + 1)) * Math.PI * 2;
         return { peerId: p.peerId, name: p.name, color: p.color,
                  x: cx + Math.cos(angle) * 80, y: cy + Math.sin(angle) * 80 };
     });
 
-    // Initialize remote players
     allPlayers.forEach(p => {
         remotePlayers[p.peerId] = { name: p.name, color: p.color, x: p.x, y: p.y, hp: 100, maxHp: 100 };
     });
 
-    // Send start to all clients
     broadcastToAll({
         type: 'game_start',
         resources, walls, gameTime, dayCount, isNight, nightPhase,
@@ -714,8 +774,13 @@ function handleHostData(data, fromPeerId) {
         remotePlayers[fromPeerId].x = data.x;
         remotePlayers[fromPeerId].y = data.y;
         remotePlayers[fromPeerId].hp = data.hp;
-        // Relay to other clients
-        broadcastToAll({ type: 'player_pos', peerId: fromPeerId, x: data.x, y: data.y, hp: data.hp });
+        // Relay to other clients (skip sender)
+        lobbyPlayers.forEach(p => {
+            if (p.peerId !== fromPeerId) {
+                try { if (p.conn && p.conn.open) p.conn.send({ type: 'player_pos', peerId: fromPeerId, x: data.x, y: data.y, hp: data.hp }); }
+                catch(e) {}
+            }
+        });
     } else if (data.type === 'hit_resource') {
         const r = resources.find(res => res.id === data.id);
         if (r) { r.hp -= (data.dmg || 1); if (r.hp <= 0) resources = resources.filter(res => res.id !== data.id); }
@@ -749,48 +814,100 @@ function joinGame() {
     myName = getMyName();
     const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
     if (code.length < 4) return;
-    document.getElementById('joinStatus').classList.remove('hidden');
-    document.getElementById('joinStatus').textContent = 'Connecting...';
+    const statusEl = document.getElementById('joinStatus');
+    statusEl.classList.remove('hidden');
+    statusEl.textContent = 'Connecting to PeerJS server...';
     isHost = false;
 
-    peer = new Peer(undefined, { debug: 0 });
+    peer = new Peer(undefined, {
+        debug: 1,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun.services.mozilla.com' }
+            ]
+        }
+    });
+
+    let connectTimeout = null;
+
     peer.on('open', (id) => {
         myId = id;
-        hostConn = peer.connect('sz-' + code, { reliable: true });
+        console.log('Client peer open:', id);
+        statusEl.textContent = 'Connecting to room ' + code + '...';
+
+        hostConn = peer.connect('sz-' + code, {
+            reliable: false, // Faster — don't use reliable DataChannel for speed
+            serialization: 'json'
+        });
+
+        // Timeout if connection takes too long
+        connectTimeout = setTimeout(() => {
+            if (!hostConn || !hostConn.open) {
+                statusEl.textContent = 'Connection timed out. Check the code and try again.';
+                statusEl.style.color = '#ff006a';
+            }
+        }, 10000);
+
         hostConn.on('open', () => {
-            // Send name to host
+            clearTimeout(connectTimeout);
+            console.log('Connected to host!');
+            statusEl.textContent = 'Connected! Sending name...';
+            // Send join immediately
             hostConn.send({ type: 'join', name: myName });
         });
+
         hostConn.on('data', handleClientData);
+
         hostConn.on('close', () => {
+            clearTimeout(connectTimeout);
             remotePlayers = {};
             if (gameStarted) addChat('SYSTEM', 'Disconnected from host', '#ff006a');
+            else statusEl.textContent = 'Disconnected from host.';
         });
+
         hostConn.on('error', (e) => {
-            document.getElementById('joinStatus').textContent = 'Error: ' + e;
+            clearTimeout(connectTimeout);
+            console.error('Connection error:', e);
+            statusEl.textContent = 'Connection error. Try again.';
+            statusEl.style.color = '#ff006a';
         });
     });
+
     peer.on('error', (e) => {
-        document.getElementById('joinStatus').textContent = 'Error: ' + e.type;
+        clearTimeout(connectTimeout);
+        console.error('Peer error:', e);
+        if (e.type === 'peer-unavailable') {
+            statusEl.textContent = 'Room not found! Check the code.';
+        } else {
+            statusEl.textContent = 'Error: ' + e.type;
+        }
+        statusEl.style.color = '#ff006a';
+    });
+
+    peer.on('disconnected', () => {
+        if (peer && !peer.destroyed) peer.reconnect();
     });
 }
 
 function handleClientData(data) {
     if (data.type === 'welcome') {
         myColor = data.color;
-        document.getElementById('joinStatus').textContent = 'Connected! Waiting for host to start...';
+        document.getElementById('joinStatus').textContent = 'In lobby! Waiting for host to start...';
+        document.getElementById('joinStatus').style.color = '#00ff88';
         updateJoinLobby(data.hostName, data.hostColor, data.players);
     } else if (data.type === 'roster') {
         updateJoinLobby(data.hostName, data.hostColor, data.players);
     } else if (data.type === 'game_start') {
-        resources = data.resources;
-        walls = data.walls;
+        if (data.resources) resources = data.resources;
+        if (data.walls) walls = data.walls;
         gameTime = data.gameTime;
         dayCount = data.dayCount;
         isNight = data.isNight;
         nightPhase = data.nightPhase;
 
-        // Find my spawn position
         const me = data.players.find(p => p.peerId === myId);
         if (me) {
             localPlayer = { x: me.x, y: me.y, hp: 100, maxHp: 100 };
@@ -798,7 +915,6 @@ function handleClientData(data) {
             localPlayer = { x: MAP_W*TILE/2, y: MAP_H*TILE/2, hp: 100, maxHp: 100 };
         }
 
-        // Set up remote players (host + others)
         remotePlayers = {};
         remotePlayers['host'] = { name: data.hostName, color: data.hostColor, x: data.hostX, y: data.hostY, hp: 100, maxHp: 100 };
         data.players.forEach(p => {
@@ -807,11 +923,10 @@ function handleClientData(data) {
             }
         });
 
-        startGame();
+        if (!gameStarted) startGame();
     } else if (data.type === 'state') {
-        // Full state sync from host
-        resources = data.resources;
-        walls = data.walls;
+        if (data.resources) resources = data.resources;
+        if (data.walls) walls = data.walls;
         zombies = data.zombies || [];
         gameTime = data.gameTime;
         dayCount = data.dayCount;
@@ -858,30 +973,45 @@ function updateJoinLobby(hostName, hostColor, players) {
 
 // ===== SEND FUNCTIONS =====
 function sendPos() {
-    const msg = { type: 'pos', x: localPlayer.x, y: localPlayer.y, hp: localPlayer.hp };
+    const msg = { type: 'pos', x: Math.round(localPlayer.x), y: Math.round(localPlayer.y), hp: Math.round(localPlayer.hp) };
     if (isHost) {
-        broadcastToAll({ type: 'player_pos', peerId: 'host', x: localPlayer.x, y: localPlayer.y, hp: localPlayer.hp });
+        broadcastToAll({ type: 'player_pos', peerId: 'host', x: msg.x, y: msg.y, hp: msg.hp });
     } else if (hostConn && hostConn.open) {
-        hostConn.send(msg);
+        try { hostConn.send(msg); } catch(e) {}
     }
 }
 
 function sendToHost(data) {
     if (isHost) {
-        // Process locally
         handleHostData(data, 'host');
     } else if (hostConn && hostConn.open) {
-        hostConn.send(data);
+        try { hostConn.send(data); } catch(e) {}
     }
 }
 
+// Lighter state sync — only send heavy data every 2 seconds, positions more often
+let fullSyncTimer = 0;
 function sendState() {
     if (!isHost) return;
-    broadcastToAll({
-        type: 'state', resources, walls, zombies: zombies.slice(0, 200),
-        gameTime, dayCount, isNight, nightPhase,
-        hostX: localPlayer.x, hostY: localPlayer.y, hostHp: localPlayer.hp
-    });
+    fullSyncTimer++;
+    // Full sync every 20 ticks (~2 sec at 10 ticks/sec)
+    if (fullSyncTimer >= 20) {
+        fullSyncTimer = 0;
+        broadcastToAll({
+            type: 'state', resources, walls, zombies: zombies.slice(0, 100),
+            gameTime, dayCount, isNight, nightPhase,
+            hostX: Math.round(localPlayer.x), hostY: Math.round(localPlayer.y), hostHp: Math.round(localPlayer.hp)
+        });
+    } else {
+        // Light sync — just host position + zombies
+        broadcastToAll({
+            type: 'state',
+            resources: null, walls: null,
+            zombies: zombies.map(z => ({id:z.id,x:Math.round(z.x),y:Math.round(z.y),hp:z.hp,maxHp:z.maxHp})),
+            gameTime, dayCount, isNight, nightPhase,
+            hostX: Math.round(localPlayer.x), hostY: Math.round(localPlayer.y), hostHp: Math.round(localPlayer.hp)
+        });
+    }
 }
 
 // ── MAP ──

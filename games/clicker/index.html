@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dog Clicker - PatGames</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #1a0e2e;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Top bar */
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.4);
+            border-bottom: 2px solid #ffcc00;
+        }
+        .topbar a {
+            color: #ffcc00;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .topbar a:hover { text-decoration: underline; }
+        .topbar .title {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 14px;
+            color: #ffcc00;
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            padding: 16px;
+            background: rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .stat-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffcc00;
+            font-family: 'Press Start 2P', monospace;
+        }
+        .stat-value.treats { font-size: 28px; }
+
+        /* Main layout */
+        .main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Dog area */
+        .dog-area {
+            position: relative;
+            margin: 20px 0;
+        }
+        .dog-btn {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 35%, #f5d98a, #c9963a);
+            border: 6px solid #ffcc00;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 120px;
+            transition: transform 0.08s;
+            box-shadow: 0 0 40px rgba(255,204,0,0.3), inset 0 -8px 20px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 2;
+        }
+        .dog-btn:active {
+            transform: scale(0.92);
+        }
+        .dog-btn.bounce {
+            animation: dogBounce 0.15s ease;
+        }
+        @keyframes dogBounce {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.88) rotate(-3deg); }
+            100% { transform: scale(1); }
+        }
+
+        /* Floating numbers */
+        .float-num {
+            position: absolute;
+            font-weight: 800;
+            font-size: 24px;
+            color: #ffcc00;
+            pointer-events: none;
+            z-index: 10;
+            animation: floatUp 0.8s ease-out forwards;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1.3); }
+        }
+
+        /* Particles */
+        .particle {
+            position: absolute;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+            animation: particleBurst 0.6s ease-out forwards;
+        }
+        @keyframes particleBurst {
+            0% { opacity: 1; transform: translate(0,0) scale(1); }
+            100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0); }
+        }
+
+        /* Per-click info */
+        .click-info {
+            font-size: 14px;
+            color: #ccc;
+            margin-top: 8px;
+            text-align: center;
+        }
+        .click-info span { color: #ffcc00; font-weight: 700; }
+
+        /* Upgrade shop */
+        .shop {
+            width: 100%;
+            max-width: 500px;
+            margin-top: 24px;
+        }
+        .shop-title {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 14px;
+            color: #ffcc00;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        .upgrade {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.06);
+            border: 2px solid rgba(255,204,0,0.15);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .upgrade:hover {
+            background: rgba(255,204,0,0.1);
+            border-color: rgba(255,204,0,0.4);
+            transform: translateX(4px);
+        }
+        .upgrade.locked {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .upgrade.locked:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,204,0,0.15);
+            transform: none;
+        }
+        .upgrade-icon {
+            font-size: 36px;
+            flex-shrink: 0;
+            width: 50px;
+            text-align: center;
+        }
+        .upgrade-info {
+            flex: 1;
+        }
+        .upgrade-name {
+            font-weight: 700;
+            font-size: 15px;
+            color: #fff;
+        }
+        .upgrade-desc {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 2px;
+        }
+        .upgrade-right {
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .upgrade-cost {
+            font-weight: 800;
+            font-size: 15px;
+            color: #ffcc00;
+        }
+        .upgrade-owned {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* Milestones toast */
+        .toast {
+            position: fixed;
+            top: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ffcc00, #ff9900);
+            color: #1a0e2e;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 15px;
+            z-index: 100;
+            transition: top 0.4s ease;
+            box-shadow: 0 6px 30px rgba(255,204,0,0.5);
+            text-align: center;
+        }
+        .toast.show { top: 20px; }
+
+        /* Save indicator */
+        .save-indicator {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 11px;
+            color: #666;
+        }
+
+        /* Paw prints background */
+        .paw-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .paw {
+            position: absolute;
+            font-size: 30px;
+            opacity: 0.04;
+            animation: pawDrift 20s linear infinite;
+        }
+        @keyframes pawDrift {
+            0% { transform: translateY(110vh) rotate(0deg); }
+            100% { transform: translateY(-50px) rotate(360deg); }
+        }
+
+        .main, .topbar, .stats-bar, .shop { position: relative; z-index: 1; }
+
+        /* Reset button */
+        .reset-area {
+            margin-top: 30px;
+            text-align: center;
+            padding-bottom: 40px;
+        }
+        .reset-btn {
+            background: rgba(255,50,50,0.15);
+            border: 1px solid rgba(255,50,50,0.3);
+            color: #ff6666;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .reset-btn:hover { background: rgba(255,50,50,0.25); }
+
+        /* Dog hat/accessory */
+        .dog-accessory {
+            position: absolute;
+            font-size: 50px;
+            z-index: 3;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .accessory-crown { top: -10px; left: 50%; transform: translateX(-50%); }
+        .accessory-sunglasses { top: 60px; left: 50%; transform: translateX(-50%); font-size: 40px; }
+    </style>
+</head>
+<body>
+
+<div class="paw-bg" id="pawBg"></div>
+
+<div class="topbar">
+    <a href="../../">← PatGames</a>
+    <div class="title">🐕 DOG CLICKER</div>
+    <div style="width: 80px;"></div>
+</div>
+
+<div class="stats-bar">
+    <div class="stat">
+        <div class="stat-label">🦴 Treats</div>
+        <div class="stat-value treats" id="treatsDisplay">0</div>
+    </div>
+    <div class="stat">
+        <div class="stat-label">Per Click</div>
+        <div class="stat-value" id="perClickDisplay">1</div>
+    </div>
+    <div class="stat">
+        <div class="stat-label">Per Second</div>
+        <div class="stat-value" id="perSecDisplay">0</div>
+    </div>
+</div>
+
+<div class="main">
+    <div class="dog-area" id="dogArea">
+        <div class="dog-btn" id="dogBtn">🐕</div>
+    </div>
+    <div class="click-info">Click the dog for <span id="clickInfoVal">1</span> treat!</div>
+
+    <div class="shop">
+        <div class="shop-title">🏪 UPGRADE SHOP</div>
+        <div id="upgradeList"></div>
+    </div>
+
+    <div class="reset-area">
+        <button class="reset-btn" onclick="resetGame()">🔄 Reset Progress</button>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="save-indicator" id="saveInd">💾 Saved</div>
+
+<script>
+// ============= GAME STATE =============
+let treats = 0;
+let totalTreats = 0;
+let totalClicks = 0;
+let perClick = 1;
+let perSec = 0;
+
+// ============= UPGRADES =============
+const UPGRADES = [
+    {
+        id: 'kibble',
+        name: 'Kibble',
+        icon: '🥣',
+        desc: 'Feed the dog some kibble. +1 treat/click',
+        baseCost: 10,
+        costMult: 1.15,
+        type: 'click',
+        value: 1,
+        owned: 0
+    },
+    {
+        id: 'tennis_ball',
+        name: 'Tennis Ball',
+        icon: '🎾',
+        desc: 'Throw a tennis ball! +0.5 treats/sec',
+        baseCost: 50,
+        costMult: 1.15,
+        type: 'passive',
+        value: 0.5,
+        owned: 0
+    },
+    {
+        id: 'big_tennis_ball',
+        name: 'BIG Tennis Ball',
+        icon: '⚽',
+        desc: 'An oversized ball! Dog goes crazy. +2 treats/sec',
+        baseCost: 250,
+        costMult: 1.18,
+        type: 'passive',
+        value: 2,
+        owned: 0
+    },
+    {
+        id: 'treat_bag',
+        name: 'Treat Bag',
+        icon: '🎒',
+        desc: 'A whole bag of treats! +5 treats/click',
+        baseCost: 500,
+        costMult: 1.2,
+        type: 'click',
+        value: 5,
+        owned: 0
+    },
+    {
+        id: 'squeaky_toy',
+        name: 'Squeaky Toy',
+        icon: '🧸',
+        desc: 'SQUEAK SQUEAK! +5 treats/sec',
+        baseCost: 1000,
+        costMult: 1.18,
+        type: 'passive',
+        value: 5,
+        owned: 0
+    },
+    {
+        id: 'belly_rub',
+        name: 'Belly Rub Machine',
+        icon: '🤖',
+        desc: 'Automated belly rubs! +15 treats/sec',
+        baseCost: 4000,
+        costMult: 1.2,
+        type: 'passive',
+        value: 15,
+        owned: 0
+    },
+    {
+        id: 'bone',
+        name: 'Golden Bone',
+        icon: '🦴',
+        desc: 'A legendary golden bone. +25 treats/click',
+        baseCost: 10000,
+        costMult: 1.25,
+        type: 'click',
+        value: 25,
+        owned: 0
+    },
+    {
+        id: 'dog_park',
+        name: 'Dog Park',
+        icon: '🏞️',
+        desc: 'Build a dog park! +50 treats/sec',
+        baseCost: 25000,
+        costMult: 1.2,
+        type: 'passive',
+        value: 50,
+        owned: 0
+    },
+    {
+        id: 'frisbee',
+        name: 'Magic Frisbee',
+        icon: '🥏',
+        desc: 'A frisbee that never lands. +100 treats/click',
+        baseCost: 75000,
+        costMult: 1.25,
+        type: 'click',
+        value: 100,
+        owned: 0
+    },
+    {
+        id: 'puppy_army',
+        name: 'Puppy Army',
+        icon: '🐾',
+        desc: 'An army of puppies! +200 treats/sec',
+        baseCost: 200000,
+        costMult: 1.22,
+        type: 'passive',
+        value: 200,
+        owned: 0
+    },
+    {
+        id: 'hotdog_stand',
+        name: 'Hotdog Stand',
+        icon: '🌭',
+        desc: 'Ironic, but profitable. +500 treats/sec',
+        baseCost: 750000,
+        costMult: 1.25,
+        type: 'passive',
+        value: 500,
+        owned: 0
+    },
+    {
+        id: 'dog_mansion',
+        name: 'Dog Mansion',
+        icon: '🏰',
+        desc: 'A mansion fit for a good boy. +2000 treats/sec',
+        baseCost: 5000000,
+        costMult: 1.3,
+        type: 'passive',
+        value: 2000,
+        owned: 0
+    }
+];
+
+// ============= MILESTONES =============
+const MILESTONES = [
+    { at: 100, msg: '🐕 First 100 treats! Good boy!' },
+    { at: 1000, msg: '🎾 1K treats! Tennis ball time!' },
+    { at: 10000, msg: '🦴 10K treats! Who\'s a good boy?!' },
+    { at: 100000, msg: '🐾 100K treats! Legendary pupper!' },
+    { at: 1000000, msg: '🏆 1 MILLION TREATS! Top Dog!' },
+    { at: 10000000, msg: '👑 10M treats! King of Dogs!' },
+    { at: 100000000, msg: '🌟 100M! Cosmic Good Boy!' },
+];
+let milestoneIndex = 0;
+
+// ============= DOM =============
+const dogBtn = document.getElementById('dogBtn');
+const dogArea = document.getElementById('dogArea');
+const treatsDisplay = document.getElementById('treatsDisplay');
+const perClickDisplay = document.getElementById('perClickDisplay');
+const perSecDisplay = document.getElementById('perSecDisplay');
+const clickInfoVal = document.getElementById('clickInfoVal');
+const upgradeList = document.getElementById('upgradeList');
+const toast = document.getElementById('toast');
+const saveInd = document.getElementById('saveInd');
+
+// ============= FORMAT =============
+function fmt(n) {
+    if (n >= 1e12) return (n / 1e12).toFixed(1) + 'T';
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return Math.floor(n).toString();
+}
+
+// ============= COST =============
+function getCost(u) {
+    return Math.floor(u.baseCost * Math.pow(u.costMult, u.owned));
+}
+
+// ============= RECALC =============
+function recalc() {
+    perClick = 1;
+    perSec = 0;
+    UPGRADES.forEach(u => {
+        if (u.type === 'click') perClick += u.value * u.owned;
+        if (u.type === 'passive') perSec += u.value * u.owned;
+    });
+}
+
+// ============= RENDER =============
+function render() {
+    treatsDisplay.textContent = fmt(treats);
+    perClickDisplay.textContent = fmt(perClick);
+    perSecDisplay.textContent = fmt(perSec);
+    clickInfoVal.textContent = fmt(perClick);
+
+    upgradeList.innerHTML = '';
+    UPGRADES.forEach((u, i) => {
+        const cost = getCost(u);
+        const locked = treats < cost;
+        const div = document.createElement('div');
+        div.className = 'upgrade' + (locked ? ' locked' : '');
+        div.innerHTML = `
+            <div class="upgrade-icon">${u.icon}</div>
+            <div class="upgrade-info">
+                <div class="upgrade-name">${u.name}</div>
+                <div class="upgrade-desc">${u.desc}</div>
+            </div>
+            <div class="upgrade-right">
+                <div class="upgrade-cost">🦴 ${fmt(cost)}</div>
+                <div class="upgrade-owned">${u.owned > 0 ? 'Owned: ' + u.owned : ''}</div>
+            </div>
+        `;
+        if (!locked) {
+            div.onclick = () => buyUpgrade(i);
+        }
+        upgradeList.appendChild(div);
+    });
+}
+
+// ============= BUY =============
+function buyUpgrade(i) {
+    const u = UPGRADES[i];
+    const cost = getCost(u);
+    if (treats < cost) return;
+    treats -= cost;
+    u.owned++;
+    recalc();
+    render();
+    save();
+}
+
+// ============= CLICK DOG =============
+function clickDog(e) {
+    treats += perClick;
+    totalTreats += perClick;
+    totalClicks++;
+
+    // Bounce
+    dogBtn.classList.remove('bounce');
+    void dogBtn.offsetWidth;
+    dogBtn.classList.add('bounce');
+
+    // Float number
+    const rect = dogArea.getBoundingClientRect();
+    const x = (e.clientX || e.touches?.[0]?.clientX || rect.left + rect.width/2) - rect.left;
+    const y = (e.clientY || e.touches?.[0]?.clientY || rect.top + rect.height/2) - rect.top;
+    
+    const num = document.createElement('div');
+    num.className = 'float-num';
+    num.textContent = '+' + fmt(perClick);
+    num.style.left = (x - 20 + Math.random() * 40) + 'px';
+    num.style.top = (y - 30) + 'px';
+    dogArea.appendChild(num);
+    setTimeout(() => num.remove(), 800);
+
+    // Particles
+    for (let p = 0; p < 4; p++) {
+        const part = document.createElement('div');
+        part.className = 'particle';
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 40 + Math.random() * 60;
+        part.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+        part.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+        part.style.left = x + 'px';
+        part.style.top = y + 'px';
+        const colors = ['#ffcc00', '#ff9900', '#ffee88', '#fff'];
+        part.style.background = colors[Math.floor(Math.random() * colors.length)];
+        dogArea.appendChild(part);
+        setTimeout(() => part.remove(), 600);
+    }
+
+    // Check milestones
+    checkMilestones();
+    render();
+}
+
+dogBtn.addEventListener('click', clickDog);
+dogBtn.addEventListener('touchstart', (e) => { e.preventDefault(); clickDog(e); }, { passive: false });
+
+// ============= PASSIVE INCOME =============
+setInterval(() => {
+    if (perSec > 0) {
+        treats += perSec / 10;
+        totalTreats += perSec / 10;
+        checkMilestones();
+        render();
+    }
+}, 100);
+
+// ============= MILESTONES =============
+function checkMilestones() {
+    while (milestoneIndex < MILESTONES.length && totalTreats >= MILESTONES[milestoneIndex].at) {
+        showToast(MILESTONES[milestoneIndex].msg);
+        milestoneIndex++;
+    }
+}
+
+function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ============= SAVE / LOAD =============
+function save() {
+    const data = {
+        treats, totalTreats, totalClicks, milestoneIndex,
+        upgrades: UPGRADES.map(u => u.owned)
+    };
+    localStorage.setItem('dogClicker', JSON.stringify(data));
+    saveInd.style.opacity = 1;
+    setTimeout(() => saveInd.style.opacity = 0.3, 1000);
+}
+
+function load() {
+    try {
+        const raw = localStorage.getItem('dogClicker');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        treats = data.treats || 0;
+        totalTreats = data.totalTreats || 0;
+        totalClicks = data.totalClicks || 0;
+        milestoneIndex = data.milestoneIndex || 0;
+        if (data.upgrades) {
+            data.upgrades.forEach((owned, i) => {
+                if (UPGRADES[i]) UPGRADES[i].owned = owned;
+            });
+        }
+        recalc();
+    } catch(e) {}
+}
+
+function resetGame() {
+    if (!confirm('Reset ALL progress? This cannot be undone!')) return;
+    localStorage.removeItem('dogClicker');
+    treats = 0; totalTreats = 0; totalClicks = 0; milestoneIndex = 0;
+    UPGRADES.forEach(u => u.owned = 0);
+    recalc();
+    render();
+    showToast('🔄 Progress reset!');
+}
+
+// Auto save every 30s
+setInterval(save, 30000);
+
+// ============= PAW PRINTS BG =============
+const pawBg = document.getElementById('pawBg');
+for (let i = 0; i < 15; i++) {
+    const paw = document.createElement('div');
+    paw.className = 'paw';
+    paw.textContent = '🐾';
+    paw.style.left = Math.random() * 100 + '%';
+    paw.style.animationDelay = Math.random() * 20 + 's';
+    paw.style.animationDuration = (15 + Math.random() * 15) + 's';
+    paw.style.fontSize = (20 + Math.random() * 30) + 'px';
+    pawBg.appendChild(paw);
+}
+
+// ============= INIT =============
+load();
+render();
+</script>
+
+</body>
+</html>
