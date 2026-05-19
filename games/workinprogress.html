@@ -1,1 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  :root { --board-size: 600px; }
+  .board {
+    display: grid;
+    width: var(--board-size);
+    height: var(--board-size);
+    grid-template-columns: 100px repeat(9, 1fr) 100px;
+    grid-template-rows: 100px repeat(9, 1fr) 100px;
+    border: 2px solid black;
+    background: #cde6d0;
+  }
+  .space { border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 10px; text-align: center; }
+  /* Corners */
+  .go { grid-area: 11 / 11; background: #fff; }
+  .jail { grid-area: 11 / 1; }
+  .parking { grid-area: 1 / 1; }
+  .go-to-jail { grid-area: 1 / 11; }
+  /* Center decoration */
+  .center { grid-column: 2 / 11; grid-row: 2 / 11; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: bold; transform: rotate(-45deg); opacity: 0.1; }
+</style>
+</head>
+<body>
+  <div class="board">
+    <div class="space go">GO<br>➡️</div>
+    <div class="space jail">JUST<br>VISITING</div>
+    <div class="space parking">FREE<br>PARKING</div>
+    <div class="space go-to-jail">GO TO<br>JAIL</div>
+    <div class="center">MONOPOLY</div>
+  </div>
+</body>
+</html>
 
