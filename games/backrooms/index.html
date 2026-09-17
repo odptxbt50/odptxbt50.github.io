@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backrooms: No-Clip Room · PatGames</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--yellow:#e8c547;--amber:#ffab2e;--void:#0a0a0f;--panel:#12121a;--line:#2a2a36;--bone:#ded9c8}
+  body{font-family:'Inter',sans-serif;background:var(--void);color:var(--bone);min-height:100vh}
+  .hidden{display:none !important}
+  header{border-bottom:1px solid var(--line);padding:18px 24px;display:flex;align-items:center;gap:16px}
+  header a{color:var(--yellow);text-decoration:none;font-family:'Press Start 2P',monospace;font-size:.62rem}
+  header h1{font-family:'Press Start 2P',monospace;font-size:.7rem;color:var(--bone);font-weight:400}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 24px 70px}
+  .hero{text-align:center;padding:26px 0 34px}
+  .hero h2{font-family:'Press Start 2P',monospace;font-size:1.5rem;line-height:1.5;color:var(--yellow);margin-bottom:18px}
+  .hero p{max-width:620px;margin:0 auto;color:#9a9689;font-size:.95rem;line-height:1.7}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px}
+  .menu{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  label{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:#8d8877}
+  input{width:100%;background:#0b0b11;border:1px solid var(--line);border-radius:6px;padding:12px 14px;color:var(--bone);font-family:'JetBrains Mono',monospace;font-size:1rem;letter-spacing:.14em;text-transform:uppercase}
+  input:focus{outline:none;border-color:var(--yellow)}
+  button{cursor:pointer;font-family:'Press Start 2P',monospace;font-size:.66rem;padding:14px 18px;border-radius:6px;border:1px solid var(--yellow);background:var(--yellow);color:#14110a;transition:.15s}
+  button:hover{filter:brightness(1.12)}
+  .ghost{background:transparent;color:var(--yellow)}
+  .row{display:flex;gap:10px}
+  .row input{flex:1}
+  .row button{white-space:nowrap}
+  #status{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--amber);min-height:1.2em;text-align:center}
+  .code-big{font-family:'Press Start 2P',monospace;font-size:1.7rem;color:var(--yellow);letter-spacing:.2em;cursor:pointer;text-align:center;padding:12px;border:1px dashed var(--line);border-radius:8px}
+  .roster-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border:1px solid var(--line);border-radius:6px;margin-bottom:7px;font-family:'JetBrains Mono',monospace;font-size:.82rem}
+  .tag{color:#57c7a8;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em}
+  .tag.down{color:#ff4d4d}
+  .play-grid{display:grid;grid-template-columns:1fr 290px;gap:18px;align-items:start}
+  .canvas-wrap{position:relative;background:#000;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  canvas{display:block;width:100%;height:68vh;min-height:380px}
+  .meter{margin-bottom:11px}
+  .meter-top{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#8d8877;margin-bottom:4px}
+  .bar{height:7px;background:#07070b;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .bar span{display:block;height:100%;width:100%}
+  .hud h3{font-family:'Press Start 2P',monospace;font-size:.8rem;color:var(--yellow);margin-bottom:14px}
+  .controls{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:.7rem;line-height:1.9;color:#8d8877}
+  #msg{position:absolute;top:18px;left:50%;transform:translateX(-50%);font-family:'Press Start 2P',monospace;font-size:.72rem;color:var(--yellow);background:rgba(8,8,12,.86);padding:10px 16px;border:1px solid var(--line);border-radius:6px;text-align:center}
+  #downNote{color:#ff4d4d;font-family:'JetBrains Mono',monospace;font-size:.7rem;margin-top:8px}
+  #endPanel{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(5,5,9,.9);text-align:center;padding:20px}
+  #endPanel h3{font-family:'Press Start 2P',monospace;font-size:1.1rem;color:var(--yellow)}
+  #endMeta{font-family:'JetBrains Mono',monospace;color:#9a9689}
+  section.block{margin-top:52px}
+  section.block > h3{font-family:'Press Start 2P',monospace;font-size:.92rem;color:var(--yellow);margin-bottom:18px}
+  .codex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:14px}
+  .codex-card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent,var(--yellow));border-radius:8px;padding:16px}
+  .codex-card h3{font-family:'Press Start 2P',monospace;font-size:.68rem;color:var(--accent,var(--yellow));margin-bottom:8px;line-height:1.5}
+  .codex-kind{font-family:'JetBrains Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:#7d7869;margin-bottom:8px}
+  .codex-card p{font-size:.84rem;line-height:1.6;color:#a8a396}
+  .codex-depth{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:#6e6a5e;margin-top:8px}
+  .lb-row{display:grid;grid-template-columns:34px 1fr 90px 70px 90px;gap:10px;align-items:center;padding:9px 12px;border:1px solid var(--line);border-radius:6px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;font-size:.8rem}
+  .lb-rank{color:var(--yellow)}
+  .lb-out{color:#7d7869;text-transform:uppercase;font-size:.66rem}
+  .muted{color:#7d7869;font-family:'JetBrains Mono',monospace;font-size:.8rem}
+  .note{background:rgba(232,197,71,.07);border:1px solid rgba(232,197,71,.25);border-radius:8px;padding:14px 16px;font-size:.84rem;line-height:1.65;color:#bdb8a8;margin-top:16px}
+  footer{border-top:1px solid var(--line);padding:22px 24px;text-align:center;color:#6e6a5e;font-family:'JetBrains Mono',monospace;font-size:.72rem}
+  @media(max-width:900px){.play-grid{grid-template-columns:1fr}.hero h2{font-size:1.05rem}canvas{height:52vh}}
+</style>
+</head>
+<body>
+<header>
+  <a href="../../">&larr; PATGAMES</a>
+  <h1>Backrooms: No-Clip Room</h1>
+</header>
+
+<div class="wrap">
+  <!-- MENU -->
+  <div id="menu">
+    <div class="hero">
+      <h2>You clipped through<br>the floor.</h2>
+      <p>Top-down co-op survival in the yellow rooms. One flashlight, a draining battery, and twelve things that live down here. Find the exit, go deeper, keep your sanity.</p>
+    </div>
+    <div class="card menu">
+      <div>
+        <label for="nameInput">Survivor name</label>
+        <input id="nameInput" maxlength="12" placeholder="PAT" aria-label="Survivor name">
+      </div>
+      <button id="createBtn">Create room</button>
+      <div>
+        <label for="codeInput">Or join with a code</label>
+        <div class="row">
+          <input id="codeInput" maxlength="5" placeholder="XXXXX" aria-label="Room code">
+          <button id="joinBtn" class="ghost">Join</button>
+        </div>
+      </div>
+      <p id="status"></p>
+      <p class="note"><strong>How rooms work:</strong> the host's browser runs the game, so the host must keep this tab open for the room to stay alive. Everyone else connects peer-to-peer with the code.</p>
+    </div>
+  </div>
+
+  <!-- LOBBY -->
+  <div id="lobby" class="hidden">
+    <div class="card menu">
+      <label>Room code — click to copy</label>
+      <div class="code-big" id="lobbyCode">-----</div>
+      <div>
+        <label>Survivors</label>
+        <div id="lobbyPlayers"></div>
+      </div>
+      <button id="hostStartBtn">Start run</button>
+      <p id="lobbyHint" class="muted"></p>
+      <p id="status2"></p>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game" class="hidden">
+    <div class="play-grid">
+      <div class="canvas-wrap">
+        <canvas id="cv" aria-label="Backrooms game canvas"></canvas>
+        <div id="msg" class="hidden"></div>
+        <div id="endPanel" class="hidden">
+          <h3 id="endTitle"></h3>
+          <p id="endMeta"></p>
+          <button id="againBtn">Run it back</button>
+        </div>
+      </div>
+      <div class="card hud">
+        <h3>Depth <span id="depth">1</span></h3>
+        <p class="muted" style="margin-bottom:14px">Time <span id="time">0:00</span></p>
+        <div class="meter"><div class="meter-top"><span>Health</span><span id="hpVal">100</span></div><div class="bar"><span id="hpFill"></span></div></div>
+        <div class="meter"><div class="meter-top"><span>Sanity</span><span id="sanVal">100</span></div><div class="bar"><span id="sanFill"></span></div></div>
+        <div class="meter"><div class="meter-top"><span>Stamina</span><span id="stamVal">100</span></div><div class="bar"><span id="stamFill"></span></div></div>
+        <div class="meter"><div class="meter-top"><span>Battery</span><span id="battVal">100</span></div><div class="bar"><span id="battFill"></span></div></div>
+        <p class="muted">Almond water × <span id="almond">1</span></p>
+        <p id="downNote" class="hidden">DOWN — a teammate must hold E near you</p>
+        <div class="controls">
+          WASD / arrows — move<br>
+          Mouse — aim the light<br>
+          Shift — sprint<br>
+          F — flashlight · E — revive · Q — drink
+        </div>
+        <div class="controls"><div id="roster"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CODEX -->
+  <section class="block">
+    <h3>Entity codex — 12 things in the yellow</h3>
+    <div class="codex-grid" id="codex"></div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section class="block">
+    <h3>Deepest runs</h3>
+    <div id="lbBody"></div>
+    <p class="note">Scores are saved in this browser only — GitHub Pages has no database, so there's no shared global board.</p>
+  </section>
+</div>
+
+<footer>© 2026 PatGames · Backrooms: No-Clip Room</footer>
+
+<script src="./game.js?v=2"></script>
+</body>
+</html>
