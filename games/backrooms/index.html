@@ -57,6 +57,30 @@
   .codex-kind{font-family:'JetBrains Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:#7d7869;margin-bottom:8px}
   .codex-card p{font-size:.84rem;line-height:1.6;color:#a8a396}
   .codex-depth{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:#6e6a5e;margin-top:8px}
+  .codex-grid{grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}
+  .codex-head{display:flex;gap:11px;align-items:flex-start;margin-bottom:10px}
+  .codex-glyph{flex:0 0 30px;height:30px;border-radius:6px;display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.9rem;color:#0a0a0c}
+  .codex-card h3{margin-bottom:5px}
+  .codex-kind{margin-bottom:0}
+  .codex-danger{font-family:'JetBrains Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.09em;display:inline-block;padding:3px 8px;border-radius:4px;margin-bottom:10px}
+  .danger-low{background:rgba(127,212,193,.14);color:#7fd4c1}
+  .danger-medium{background:rgba(232,197,71,.14);color:#e8c547}
+  .danger-high{background:rgba(232,133,71,.16);color:#e88547}
+  .danger-extreme{background:rgba(182,35,31,.18);color:#e4685f}
+  .codex-stats{margin:12px 0 4px;padding:11px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;gap:7px}
+  .stat-row{display:grid;grid-template-columns:96px 54px 1fr;gap:9px;align-items:center;font-family:'JetBrains Mono',monospace;font-size:.62rem}
+  .stat-row>span:first-child{color:#7d7869;text-transform:uppercase;letter-spacing:.05em}
+  .stat-row b{color:#bdb8a8;font-weight:400}
+  .stat-bar{display:block;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+  .stat-bar i{display:block;height:100%;border-radius:3px}
+  .stat-flag{grid-column:2/4;font-size:.62rem;text-transform:uppercase;letter-spacing:.05em}
+  .flag-good{color:#7fd4c1}
+  .flag-bad{color:#b6231f}
+  .codex-sub{font-family:'Press Start 2P',monospace;font-size:.52rem;color:var(--accent,var(--yellow));margin:11px 0 5px;line-height:1.6}
+  .codex-note{font-size:.79rem;line-height:1.6;color:#948f83}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#8a8579;margin-bottom:14px}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .legend i{width:12px;height:12px;border-radius:50%;display:block}
   .lb-row{display:grid;grid-template-columns:34px 1fr 90px 70px 90px;gap:10px;align-items:center;padding:9px 12px;border:1px solid var(--line);border-radius:6px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;font-size:.8rem}
   .lb-rank{color:var(--yellow)}
   .lb-out{color:#7d7869;text-transform:uppercase;font-size:.66rem}
@@ -147,6 +171,13 @@
   <!-- CODEX -->
   <section class="block">
     <h3>Entity codex — 12 things in the yellow</h3>
+    <p class="muted" style="margin-bottom:14px">Every one hunts differently. A tactic that saves you from one gets you killed by the next — read the tell, then the counter.</p>
+    <div class="legend">
+      <span><i style="background:#7fd4c1"></i> You — teal, haloed, labelled (YOU)</span>
+      <span><i style="background:#9a958a"></i> Teammates — grey, dimmed when offline</span>
+      <span><i style="background:#b6231f"></i> Downed — red ring, revivable with E</span>
+      <span><i style="background:#ffe66a;border-radius:2px"></i> Exit · batteries · almond water</span>
+    </div>
     <div class="codex-grid" id="codex"></div>
   </section>
 
@@ -160,6 +191,6 @@
 
 <footer>© 2026 PatGames · Backrooms: No-Clip Room</footer>
 
-<script src="./game.js?v=2"></script>
+<script src="./game.js?v=3"></script>
 </body>
 </html>
