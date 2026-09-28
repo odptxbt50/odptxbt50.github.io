@@ -370,6 +370,34 @@ body{background:#0a0a0f;color:#e0ffe0;font-family:'VT323',monospace;overflow-x:h
 @media(max-width:700px){.spinners-grid{grid-template-columns:repeat(5,1fr)}.spinner-visual{width:46px;height:46px}.top-bar{gap:6px}.game-title{font-size:11px}.cur-amount{font-size:11px}.tab-btn{font-size:4px;padding:6px 2px}}
 @media(max-width:480px){.spinners-grid{grid-template-columns:repeat(4,1fr);gap:4px}.tab-btn{font-size:3.5px;padding:5px 2px}.spinner-visual{width:40px;height:40px}}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#1e1e2e;border-radius:2px}
+
+/* ── v1.1: BULK BUY BAR ── */
+.bulk-bar{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:10px;padding:7px 8px;background:rgba(0,255,204,.03);border:1px solid rgba(0,255,204,.14);border-radius:3px}
+.bulk-label{font-family:'Press Start 2P',cursive;font-size:6px;color:#5a7a5a;letter-spacing:1px;margin-right:2px}
+.bulk-btn{font-family:'Press Start 2P',cursive;font-size:6px;padding:5px 6px;background:rgba(255,255,255,.02);border:1px solid #2a2a40;color:#5a7a5a;border-radius:2px;cursor:pointer;transition:all .12s;letter-spacing:.5px}
+.bulk-btn:hover{border-color:#00ffcc55;color:#00ffcc}
+.bulk-btn.active{background:rgba(0,255,204,.12);border-color:#00ffcc;color:#00ffcc;text-shadow:0 0 6px rgba(0,255,204,.6)}
+.upg-bulk{font-family:'Press Start 2P',cursive;font-size:6px;color:#00ffcc;opacity:.8;margin-top:2px}
+
+/* ── v1.1: VERSION TAG ── */
+.ver-tag{font-family:'Press Start 2P',cursive;font-size:6px;color:#ff00aa;background:rgba(255,0,170,.08);border:1px solid rgba(255,0,170,.3);padding:3px 5px;border-radius:2px;cursor:pointer;transition:all .15s}
+.ver-tag:hover{background:rgba(255,0,170,.2);color:#fff;box-shadow:0 0 10px rgba(255,0,170,.4)}
+
+/* ── v1.1: UPDATE NOTICE ── */
+.update-overlay{position:fixed;inset:0;z-index:9998;background:rgba(4,4,8,.88);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;animation:upd-fade .25s ease-out}
+@keyframes upd-fade{from{opacity:0}to{opacity:1}}
+.update-box{background:linear-gradient(180deg,#0c0c16 0%,#0a0a12 100%);border:2px solid #00ffcc;border-radius:8px;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:22px 24px;box-shadow:0 0 70px rgba(0,255,204,.22);animation:upd-pop .3s cubic-bezier(.2,1.3,.4,1)}
+@keyframes upd-pop{from{transform:scale(.9) translateY(14px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.update-kicker{font-family:'Press Start 2P',cursive;font-size:6px;color:#5a7a5a;letter-spacing:2px;margin-bottom:8px}
+.update-title{font-family:'Press Start 2P',cursive;font-size:15px;color:#00ffcc;text-shadow:0 0 14px rgba(0,255,204,.5);margin-bottom:4px;letter-spacing:1px}
+.update-sub{font-size:15px;color:#7a9a7a;margin-bottom:16px;border-bottom:1px solid #1e1e2e;padding-bottom:12px}
+.update-list{display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
+.update-item{display:flex;gap:9px;align-items:flex-start;font-size:17px;color:#d0ffd0;line-height:1.25}
+.update-item .ui-dot{color:#00ffcc;font-family:'Press Start 2P',cursive;font-size:7px;padding-top:4px;flex-shrink:0}
+.update-item.warn{color:#ffcc00}
+.update-item.warn .ui-dot{color:#ffcc00}
+.update-close{width:100%;padding:11px;font-family:'Press Start 2P',cursive;font-size:8px;background:rgba(0,255,204,.1);border:1px solid #00ffcc;color:#00ffcc;border-radius:3px;cursor:pointer;letter-spacing:1px;transition:all .15s}
+.update-close:hover{background:rgba(0,255,204,.22);box-shadow:0 0 18px rgba(0,255,204,.35)}
 </style>
 </head>
 <body>
@@ -381,6 +409,7 @@ body{background:#0a0a0f;color:#e0ffe0;font-family:'VT323',monospace;overflow-x:h
     <div class="top-bar-left">
       <h1 class="game-title"><span class="title-spin">SPIN</span><span class="title-rev">REV</span></h1>
       <span class="prestige-badge" id="prestigeBadge"></span>
+      <span class="ver-tag" id="verTag" title="What's new in this update">v1.1</span>
       <div class="auth-user-bar" id="authUserBar" style="display:none">
         <span class="auth-user-name" id="authUserName">Guest</span>
         <button class="auth-btn-sm auth-btn-save" id="cloudSaveBtn" title="Save to cloud">☁ Save</button>
@@ -437,6 +466,17 @@ body{background:#0a0a0f;color:#e0ffe0;font-family:'VT323',monospace;overflow-x:h
       <div class="panel-content">
         <div class="panel visible" id="upgradePanel">
           <h2 class="shop-title">UPGRADES</h2>
+          <div class="bulk-bar" id="bulkBar">
+            <span class="bulk-label">BUY</span>
+            <button class="bulk-btn active" data-bulk="1">x1</button>
+            <button class="bulk-btn" data-bulk="2">x2</button>
+            <button class="bulk-btn" data-bulk="5">x5</button>
+            <button class="bulk-btn" data-bulk="10">x10</button>
+            <button class="bulk-btn" data-bulk="15">x15</button>
+            <button class="bulk-btn" data-bulk="50">x50</button>
+            <button class="bulk-btn" data-bulk="100">x100</button>
+            <button class="bulk-btn" data-bulk="max">MAX</button>
+          </div>
           <div class="upgrade-list" id="upgradeList"></div>
         </div>
         <div class="panel" id="prestigePanel">
@@ -482,14 +522,14 @@ body{background:#0a0a0f;color:#e0ffe0;font-family:'VT323',monospace;overflow-x:h
         </div>
         <div class="panel" id="leaderboardPanel">
           <h2 class="panel-title" style="color:#ffcc00;text-shadow:0 0 10px rgba(255,204,0,.3)">🏆 LEADERBOARD</h2>
-          <div class="panel-expl" style="border-color:rgba(255,204,0,.2)">Compete with other players! Submit your score to the global leaderboard.</div>
+          <div class="panel-expl" style="border-color:rgba(255,204,0,.2)">Submit your score to take a spot on the board. Everyone who plays on this device competes for the top 50.</div>
           <div style="display:flex;gap:6px;margin-bottom:12px;align-items:stretch">
             <input id="playerNameInput" type="text" maxlength="20" placeholder="ENTER YOUR NAME" style="flex:1;background:#0e0e16;border:1px solid #2a2a40;color:#ffcc00;padding:8px 10px;border-radius:3px;font-family:'Press Start 2P';font-size:7px;letter-spacing:.5px;text-transform:uppercase">
             <button id="submitScoreBtn" style="font-family:'Press Start 2P';font-size:6px;padding:8px 14px;background:rgba(255,204,0,.1);border:1px solid #ffcc0044;color:#ffcc00;border-radius:3px;cursor:pointer;transition:all .15s;white-space:nowrap">SUBMIT</button>
           </div>
           <div id="submitStatus" style="font-size:13px;color:#5a7a5a;margin-bottom:10px;text-align:center;min-height:16px"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-family:'Press Start 2P';font-size:7px;color:#5a7a5a;letter-spacing:1px">GLOBAL RANKINGS</span>
+            <span style="font-family:'Press Start 2P';font-size:7px;color:#5a7a5a;letter-spacing:1px">RANKINGS — TOP 50</span>
             <button id="refreshLeaderboard" style="font-family:'VT323';font-size:13px;padding:3px 8px;background:rgba(0,255,204,.06);border:1px solid #00ffcc30;color:#00ffcc;border-radius:2px;cursor:pointer">↻ Refresh</button>
           </div>
           <div id="leaderboardList" style="display:flex;flex-direction:column;gap:4px"></div>
@@ -509,7 +549,8 @@ body{background:#0a0a0f;color:#e0ffe0;font-family:'VT323',monospace;overflow-x:h
 // ============================================================
 // CONSTANTS
 // ============================================================
-const NUM_SPINNERS = 100;
+const GAME_VERSION = "1.1";
+const NUM_SPINNERS = 150;
 const SPINNER_NAMES = [
   "Alpha","Beta","Gamma","Delta","Epsilon","Zeta","Eta","Theta","Iota","Kappa",
   "Lambda","Mu","Nu","Xi","Omicron","Pi","Rho","Sigma","Tau","Upsilon",
@@ -520,9 +561,15 @@ const SPINNER_NAMES = [
   "Jolt","Knot","Lynx","Mach","Nova","Opal","Pulse","Quasar","Rune","Shard",
   "Thorn","Umbra","Volt","Wave","Xerox","Yarn","Zap","Apex","Bloom","Crux",
   "Dawn","Ember","Frost","Gleam","Halo","Ingot","Jinx","Keen","Loom","Myth",
-  "Null","Onyx","Pyre","Quest","Raze","Storm","Titan","Unity","Veil","Wrath"
+  "Null","Onyx","Pyre","Quest","Raze","Storm","Titan","Unity","Veil","Wrath",
+  // ── v1.1: 50 more revs ──
+  "Abyss","Basilisk","Chrono","Dynamo","Eclipse","Fathom","Gravity","Hollow","Inferno","Juggernaut",
+  "Kelvin","Lumen","Monolith","Nebula","Obelisk","Paradox","Quantum","Radiant","Singularity","Tempest",
+  "Ultraviolet","Vortex","Wraith","Xenon","Yggdrasil","Zodiac","Anomaly","Bulwark","Cinder","Deluge",
+  "Entropy","Fracture","Gossamer","Harbinger","Ignition","Juniper","Kismet","Labyrinth","Meridian","Nocturne",
+  "Oblivion","Penumbra","Quicksilver","Requiem","Saturnine","Threnody","Umbriel","Vantage","Whetstone","Zenzizen"
 ];
-const SPINNER_COLORS = (()=>{const c=[];for(let i=0;i<100;i++){c.push(`hsl(${Math.round(i/100*360)},100%,65%)`)}return c})();
+const SPINNER_COLORS = (()=>{const c=[];for(let i=0;i<NUM_SPINNERS;i++){c.push(`hsl(${Math.round(i/NUM_SPINNERS*360*1.5%360)},100%,65%)`)}return c})();
 
 const ANIMALS_UNLOCK_COST = 500;
 
@@ -536,6 +583,14 @@ const PRESTIGE_PERKS = [
   { tier:6, name:"MEGA CLICKS",   desc:"Every 10th click is 5x power",   icon:"💥" },
   { tier:8, name:"SYNERGY BONUS", desc:"+2% REV per unique owned animal", icon:"🐾" },
   { tier:10,name:"TRANSCENDENCE", desc:"Spinners keep levels on prestige",icon:"🌌" },
+  // ── v1.1: more rebirths ──
+  { tier:12,name:"TWIN TOKENS",   desc:"Double tokens from every rebirth", icon:"🪙" },
+  { tier:15,name:"REV SURGE",     desc:"+100% REV from every source",     icon:"📈" },
+  { tier:18,name:"CHAIN MASTERY", desc:"Chains hit 3 extra spinners",     icon:"⛓" },
+  { tier:22,name:"FLUX FLOOD",    desc:"Triple FLUX generation",          icon:"🌊" },
+  { tier:26,name:"CRIT STORM",    desc:"+25% crit chance, +5x crit power",icon:"⚔" },
+  { tier:30,name:"ETERNAL REV",   desc:"Rebirth keeps ALL your upgrades", icon:"♾" },
+  { tier:35,name:"OMEGA REBIRTH", desc:"x5 REV and x2 passive, forever",  icon:"🕳" },
 ];
 
 // ── REGULAR UPGRADES (bought with REV) ───────────────────────
@@ -558,6 +613,15 @@ const UPGRADES = [
   { id:"bulkBonus",      cat:"ECONOMY",   name:"BULK EARN",       desc:"+5% REV from all sources",        icon:"&&", color:"#dd44ff", base:400, scale:1.95, max:Infinity },
   { id:"prestigeSpeed",  cat:"PRESTIGE",  name:"PRESTIGE RUSH",   desc:"-10% REV needed to prestige",     icon:"**", color:"#ff00aa", base:600, scale:2.1,  max:Infinity },
   { id:"tokenBoost",     cat:"PRESTIGE",  name:"TOKEN LUCK",      desc:"+1 extra token on prestige",      icon:"TT", color:"#ff4488", base:1500,scale:2.4,  max:Infinity },
+  // ── v1.1: more upgrades ──
+  { id:"clickEcho",      cat:"CLICKING",  name:"CLICK ECHO",      desc:"+8% REV from every click",        icon:"((", color:"#66ffee", base:450, scale:1.7,  max:Infinity },
+  { id:"critPower",      cat:"CLICKING",  name:"CRIT POWER",      desc:"+0.5x critical click damage",     icon:"##", color:"#ff6666", base:900, scale:1.85, max:Infinity, mechanic:true },
+  { id:"overdrive",      cat:"SPEED",     name:"OVERDRIVE",       desc:"+8% max speed cap",               icon:">^", color:"#00ccff", base:350, scale:1.7,  max:Infinity },
+  { id:"spinInertia",    cat:"SPEED",     name:"INERTIA",         desc:"+15% minimum spin speed",         icon:"==", color:"#88eedd", base:220, scale:1.65, max:Infinity },
+  { id:"passiveMult",    cat:"PASSIVE",   name:"IDLE AMPLIFY",    desc:"+10% total passive REV",          icon:"^+", color:"#ff8844", base:700, scale:1.8,  max:Infinity },
+  { id:"fluxTap",        cat:"PASSIVE",   name:"FLUX TAP",        desc:"+15% FLUX generation",            icon:"~=", color:"#00aaff", base:2000,scale:2.0,  max:Infinity, mechanic:true, reqTier:5 },
+  { id:"spinnerYield",   cat:"ECONOMY",   name:"SPINNER YIELD",   desc:"+6% REV from all sources",        icon:"$", color:"#ee66ff", base:1200,scale:2.0,  max:Infinity },
+  { id:"tierPower",      cat:"PRESTIGE",  name:"TIER POWER",      desc:"+5% rebirth multiplier gain",     icon:"++", color:"#ff77bb", base:3000,scale:2.5,  max:Infinity },
 ];
 
 // ── ASCENSION UPGRADES (bought with FLUX) ──
@@ -572,6 +636,11 @@ const ASC_UPGRADES = [
   { id:"cascadeChain", name:"INFINITE CASCADE",  desc:"+10% cascade chance",              icon:"💫", color:"#ff44cc", base:30,  scale:2.0,  max:Infinity },
   { id:"prestigeMult", name:"PRESTIGE BOOST",    desc:"+0.5x prestige multiplier gain",   icon:"🌀", color:"#ff00aa", base:50,  scale:2.2,  max:Infinity },
   { id:"tokenGen",     name:"TOKEN FORGE",       desc:"+1 token per prestige",            icon:"🔮", color:"#aa44ff", base:40,  scale:2.0,  max:Infinity },
+  // ── v1.1: more upgrades ──
+  { id:"ascClick",     name:"CLICK SINGULARITY", desc:"+15% REV from clicks",             icon:"👆", color:"#00ffcc", base:18,  scale:1.65, max:Infinity },
+  { id:"ascPassive",   name:"IDLE SINGULARITY",  desc:"+15% passive REV",                 icon:"💤", color:"#ff6633", base:18,  scale:1.65, max:Infinity },
+  { id:"ascCheap",     name:"COST COLLAPSE",     desc:"-3% all costs",                    icon:"🏷️", color:"#aa44ff", base:35,  scale:1.9,  max:20 },
+  { id:"ascSpeed",     name:"TIME DILATION",     desc:"+10% max speed cap",               icon:"⏱️", color:"#44ddff", base:22,  scale:1.7,  max:Infinity },
 ];
 
 // ── SKILL TREE (bought with PRESTIGE TOKENS) — 24 unique nodes ──
@@ -652,6 +721,19 @@ const ANIMALS = [
   {id:"leviathan",name:"LEVIATHAN",emoji:"🐋",rarity:"legendary",color:"#ffaa00",baseCost:150000,scale:2.0,bonus:"passiveRev",bonusPerLv:50,bonusDesc:"+50 REV/sec per level",maxLevel:5},
   {id:"celestial",name:"CELESTIAL SERPENT",emoji:"🐲",rarity:"mythic",color:"#ff00aa",baseCost:500000,scale:2.2,bonus:"prestigeBonus",bonusPerLv:15,bonusDesc:"+15% prestige mult per level",maxLevel:3},
   {id:"cosmicwolf",name:"COSMIC WOLF",emoji:"🌑",rarity:"mythic",color:"#ff00aa",baseCost:750000,scale:2.2,bonus:"revMult",bonusPerLv:35,bonusDesc:"+35% all REV per level",maxLevel:3},
+  // ── v1.1: more pets ──
+  {id:"frog",name:"LEAP FROG",emoji:"🐸",rarity:"common",color:"#44ff44",baseCost:70,scale:1.5,bonus:"spinSpeed",bonusPerLv:0.4,bonusDesc:"+0.4 spin speed per level",maxLevel:15},
+  {id:"owl",name:"NIGHT OWL",emoji:"🦉",rarity:"common",color:"#44ff44",baseCost:120,scale:1.5,bonus:"passiveRev",bonusPerLv:1.2,bonusDesc:"+1.2 REV/sec per level",maxLevel:20},
+  {id:"monkey",name:"CLEVER MONKEY",emoji:"🐵",rarity:"uncommon",color:"#00aaff",baseCost:550,scale:1.6,bonus:"clickPower",bonusPerLv:6,bonusDesc:"+6 click power per level",maxLevel:15},
+  {id:"squid",name:"NEON SQUID",emoji:"🦑",rarity:"uncommon",color:"#00aaff",baseCost:700,scale:1.6,bonus:"autoBoost",bonusPerLv:4,bonusDesc:"+4% auto-spin output per level",maxLevel:12},
+  {id:"panda",name:"ZEN PANDA",emoji:"🐼",rarity:"rare",color:"#aa44ff",baseCost:3200,scale:1.7,bonus:"costReduce",bonusPerLv:4,bonusDesc:"-4% costs per level",maxLevel:8},
+  {id:"crab",name:"GOLD CRAB",emoji:"🦀",rarity:"rare",color:"#aa44ff",baseCost:4500,scale:1.7,bonus:"passiveRev",bonusPerLv:8,bonusDesc:"+8 REV/sec per level",maxLevel:10},
+  {id:"scorpion",name:"VENOM SCORPION",emoji:"🦂",rarity:"epic",color:"#ff6633",baseCost:22000,scale:1.8,bonus:"clickPower",bonusPerLv:60,bonusDesc:"+60 click power per level",maxLevel:8},
+  {id:"mantis",name:"CHROME MANTIS",emoji:"🦗",rarity:"epic",color:"#ff6633",baseCost:28000,scale:1.8,bonus:"spinSpeed",bonusPerLv:4,bonusDesc:"+4 spin speed per level",maxLevel:8},
+  {id:"hydra",name:"NINE-HEAD HYDRA",emoji:"🐍",rarity:"legendary",color:"#ffaa00",baseCost:120000,scale:2.0,bonus:"clickPower",bonusPerLv:200,bonusDesc:"+200 click power per level",maxLevel:5},
+  {id:"beetle",name:"SCARAB VAULT",emoji:"🪲",rarity:"legendary",color:"#ffaa00",baseCost:180000,scale:2.0,bonus:"costReduce",bonusPerLv:6,bonusDesc:"-6% costs per level",maxLevel:5},
+  {id:"voidsov",name:"VOID SOVEREIGN",emoji:"👁️",rarity:"mythic",color:"#ff00aa",baseCost:1000000,scale:2.2,bonus:"revMult",bonusPerLv:40,bonusDesc:"+40% all REV per level",maxLevel:3},
+  {id:"starwhale",name:"STAR WHALE",emoji:"🌌",rarity:"mythic",color:"#ff00aa",baseCost:1500000,scale:2.2,bonus:"passiveRev",bonusPerLv:250,bonusDesc:"+250 REV/sec per level",maxLevel:3},
 ];
 const RARITY_ORDER = ["common","uncommon","rare","epic","legendary","mythic"];
 
@@ -667,7 +749,20 @@ const MILESTONES = [
   {id:"m8",   check:G=>G.totalRev>=1e9,    icon:"🌌",text:"1 BILLION REV!",  sub:"Transcendent spinner"},
 ];
 
-const LOCAL_KEY = "spin-rev-v5";
+const LOCAL_KEY = "spin-rev-v6";
+const LB_KEY = "spin-rev-lb-v1";
+const UPDATE_FLAG = "spin-rev-update-seen-v" + GAME_VERSION;
+const RESET_FLAG = "spin-rev-reset-v" + GAME_VERSION;
+
+// ── v1.1 HARD RESET: everyone starts fresh on this update ──
+if (!localStorage.getItem(RESET_FLAG)) {
+  for (const k of ["spin-rev-v6","spin-rev-v5","spin-rev-v4","spin-rev-v3","spin-rev-clicks",
+                   "spin-rev-history","spin-rev-milestones","spin-rev-local-lb",LB_KEY]) {
+    localStorage.removeItem(k);
+  }
+  localStorage.setItem(RESET_FLAG, "1");
+}
+
 let totalClicks = parseInt(localStorage.getItem("spin-rev-clicks") || "0");
 let confirmingPrestige = false, confirmTimer = null;
 let prestigeHistory = [];
@@ -708,15 +803,7 @@ let G;
 try {
   const raw = localStorage.getItem(LOCAL_KEY);
   G = raw ? JSON.parse(raw) : null;
-  if (!G || !G.spinners) {
-    // Try migrating from v4
-    const v4 = localStorage.getItem("spin-rev-v4");
-    if (v4) {
-      G = JSON.parse(v4);
-    } else {
-      G = createInitialState();
-    }
-  }
+  if (!G || !G.spinners) G = createInitialState();
   // Patch missing fields
   if (!G.skills) { G.skills = {}; }
   for (const s of SKILLS) if (G.skills[s.id] === undefined) G.skills[s.id] = 0;
@@ -777,6 +864,7 @@ function getCostReduction() {
   let red = 1 - cr * 0.05;
   if (has("sk_cheapAll")) red -= 0.20 * skMul();
   red -= getAnimalBonus("costReduce") / 100;
+  red -= (G.ascUpgrades.ascCheap || 0) * 0.03;
   return Math.max(red, 0.05);
 }
 
@@ -784,6 +872,32 @@ function getUpgradeCost(u) {
   const lv = G.upgrades[u.id];
   if (u.max !== Infinity && lv >= u.max) return Infinity;
   return Math.floor(u.base * Math.pow(u.scale, lv) * getCostReduction());
+}
+
+// ── v1.1: BULK BUY ──
+let bulkAmount = localStorage.getItem("spin-rev-bulk") || "1";
+if (!["1","2","5","10","15","50","100","max"].includes(bulkAmount)) bulkAmount = "1";
+
+// Returns how many levels the current bulk setting buys, and what it costs.
+// Fixed amounts return the full price for that many levels (even if unaffordable);
+// MAX returns as many as the player can actually afford right now.
+function getBulkInfo(u) {
+  const lv = G.upgrades[u.id] || 0;
+  const cr = getCostReduction();
+  const cap = u.max === Infinity ? Infinity : u.max;
+  const isMax = bulkAmount === "max";
+  const limit = isMax ? Infinity : parseInt(bulkAmount);
+  let total = 0, count = 0, budget = G.rev;
+  for (let i = 0; lv + i < cap && i < limit && i < 100000; i++) {
+    const c = Math.floor(u.base * Math.pow(u.scale, lv + i) * cr);
+    if (!isFinite(c)) break;
+    if (isMax) {
+      if (budget < c) break;
+      budget -= c;
+    }
+    total += c; count++;
+  }
+  return { total, count };
 }
 
 function getAscUpgradeCost(u) {
@@ -794,7 +908,10 @@ function getAscUpgradeCost(u) {
 
 function getSpinnerUnlockCost(id) {
   if (id === 0) return 0;
-  let cost = Math.floor(20 * Math.pow(1.45, id)); // scaled for 100 spinners
+  // v1.1: first 100 keep the original curve; the 50 new revs ramp gentler so they stay reachable
+  let cost = id <= 99
+    ? Math.floor(20 * Math.pow(1.45, id))
+    : Math.floor(20 * Math.pow(1.45, 99) * Math.pow(1.22, id - 99));
   const sd = G.upgrades.spinnerDiscount || 0;
   let red = 1 - sd * 0.08;
   red *= getCostReduction();
@@ -817,7 +934,8 @@ function getTokensOnPrestige() {
   base += G.upgrades.tokenBoost || 0;
   if (has("sk_tokenMagnet")) base += 2 * skMul();
   base += G.ascUpgrades.tokenGen || 0;
-  return base;
+  if (hasTier(12)) base *= 2;
+  return Math.floor(base);
 }
 
 function getPrestigeMultiplierGain() {
@@ -825,6 +943,7 @@ function getPrestigeMultiplierGain() {
   if (has("sk_presDouble")) mult *= 2 * skMul();
   mult += getAnimalBonus("prestigeBonus") / 100;
   mult += (G.ascUpgrades.prestigeMult || 0) * 0.5;
+  mult *= 1 + (G.upgrades.tierPower || 0) * 0.05;
   return mult;
 }
 
@@ -832,6 +951,8 @@ function getFluxPerSec() {
   if (!hasTier(5)) return 0;
   let base = G.prestigeLevel * 0.1;
   base *= 1 + (G.ascUpgrades.fluxMult || 0) * 0.25;
+  base *= 1 + (G.upgrades.fluxTap || 0) * 0.15;
+  if (hasTier(22)) base *= 3;
   return base;
 }
 
@@ -865,8 +986,12 @@ function getRevMult() {
   mult += (G.ascUpgrades.revMult || 0) * 0.10;
   mult += getSynergyBonus();
   mult *= 1 + (G.upgrades.bulkBonus || 0) * 0.05;
+  mult *= 1 + (G.upgrades.spinnerYield || 0) * 0.06;
   mult *= 1 + (G.ascUpgrades.spinnerPower || 0) * 0.05;
-  return softcap(mult, 50, 0.001); // softcap at 50x to prevent breaking
+  if (hasTier(15)) mult *= 2;
+  if (hasTier(35)) mult *= 5;
+  // softcap scales with rebirth tier so late tiers still matter
+  return softcap(mult, 50 + G.prestigeLevel * 10, 0.001);
 }
 
 // ── PASSIVE REV ──
@@ -880,6 +1005,9 @@ function calcPassive() {
   if (has("sk_idleWave"))    p *= 1.5 * skMul();
   if (has("sk_hyperIdle"))   p *= 2 * skMul();
   p += getAnimalBonus("passiveRev") * G.prestigeMultiplier;
+  p *= 1 + (G.upgrades.passiveMult || 0) * 0.10;
+  p *= 1 + (G.ascUpgrades.ascPassive || 0) * 0.15;
+  if (hasTier(35)) p *= 2;
   return p * getRevMult();
 }
 
@@ -891,13 +1019,17 @@ function calcRevPerClick() {
   if (has("sk_clickPath")) base += 15 * skMul();
   if (has("sk_godClick"))  base += 100 * skMul();
   const anClick = getAnimalBonus("clickPower");
-  return (base + anClick) * G.prestigeMultiplier * getRevMult();
+  let echo = 1 + (G.upgrades.clickEcho || 0) * 0.08;
+  echo *= 1 + (G.ascUpgrades.ascClick || 0) * 0.15;
+  return (base + anClick) * echo * G.prestigeMultiplier * getRevMult();
 }
 
 function getMaxSpeed() {
   let ms = 15 + (G.upgrades.maxSpeed || 0) * 2 + getAnimalBonus("spinSpeed");
   if (has("sk_speedPath")) ms *= 1.3;
   if (has("sk_stormSpeed")) ms *= 2 * skMul();
+  ms *= 1 + (G.upgrades.overdrive || 0) * 0.08;
+  ms *= 1 + (G.ascUpgrades.ascSpeed || 0) * 0.10;
   return ms;
 }
 
@@ -909,6 +1041,7 @@ function getDecayRate(s) {
 
 function getMinSpeed(s) {
   let min = s.autoSpin ? (0.3 + s.level * 0.12) : 0.1;
+  min *= 1 + (G.upgrades.spinInertia || 0) * 0.15;
   if (has("sk_autoStart")) min *= 3 * skMul();
   if (has("sk_eternalSpin")) min = Math.max(min, getMaxSpeed() * 0.5);
   return min;
@@ -919,13 +1052,16 @@ function getOfflineRate() { return Math.min(0.5 + (G.upgrades.offlineBonus || 0)
 function getCritChance() {
   let c = (G.upgrades.critChance || 0) * 0.02;
   if (has("sk_critClick")) c += 0.10 * skMul();
-  return Math.min(c, 0.8);
+  if (hasTier(26)) c += 0.25;
+  return Math.min(c, 0.95);
 }
 
 function getCritMult() {
   let m = 5;
   if (has("sk_megaCrit")) m = 10;
   m += (G.ascUpgrades.critDamage || 0);
+  m += (G.upgrades.critPower || 0) * 0.5;
+  if (hasTier(26)) m += 5;
   return m * skMul();
 }
 
@@ -938,7 +1074,7 @@ function getCascadeChance() {
 
 function getChainCount() {
   if (!hasTier(2)) return 0;
-  return 1 + (G.upgrades.chainRange || 0);
+  return 1 + (G.upgrades.chainRange || 0) + (hasTier(18) ? 3 : 0);
 }
 
 // ============================================================
@@ -1033,8 +1169,9 @@ function buildUpgrades() {
     for (const u of items) {
       const lv = G.upgrades[u.id];
       const isMaxed = lv >= u.max;
-      const cost = isMaxed ? 0 : getUpgradeCost(u);
-      const afford = !isMaxed && G.rev >= cost;
+      const info = isMaxed ? { total:0, count:0 } : getBulkInfo(u);
+      const cost = info.total;
+      const afford = !isMaxed && info.count > 0 && G.rev >= cost;
       const row = document.createElement("button");
       row.className = `upgrade-row ${isMaxed ? "maxed" : afford ? "affordable" : "too-expensive"}${u.mechanic ? " mechanic-change" : ""}`;
       row.style.setProperty("--row-color", u.color);
@@ -1047,7 +1184,8 @@ function buildUpgrades() {
         </div>
         <div class="upg-meta">
           <div class="upg-level">${isMaxed?"MAX":("LV."+lv+(u.max===Infinity?"":"/ "+u.max))}</div>
-          <div class="upg-cost">${isMaxed?"MAXED":fmt(cost)+" REV"}</div>
+          <div class="upg-cost">${isMaxed?"MAXED":(info.count>0?fmt(cost)+" REV":"—")}</div>
+          ${isMaxed?"":`<div class="upg-bulk">${info.count>0?"+"+info.count+" LV":"CAN'T AFFORD"}</div>`}
         </div>`;
       list.appendChild(row);
     }
@@ -1538,14 +1676,29 @@ document.getElementById("upgradeList").addEventListener("click", e => {
   if (!u) return;
   const lv = G.upgrades[uid];
   if (lv >= u.max) return;
-  const cost = getUpgradeCost(u);
-  if (G.rev < cost) return;
-  G.rev -= cost; G.upgrades[uid]++;
+  const info = getBulkInfo(u);
+  if (info.count <= 0 || G.rev < info.total) return;
+  G.rev -= info.total; G.upgrades[uid] += info.count;
   if (uid === "autoSpinMult") {
-    const target = G.spinners.find(s => s.unlocked && !s.autoSpin);
-    if (target) target.autoSpin = true;
+    for (let i = 0; i < info.count; i++) {
+      const target = G.spinners.find(s => s.unlocked && !s.autoSpin);
+      if (!target) break;
+      target.autoSpin = true;
+    }
   }
-  addFlash(u.name + " LV." + (lv + 1), u.color); refreshUI();
+  addFlash(u.name + " LV." + (lv + info.count) + (info.count > 1 ? " (+" + info.count + ")" : ""), u.color);
+  refreshUI();
+});
+
+// ── v1.1: bulk amount selector ──
+document.getElementById("bulkBar").addEventListener("click", e => {
+  const btn = e.target.closest("[data-bulk]");
+  if (!btn) return;
+  bulkAmount = btn.dataset.bulk;
+  localStorage.setItem("spin-rev-bulk", bulkAmount);
+  document.querySelectorAll("#bulkBar .bulk-btn").forEach(b =>
+    b.classList.toggle("active", b.dataset.bulk === bulkAmount));
+  buildUpgrades();
 });
 
 // Ascension upgrades
@@ -1606,6 +1759,7 @@ document.getElementById("prestigeBtn").addEventListener("click", () => {
   const savedFlux = G.flux;
   const keepSpinners = has("sk_transcend") || hasTier(10);
   const savedSpinners = keepSpinners ? JSON.parse(JSON.stringify(G.spinners)) : null;
+  const savedUpgrades = hasTier(30) ? { ...G.upgrades } : null;
   prestigeFlash();
   addFlash("PRESTIGE TIER " + newLevel + "! +" + tokGain + " TOKEN" + (tokGain>1?"S":""), "#ff00aa");
   prestigeHistory.push({ tier:newLevel, mult:newMult, tok:tokGain, date:new Date().toLocaleDateString() });
@@ -1620,6 +1774,7 @@ document.getElementById("prestigeBtn").addEventListener("click", () => {
   G.ascUpgrades        = savedAsc;
   G.flux               = savedFlux;
   if (savedSpinners) G.spinners = savedSpinners;
+  if (savedUpgrades) G.upgrades = savedUpgrades; // TIER 30: ETERNAL REV
   // HEAD START from ascension
   const headStart = (G.ascUpgrades.startBoost || 0) * 500;
   if (headStart > 0) { G.rev += headStart; G.totalRev += headStart; }
@@ -1796,17 +1951,52 @@ let leaderboardData = [];
 let playerName = localStorage.getItem("spin-rev-player-name") || "";
 if (playerName) document.getElementById("playerNameInput").value = playerName;
 
-async function fetchLeaderboard() {
-  const list = document.getElementById("leaderboardList");
-  list.innerHTML = '<div class="lb-loading">Loading leaderboard...</div>';
+// ── v1.1: leaderboard fixed — stored on this device instead of a dead API ──
+function loadBoard() {
   try {
-    const res = await fetch("/api/leaderboard");
-    const data = await res.json();
-    leaderboardData = data.leaderboard || [];
-    renderLeaderboard();
-  } catch(e) {
-    list.innerHTML = '<div class="lb-empty">Failed to load leaderboard. Are you online?</div>';
+    const raw = JSON.parse(localStorage.getItem(LB_KEY) || "[]");
+    return Array.isArray(raw) ? raw : [];
+  } catch(e) { return []; }
+}
+
+function saveBoard(rows) {
+  rows.sort((a,b) => (b.totalRev||0) - (a.totalRev||0));
+  rows = rows.slice(0, 50);
+  localStorage.setItem(LB_KEY, JSON.stringify(rows));
+  return rows;
+}
+
+// Insert or update one player's entry, keeping their best run only.
+function recordScore(name) {
+  if (!name) return null;
+  const key = name.trim().toUpperCase();
+  if (!key) return null;
+  const rows = loadBoard();
+  const entry = {
+    playerName: key,
+    totalRev: G.totalRev,
+    prestigeLevel: G.prestigeLevel,
+    prestigeMultiplier: G.prestigeMultiplier,
+    spinnersUnlocked: G.spinners.filter(s => s.unlocked).length,
+    flux: G.flux,
+    totalClicks: totalClicks,
+    date: new Date().toLocaleDateString(),
+  };
+  const existing = rows.findIndex(r => (r.playerName || "").toUpperCase() === key);
+  let action = "added";
+  if (existing >= 0) {
+    if ((rows[existing].totalRev || 0) >= G.totalRev) action = "no_change";
+    else rows[existing] = entry;
+  } else {
+    rows.push(entry);
   }
+  leaderboardData = saveBoard(rows);
+  return action;
+}
+
+function fetchLeaderboard() {
+  leaderboardData = loadBoard();
+  renderLeaderboard();
 }
 
 function renderLeaderboard() {
@@ -1842,7 +2032,7 @@ function renderLeaderboard() {
   }).join("");
 }
 
-async function submitScore() {
+function submitScore() {
   const nameInput = document.getElementById("playerNameInput");
   const name = nameInput.value.trim();
   const status = document.getElementById("submitStatus");
@@ -1858,41 +2048,22 @@ async function submitScore() {
   }
   localStorage.setItem("spin-rev-player-name", name);
   playerName = name;
-  status.textContent = "Submitting...";
-  status.style.color = "#ffcc00";
-  try {
-    const res = await fetch("/api/leaderboard/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        playerName: name,
-        totalRev: G.totalRev,
-        prestigeLevel: G.prestigeLevel,
-        prestigeMultiplier: G.prestigeMultiplier,
-        spinnersUnlocked: G.spinners.filter(s => s.unlocked).length,
-        flux: G.flux,
-        totalClicks: totalClicks,
-      })
-    });
-    const data = await res.json();
-    if (data.success) {
-      if (data.action === "no_change") {
-        status.textContent = "✓ Score submitted — your existing score is higher!";
-      } else {
-        status.textContent = "✓ Score submitted successfully!";
-      }
-      status.style.color = "#00ffcc";
-      // Save to local leaderboard too
-      saveLocalRun();
-      fetchLeaderboard();
-    } else {
-      status.textContent = "⚠ " + (data.error || "Failed to submit");
-      status.style.color = "#ff4444";
-    }
-  } catch(e) {
-    status.textContent = "⚠ Network error. Try again.";
+  if (G.totalRev <= 0) {
+    status.textContent = "⚠ Earn some REV first!";
     status.style.color = "#ff4444";
+    return;
   }
+  const action = recordScore(name);
+  if (action === "no_change") {
+    status.textContent = "✓ Submitted — your recorded best is still higher!";
+  } else {
+    const rank = leaderboardData.findIndex(r => r.playerName === name.toUpperCase()) + 1;
+    status.textContent = "✓ Score saved — you're rank #" + (rank || "?") + "!";
+  }
+  status.style.color = "#00ffcc";
+  saveLocalRun();
+  renderLeaderboard();
+  updateLocalLeaderboard();
 }
 
 // Local leaderboard (personal best runs)
@@ -1936,25 +2107,18 @@ function updateLocalLeaderboard() {
 document.getElementById("submitScoreBtn").addEventListener("click", submitScore);
 document.getElementById("refreshLeaderboard").addEventListener("click", fetchLeaderboard);
 
-// Auto-submit score every 60 seconds if player name is set
+// Auto-record score every 30 seconds if a name is set
 setInterval(() => {
   const name = localStorage.getItem("spin-rev-player-name");
   if (name && G.totalRev > 0) {
-    fetch("/api/leaderboard/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        playerName: name,
-        totalRev: G.totalRev,
-        prestigeLevel: G.prestigeLevel,
-        prestigeMultiplier: G.prestigeMultiplier,
-        spinnersUnlocked: G.spinners.filter(s => s.unlocked).length,
-        flux: G.flux,
-        totalClicks: totalClicks,
-      })
-    }).catch(() => {});
+    recordScore(name);
+    if (document.getElementById("leaderboardPanel").classList.contains("visible")) renderLeaderboard();
   }
-}, 60000);
+}, 30000);
+
+// Show the board straight away
+fetchLeaderboard();
+updateLocalLeaderboard();
 
 // ============================================================
 // AUTH SYSTEM — Login / Signup / Cloud Save
@@ -2190,7 +2354,52 @@ setInterval(() => {
 checkAuth();
 
 // ============================================================
-// ADMIN PANEL — type "Runableiscool" to open
+// v1.1 UPDATE NOTICE
+// ============================================================
+const UPDATE_NOTES = [
+  "Added more revs",
+  "Added more upgrades",
+  "Added more pets",
+  "Added more rebirths",
+  "Added a buy 1, 2, 5, 10, 15, 50, 100, MAX option to the upgrades",
+  "Fixed the leaderboard",
+];
+
+function showUpdateNotice() {
+  if (document.getElementById("updateOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "updateOverlay";
+  overlay.className = "update-overlay";
+  overlay.innerHTML = `
+    <div class="update-box">
+      <div class="update-kicker">UPDATE INSTALLED</div>
+      <div class="update-title">SPIN REV v${GAME_VERSION}</div>
+      <div class="update-sub">Here's everything that changed.</div>
+      <div class="update-list">
+        ${UPDATE_NOTES.map(n => `<div class="update-item"><span class="ui-dot">+</span><span>${n}</span></div>`).join("")}
+        <div class="update-item warn"><span class="ui-dot">!</span><span>Reset everyone — every save was wiped for this update, so everybody starts from zero.</span></div>
+      </div>
+      <button class="update-close" id="updateClose">LET'S SPIN</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById("updateClose").addEventListener("click", () => {
+    localStorage.setItem(UPDATE_FLAG, "1");
+    overlay.remove();
+  });
+  overlay.addEventListener("click", e => {
+    if (e.target === overlay) {
+      localStorage.setItem(UPDATE_FLAG, "1");
+      overlay.remove();
+    }
+  });
+}
+
+// Show once per browser, and any time the version tag is clicked
+if (!localStorage.getItem(UPDATE_FLAG)) setTimeout(showUpdateNotice, 400);
+document.getElementById("verTag").addEventListener("click", showUpdateNotice);
+
+// ============================================================
+// PAT PANEL — type "Runableiscool" to open
 // ============================================================
 let adminBuffer = "";
 const ADMIN_CODE = "Runableiscool";
@@ -2211,7 +2420,7 @@ function toggleAdminPanel() {
   panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(8,8,14,.98);border:2px solid #ff00aa;border-radius:8px;padding:20px 24px;width:420px;max-height:80vh;overflow-y:auto;box-shadow:0 0 60px rgba(255,0,170,.3);font-family:'VT323',monospace";
   panel.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <h2 style="font-family:'Press Start 2P',cursive;font-size:10px;color:#ff00aa;text-shadow:0 0 10px rgba(255,0,170,.5)">🛠 ADMIN PANEL</h2>
+      <h2 style="font-family:'Press Start 2P',cursive;font-size:10px;color:#ff00aa;text-shadow:0 0 10px rgba(255,0,170,.5)">🛠 Pat panel</h2>
       <button id="adminClose" style="font-family:'Press Start 2P';font-size:8px;background:none;color:#ff4444;cursor:pointer;padding:4px 8px;border:1px solid #ff4444;border-radius:3px">✕</button>
     </div>
     <div style="font-size:11px;color:#ff444488;margin-bottom:12px;text-align:center;border-bottom:1px solid #2a2a40;padding-bottom:8px">⚠ CHEATS — USE AT YOUR OWN RISK ⚠</div>
@@ -2254,6 +2463,24 @@ function toggleAdminPanel() {
       <button class="adm-btn" data-action="maxAnimals" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(255,102,51,.06);border:1px solid #ff663340;color:#ff6633;border-radius:3px;cursor:pointer">🐾 Max Animal Levels</button>
       <button class="adm-btn" data-action="maxAsc" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(0,170,255,.06);border:1px solid #00aaff40;color:#00aaff;border-radius:3px;cursor:pointer">⚡ Max Ascension Upg</button>
       <button class="adm-btn" data-action="autoAll" style="padding:7px;font-family:'VT323';font-size:14px;background:rgba(255,204,0,.06);border:1px solid #ffcc0040;color:#ffcc00;border-radius:3px;cursor:pointer">// Auto-Spin All</button>
+      <button class="adm-btn" data-action="add1k" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ffcc0040;color:#ffcc00">💵 +1K REV</button>
+      <button class="adm-btn" data-action="add1m" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ffcc0040;color:#ffcc00">💰 +1M REV</button>
+      <button class="adm-btn" data-action="add1b" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ffaa0040;color:#ffaa00">🏦 +1B REV</button>
+      <button class="adm-btn" data-action="add100t" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ff00aa40;color:#ff00aa">🪙 +100 Tokens</button>
+      <button class="adm-btn" data-action="add1kflux" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #00aaff40;color:#00aaff">⚡ +1K Flux</button>
+      <button class="adm-btn" data-action="tierUp" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ff448840;color:#ff4488">🌀 Rebirth Tier +1</button>
+      <button class="adm-btn" data-action="tier35" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ff448840;color:#ff4488">🕳 Jump To Tier 35</button>
+      <button class="adm-btn" data-action="doubleMult" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ffcc0040;color:#ffcc00">✖ Double Multiplier</button>
+      <button class="adm-btn" data-action="unlock10" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #00ffcc40;color:#00ffcc">🔓 Unlock +10 Spinners</button>
+      <button class="adm-btn" data-action="maxPets" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ff663340;color:#ff6633">🐾 Max New Pets Only</button>
+      <button class="adm-btn" data-action="allMilestones" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ffcc0040;color:#ffcc00">🏅 Trigger Milestones</button>
+      <button class="adm-btn" data-action="clearMilestones" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #5a7a5a40;color:#5a7a5a">↺ Clear Milestones</button>
+      <button class="adm-btn" data-action="bulkMax" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #00ffcc40;color:#00ffcc">🛒 Set Buy → MAX</button>
+      <button class="adm-btn" data-action="fillBoard" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ffcc0040;color:#ffcc00">🏆 Fill Leaderboard</button>
+      <button class="adm-btn" data-action="clearBoard" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ff884440;color:#ff8844">🧹 Clear Leaderboard</button>
+      <button class="adm-btn" data-action="showUpdate" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #00ffcc40;color:#00ffcc">📋 Show Update Notice</button>
+      <button class="adm-btn" data-action="saveNow" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #00ffcc40;color:#00ffcc">💾 Force Save Now</button>
+      <button class="adm-btn" data-action="noPrestige" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #aa44ff40;color:#aa44ff">⏬ Prestige Cost → 0</button>
     </div>
 
     <div style="border-top:1px solid #2a2a40;padding-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
@@ -2283,7 +2510,7 @@ function toggleAdminPanel() {
     G.prestigeMultiplier = parseFloat(document.getElementById("adm_mult").value) || 1;
     G.totalRev = parseFloat(document.getElementById("adm_totalrev").value) || 0;
     if (G.totalRev < G.rev) G.totalRev = G.rev;
-    addFlash("ADMIN: VALUES APPLIED", "#ff00aa");
+    addFlash("PAT PANEL: VALUES APPLIED", "#ff00aa");
     refreshUI();
   });
 
@@ -2340,12 +2567,100 @@ function toggleAdminPanel() {
             localStorage.removeItem("spin-rev-clicks");
             localStorage.removeItem("spin-rev-history");
             localStorage.removeItem("spin-rev-milestones");
+            localStorage.removeItem("spin-rev-local-lb");
+            localStorage.removeItem(LB_KEY);
+            localStorage.removeItem(UPDATE_FLAG);
             location.reload();
           }
           return;
+        // ── v1.1 Pat panel additions ──
+        case "add1k":   G.rev += 1e3; G.totalRev += 1e3; addFlash("+1K REV", "#ffcc00"); break;
+        case "add1m":   G.rev += 1e6; G.totalRev += 1e6; addFlash("+1M REV", "#ffcc00"); break;
+        case "add1b":   G.rev += 1e9; G.totalRev += 1e9; addFlash("+1B REV", "#ffaa00"); break;
+        case "add100t": G.prestigeTokens += 100; addFlash("+100 TOKENS", "#ff00aa"); break;
+        case "add1kflux": G.flux += 1000; addFlash("+1K FLUX", "#00aaff"); break;
+        case "tierUp":
+          G.prestigeLevel++;
+          G.prestigeMultiplier *= getPrestigeMultiplierGain();
+          addFlash("REBIRTH TIER " + G.prestigeLevel, "#ff4488");
+          break;
+        case "tier35":
+          G.prestigeLevel = 35;
+          G.prestigeMultiplier = Math.max(G.prestigeMultiplier, 5000);
+          addFlash("TIER 35 — ALL REBIRTH PERKS", "#ff4488");
+          break;
+        case "doubleMult":
+          G.prestigeMultiplier *= 2;
+          addFlash("MULTIPLIER x" + G.prestigeMultiplier.toFixed(1), "#ffcc00");
+          break;
+        case "unlock10": {
+          let n = 0;
+          for (const s of G.spinners) { if (!s.unlocked) { s.unlocked = true; if (++n >= 10) break; } }
+          addFlash("+" + n + " SPINNERS UNLOCKED", "#00ffcc");
+          break;
+        }
+        case "maxPets":
+          G.animalsUnlocked = true;
+          for (const a of ANIMALS) {
+            const st = G.animals[a.id];
+            if (!st || !st.owned) G.animals[a.id] = { owned:true, level:a.maxLevel };
+          }
+          addFlash("UNOWNED PETS MAXED", "#ff6633");
+          break;
+        case "allMilestones":
+          for (const m of MILESTONES) if (!triggeredMilestones.includes(m.id)) triggeredMilestones.push(m.id);
+          localStorage.setItem("spin-rev-milestones", JSON.stringify(triggeredMilestones));
+          addFlash("ALL MILESTONES MARKED", "#ffcc00");
+          break;
+        case "clearMilestones":
+          triggeredMilestones = [];
+          localStorage.removeItem("spin-rev-milestones");
+          addFlash("MILESTONES CLEARED", "#5a7a5a");
+          break;
+        case "bulkMax":
+          bulkAmount = "max";
+          localStorage.setItem("spin-rev-bulk", "max");
+          document.querySelectorAll("#bulkBar .bulk-btn").forEach(b =>
+            b.classList.toggle("active", b.dataset.bulk === "max"));
+          addFlash("BUY AMOUNT → MAX", "#00ffcc");
+          break;
+        case "fillBoard": {
+          const names = ["PAT","KAI","NOVA","ZED","RUNABLE","ORBIT","VEX","LUX","ECHO","APEX"];
+          const rows = loadBoard();
+          names.forEach((nm, i) => {
+            if (rows.some(r => r.playerName === nm)) return;
+            rows.push({ playerName:nm, totalRev: Math.floor(1e6 / (i+1)), prestigeLevel: 10-i,
+              prestigeMultiplier: (10-i) * 3, spinnersUnlocked: 40 - i*3, flux: 500,
+              totalClicks: 5000 - i*300, date: new Date().toLocaleDateString() });
+          });
+          leaderboardData = saveBoard(rows);
+          renderLeaderboard();
+          addFlash("LEADERBOARD FILLED", "#ffcc00");
+          break;
+        }
+        case "clearBoard":
+          localStorage.removeItem(LB_KEY);
+          localStorage.removeItem("spin-rev-local-lb");
+          leaderboardData = [];
+          renderLeaderboard(); updateLocalLeaderboard();
+          addFlash("LEADERBOARD CLEARED", "#ff8844");
+          break;
+        case "showUpdate":
+          panel.remove();
+          showUpdateNotice();
+          return;
+        case "saveNow":
+          localStorage.setItem(LOCAL_KEY, JSON.stringify(G));
+          localStorage.setItem("spin-rev-clicks", String(totalClicks));
+          addFlash("SAVED LOCALLY", "#00ffcc");
+          break;
+        case "noPrestige":
+          G.upgrades.prestigeSpeed = 100;
+          addFlash("PRESTIGE COST MINIMISED", "#aa44ff");
+          break;
         case "godMode":
           G.rev = 1e15; G.totalRev = 1e15; G.flux = 1e6;
-          G.prestigeLevel = 15; G.prestigeMultiplier = 1000;
+          G.prestigeLevel = 35; G.prestigeMultiplier = 1e4;
           G.prestigeTokens = 9999;
           G.spinners.forEach(s => { s.unlocked=true; s.level=50; s.baseRevPerSpin=Math.pow(1.28,50); s.speed=5; s.autoSpin=true; });
           for (const u of UPGRADES) { if(u.max===Infinity) G.upgrades[u.id]=50; else G.upgrades[u.id]=u.max; }
