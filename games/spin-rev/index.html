@@ -414,8 +414,8 @@ body{background:#0a0a0f;color:#e0ffe0;font-family:'VT323',monospace;overflow-x:h
       <span class="ver-tag" id="verTag" title="What's new in this update">v1.1</span>
       <div class="auth-user-bar" id="authUserBar" style="display:none">
         <span class="auth-user-name" id="authUserName">Guest</span>
-        <button class="auth-btn-sm auth-btn-save" id="cloudSaveBtn" title="Save to cloud">☁ Save</button>
-        <button class="auth-btn-sm auth-btn-load" id="cloudLoadBtn" title="Load from cloud">↓ Load</button>
+        <button class="auth-btn-sm auth-btn-save" id="cloudSaveBtn" title="Save your progress to this profile">💾 Save</button>
+        <button class="auth-btn-sm auth-btn-load" id="cloudLoadBtn" title="Load this profile's saved progress">↓ Load</button>
         <button class="auth-btn-sm auth-btn-logout" id="logoutBtn" title="Sign out">✕</button>
       </div>
       <button class="auth-btn-sm" id="loginBtn" style="border-color:#00ffcc40;color:#00ffcc;font-family:'Press Start 2P',cursive;font-size:5px;padding:4px 8px">🔑 LOGIN</button>
@@ -2129,22 +2129,54 @@ fetchLeaderboard();
 updateLocalLeaderboard();
 
 // ============================================================
-// AUTH SYSTEM — Login / Signup / Cloud Save
+// AUTH SYSTEM — Profiles (on-device accounts + save slots)
 // ============================================================
 let currentUser = null;
 
-async function checkAuth() {
+// Accounts live on this device. There is no game server, so "cloud" saves were
+// always failing silently — profiles are stored in localStorage instead.
+const ACC_KEY = "spin-rev-accounts-v1";
+const SESSION_KEY = "spin-rev-session-v1";
+
+function loadAccounts() {
+  try { return JSON.parse(localStorage.getItem(ACC_KEY) || "{}") || {}; } catch(e) { return {}; }
+}
+function saveAccounts(a) {
+  try { localStorage.setItem(ACC_KEY, JSON.stringify(a)); } catch(e) {}
+}
+
+// SHA-256 where available (https / localhost), with a deterministic fallback.
+async function hashPw(pw, salt) {
+  const raw = salt + "::" + pw;
   try {
-    const res = await fetch("/api/me");
-    const data = await res.json();
-    if (data.user) {
-      currentUser = data.user;
-      showLoggedInState();
-    } else {
-      currentUser = null;
-      showLoggedOutState();
+    if (window.crypto && crypto.subtle && crypto.subtle.digest) {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+      return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
     }
-  } catch(e) {
+  } catch(e) {}
+  let h1 = 0x811c9dc5, h2 = 0x01000193;
+  for (let i = 0; i < raw.length; i++) {
+    h1 = ((h1 ^ raw.charCodeAt(i)) * 16777619) >>> 0;
+    h2 = ((h2 + raw.charCodeAt(i) * (i + 7)) * 2654435761) >>> 0;
+  }
+  return "fb" + h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
+}
+
+function newSalt() {
+  try {
+    const b = new Uint8Array(8); crypto.getRandomValues(b);
+    return [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+  } catch(e) { return String(Date.now()) + Math.random().toString(16).slice(2); }
+}
+
+function checkAuth() {
+  const email = localStorage.getItem(SESSION_KEY);
+  const accs = loadAccounts();
+  if (email && accs[email]) {
+    currentUser = { email: accs[email].email, name: accs[email].name };
+    showLoggedInState();
+  } else {
+    if (email) localStorage.removeItem(SESSION_KEY);
     currentUser = null;
     showLoggedOutState();
   }
@@ -2170,61 +2202,63 @@ function showSaveIndicator(text, color) {
   setTimeout(() => el.remove(), 2200);
 }
 
-async function cloudSave() {
-  if (!currentUser) return;
+function cloudSave(quiet) {
+  if (!currentUser) { showSaveIndicator("LOG IN TO SAVE A PROFILE", "#ffcc00"); return false; }
+  const accs = loadAccounts();
+  const key = currentUser.email.toLowerCase();
+  if (!accs[key]) { showSaveIndicator("⚠ PROFILE MISSING", "#ff4444"); return false; }
   try {
-    const saveData = JSON.stringify(G);
-    const res = await fetch("/api/save/upload", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ saveData, totalClicks }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      showSaveIndicator("☁ SAVED TO CLOUD", "#00ffcc");
-    } else {
-      showSaveIndicator("⚠ SAVE FAILED", "#ff4444");
-    }
+    accs[key].save = { saveData: JSON.stringify(G), totalClicks, updatedAt: Date.now() };
+    saveAccounts(accs);
+    if (!quiet) showSaveIndicator("💾 SAVED TO PROFILE", "#00ffcc");
+    return true;
   } catch(e) {
-    showSaveIndicator("⚠ NETWORK ERROR", "#ff4444");
+    showSaveIndicator("⚠ SAVE FAILED — STORAGE FULL", "#ff4444");
+    return false;
   }
 }
 
-async function cloudLoad() {
-  if (!currentUser) return;
+function patchLoadedState() {
+  if (!G.skills) G.skills = {};
+  for (const s of SKILLS) if (G.skills[s.id] === undefined) G.skills[s.id] = 0;
+  if (!G.animals) G.animals = {};
+  for (const a of ANIMALS) if (!G.animals[a.id]) G.animals[a.id] = { owned:false, level:0 };
+  if (!G.upgrades) G.upgrades = {};
+  for (const u of UPGRADES) if (G.upgrades[u.id] === undefined) G.upgrades[u.id] = 0;
+  if (!G.ascUpgrades) G.ascUpgrades = {};
+  for (const au of ASC_UPGRADES) if (G.ascUpgrades[au.id] === undefined) G.ascUpgrades[au.id] = 0;
+  if (G.flux === undefined) G.flux = 0;
+  if (!Array.isArray(G.spinners)) G.spinners = [];
+  while (G.spinners.length < NUM_SPINNERS) G.spinners.push({id:G.spinners.length,unlocked:false,level:1,speed:.5,baseRevPerSpin:1,autoSpin:false,chained:false});
+  for (const s of G.spinners) if (s.chained === undefined) s.chained = false;
+  G.lastTick = Date.now();
+}
+
+function cloudLoad(quiet) {
+  if (!currentUser) { showSaveIndicator("LOG IN TO LOAD A PROFILE", "#ffcc00"); return false; }
+  const accs = loadAccounts();
+  const rec = accs[currentUser.email.toLowerCase()];
+  if (!rec || !rec.save || !rec.save.saveData) {
+    if (!quiet) showSaveIndicator("NO SAVED PROFILE YET", "#4a6a4a");
+    return false;
+  }
   try {
-    const res = await fetch("/api/save/load");
-    const data = await res.json();
-    if (data.save && data.save.saveData) {
-      const loaded = JSON.parse(data.save.saveData);
-      // Merge into G
-      Object.assign(G, loaded);
-      // Patch missing fields
-      if (!G.skills) G.skills = {};
-      for (const s of SKILLS) if (G.skills[s.id] === undefined) G.skills[s.id] = 0;
-      if (!G.animals) G.animals = {};
-      for (const a of ANIMALS) if (!G.animals[a.id]) G.animals[a.id] = { owned:false, level:0 };
-      if (!G.ascUpgrades) G.ascUpgrades = {};
-      for (const au of ASC_UPGRADES) if (G.ascUpgrades[au.id] === undefined) G.ascUpgrades[au.id] = 0;
-      if (G.flux === undefined) G.flux = 0;
-      while (G.spinners.length < NUM_SPINNERS) G.spinners.push({id:G.spinners.length,unlocked:false,level:1,speed:.5,baseRevPerSpin:1,autoSpin:false,chained:false});
-      for (const s of G.spinners) if (s.chained === undefined) s.chained = false;
-      if (data.save.totalClicks) totalClicks = data.save.totalClicks;
-      G.lastTick = Date.now();
-      refreshUI();
-      showSaveIndicator("☁ LOADED FROM CLOUD", "#ffcc00");
-    } else {
-      showSaveIndicator("NO CLOUD SAVE FOUND", "#4a6a4a");
-    }
+    const loaded = JSON.parse(rec.save.saveData);
+    Object.assign(G, loaded);
+    patchLoadedState();
+    if (rec.save.totalClicks) totalClicks = rec.save.totalClicks;
+    refreshUI();
+    if (!quiet) showSaveIndicator("↓ PROFILE LOADED", "#ffcc00");
+    return true;
   } catch(e) {
-    showSaveIndicator("⚠ LOAD FAILED", "#ff4444");
+    showSaveIndicator("⚠ SAVE FILE CORRUPTED", "#ff4444");
+    return false;
   }
 }
 
-async function logout() {
-  try {
-    await fetch("/api/auth/sign-out", { method: "POST" });
-  } catch(e) {}
+function logout() {
+  if (currentUser) cloudSave(true);
+  localStorage.removeItem(SESSION_KEY);
   currentUser = null;
   showLoggedOutState();
   showSaveIndicator("SIGNED OUT", "#ff4444");
@@ -2240,7 +2274,7 @@ function showAuthOverlay() {
   overlay.innerHTML = `
     <div class="auth-box">
       <div class="auth-title">🔑 SPIN REV</div>
-      <div class="auth-subtitle">Sign in to save your progress to the cloud</div>
+      <div class="auth-subtitle">Make a profile to keep your progress and switch between players on this device.</div>
       <div class="auth-tabs">
         <div class="auth-tab active" data-auth-tab="signin">SIGN IN</div>
         <div class="auth-tab" data-auth-tab="signup">SIGN UP</div>
@@ -2251,112 +2285,103 @@ function showAuthOverlay() {
           <input type="text" id="authName" placeholder="Your display name" autocomplete="name">
         </div>
         <div class="auth-field">
-          <label>EMAIL</label>
-          <input type="email" id="authEmail" placeholder="your@email.com" autocomplete="email" required>
+          <label>EMAIL OR USERNAME</label>
+          <input type="text" id="authEmail" placeholder="you@email.com or a username" autocomplete="username" required>
         </div>
         <div class="auth-field">
           <label>PASSWORD</label>
-          <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" minlength="8" required>
+          <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" minlength="4" required>
         </div>
         <button type="submit" class="auth-submit" id="authSubmitBtn">SIGN IN</button>
       </form>
       <div class="auth-error" id="authError"></div>
-      <div class="auth-skip" id="authSkip">Skip — play without saving</div>
+      <div class="auth-skip" id="authSkip">Skip — play without a profile</div>
     </div>
   `;
   document.body.appendChild(overlay);
 
   let mode = "signin";
 
-  // Tab switching
   overlay.querySelectorAll(".auth-tab").forEach(tab => {
     tab.addEventListener("click", () => {
       mode = tab.dataset.authTab;
       overlay.querySelectorAll(".auth-tab").forEach(t => t.classList.remove("active"));
       tab.classList.add("active");
       document.getElementById("nameField").style.display = mode === "signup" ? "" : "none";
-      document.getElementById("authSubmitBtn").textContent = mode === "signup" ? "CREATE ACCOUNT" : "SIGN IN";
+      document.getElementById("authSubmitBtn").textContent = mode === "signup" ? "CREATE PROFILE" : "SIGN IN";
       document.getElementById("authError").textContent = "";
     });
   });
 
-  // Form submit
   document.getElementById("authForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = document.getElementById("authEmail").value.trim();
+    const rawId = document.getElementById("authEmail").value.trim();
     const password = document.getElementById("authPassword").value;
-    const name = document.getElementById("authName").value.trim() || email.split("@")[0];
+    const name = document.getElementById("authName").value.trim() || rawId.split("@")[0];
     const errEl = document.getElementById("authError");
     const btn = document.getElementById("authSubmitBtn");
 
-    if (!email || !password) { errEl.textContent = "Fill in all fields"; return; }
-    if (password.length < 8) { errEl.textContent = "Password must be 8+ characters"; return; }
+    if (!rawId || !password) { errEl.textContent = "Fill in all fields"; return; }
+    if (password.length < 4) { errEl.textContent = "Password must be 4+ characters"; return; }
 
     btn.disabled = true;
-    btn.textContent = "LOADING...";
+    btn.textContent = "WORKING...";
     errEl.textContent = "";
+
+    const key = rawId.toLowerCase();
+    const accs = loadAccounts();
 
     try {
       if (mode === "signup") {
-        const res = await fetch("/api/auth/sign-up/email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, name }),
-        });
-        const data = await res.json();
-        if (data.user || data.token) {
-          currentUser = data.user || { email, name };
+        if (accs[key]) {
+          errEl.textContent = "That name is already taken on this device";
+        } else {
+          const salt = newSalt();
+          accs[key] = { email: rawId, name, salt, hash: await hashPw(password, salt), createdAt: Date.now(), save: null };
+          saveAccounts(accs);
+          localStorage.setItem(SESSION_KEY, key);
+          currentUser = { email: rawId, name };
           showLoggedInState();
+          cloudSave(true);
           overlay.remove();
-          showSaveIndicator("✓ ACCOUNT CREATED!", "#00ffcc");
-          checkAuth();
+          showSaveIndicator("✓ PROFILE CREATED!", "#00ffcc");
           return;
         }
-        errEl.textContent = data.message || data.error || "Sign up failed";
       } else {
-        const res = await fetch("/api/auth/sign-in/email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-        const data = await res.json();
-        if (data.user || data.token) {
-          currentUser = data.user || { email };
+        const rec = accs[key];
+        if (!rec) {
+          errEl.textContent = "No profile with that name — hit SIGN UP";
+        } else if (await hashPw(password, rec.salt) !== rec.hash) {
+          errEl.textContent = "Wrong password";
+        } else {
+          localStorage.setItem(SESSION_KEY, key);
+          currentUser = { email: rec.email, name: rec.name };
           showLoggedInState();
           overlay.remove();
           showSaveIndicator("✓ SIGNED IN!", "#00ffcc");
-          checkAuth();
-          // Auto-load cloud save
-          setTimeout(cloudLoad, 500);
+          setTimeout(() => cloudLoad(false), 350);
           return;
         }
-        errEl.textContent = data.message || data.error || "Sign in failed — check email/password";
       }
     } catch(err) {
-      errEl.textContent = "Network error. Try again.";
+      errEl.textContent = "Something broke. Try again.";
     }
     btn.disabled = false;
-    btn.textContent = mode === "signup" ? "CREATE ACCOUNT" : "SIGN IN";
+    btn.textContent = mode === "signup" ? "CREATE PROFILE" : "SIGN IN";
   });
 
-  // Skip
   document.getElementById("authSkip").addEventListener("click", () => overlay.remove());
-
-  // Click outside to close
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
 }
 
 document.getElementById("loginBtn").addEventListener("click", showAuthOverlay);
-document.getElementById("cloudSaveBtn").addEventListener("click", cloudSave);
-document.getElementById("cloudLoadBtn").addEventListener("click", cloudLoad);
+document.getElementById("cloudSaveBtn").addEventListener("click", () => cloudSave(false));
+document.getElementById("cloudLoadBtn").addEventListener("click", () => cloudLoad(false));
 document.getElementById("logoutBtn").addEventListener("click", logout);
 
-// Auto cloud save every 30 seconds if logged in
-setInterval(() => {
-  if (currentUser && G.totalRev > 0) cloudSave();
-}, 30000);
+// Auto-save the logged-in profile every 30 seconds
+setInterval(() => { if (currentUser && G.totalRev > 0) cloudSave(true); }, 30000);
+window.addEventListener("beforeunload", () => { if (currentUser) cloudSave(true); });
 
 // Check auth on load
 checkAuth();
@@ -2489,6 +2514,8 @@ function toggleAdminPanel() {
       <button class="adm-btn" data-action="clearBoard" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ff884440;color:#ff8844">🧹 Clear Leaderboard</button>
       <button class="adm-btn" data-action="showUpdate" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #00ffcc40;color:#00ffcc">📋 Show Update Notice</button>
       <button class="adm-btn" data-action="saveNow" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #00ffcc40;color:#00ffcc">💾 Force Save Now</button>
+      <button class="adm-btn" data-action="profileInfo" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #00aaff40;color:#00aaff">👤 Profile Info</button>
+      <button class="adm-btn" data-action="clearAccounts" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #ff884440;color:#ff8844">🧑‍🤝‍🧑 Wipe All Profiles</button>
       <button class="adm-btn" data-action="noPrestige" style="padding:7px;font-family:'VT323';font-size:14px;border-radius:3px;cursor:pointer;background:rgba(255,255,255,.02);border:1px solid #aa44ff40;color:#aa44ff">⏬ Prestige Cost → 0</button>
     </div>
 
@@ -2579,9 +2606,27 @@ function toggleAdminPanel() {
             localStorage.removeItem("spin-rev-local-lb");
             localStorage.removeItem(LB_KEY);
             localStorage.removeItem(UPDATE_FLAG);
+            localStorage.removeItem(ACC_KEY);
+            localStorage.removeItem(SESSION_KEY);
             location.reload();
           }
           return;
+        case "profileInfo": {
+          const accs = loadAccounts();
+          const names = Object.values(accs).map(a => (a.name || a.email) + (a.save ? " (saved)" : ""));
+          alert("Profiles on this device: " + (names.length ? "\n• " + names.join("\n• ") : "none") +
+                "\n\nSigned in as: " + (currentUser ? (currentUser.name || currentUser.email) : "nobody"));
+          return;
+        }
+        case "clearAccounts":
+          if (confirm("Delete every profile on this device? Game progress in the current session stays.")) {
+            localStorage.removeItem(ACC_KEY);
+            localStorage.removeItem(SESSION_KEY);
+            currentUser = null;
+            showLoggedOutState();
+            addFlash("ALL PROFILES WIPED", "#ff8844");
+          }
+          break;
         // ── v1.1 Pat panel additions ──
         case "add1k":   G.rev += 1e3; G.totalRev += 1e3; addFlash("+1K REV", "#ffcc00"); break;
         case "add1m":   G.rev += 1e6; G.totalRev += 1e6; addFlash("+1M REV", "#ffcc00"); break;
