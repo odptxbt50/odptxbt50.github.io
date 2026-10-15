@@ -1,4 +1,4 @@
-import{r as bt,j as pa}from"./index-C2gJ7V5Z.js";const va=`
+import{r as bt,j as pa}from"./index-DXkrd9Ty.js";const va=`
 
 <!-- HUD -->
 <div id="hud">

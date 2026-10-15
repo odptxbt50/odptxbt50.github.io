@@ -1,4 +1,4 @@
-import{r as ia,j as la}from"./index-C2gJ7V5Z.js";const ra=`
+import{r as ia,j as la}from"./index-DXkrd9Ty.js";const ra=`
 <div class="game-root" id="gameRoot">
   <div class="scanlines"></div>
   <div class="fps-counter" id="fpsCounter" style="display:none">-- FPS</div>
