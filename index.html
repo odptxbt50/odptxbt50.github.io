@@ -3,303 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatGames</title>
+    <title>PatGames — free browser games</title>
+    <meta name="description" content="PatGames: free browser games you can play with friends. Online multiplayer, idle games, rhythm battles and more.">
+    <meta name="theme-color" content="#08080e">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #0a0a0f;
-            color: #e0e0e0;
-            min-height: 100vh;
-            overflow-x: hidden;
-            position: relative;
-        }
-
-        /* Animated bubbles background */
-        .bubbles {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-        }
-
-        .bubble {
-            position: absolute;
-            border-radius: 50%;
-            opacity: 0.15;
-            animation: float linear infinite;
-        }
-
-        @keyframes float {
-            0% { transform: translateY(100vh) scale(0); opacity: 0; }
-            10% { opacity: 0.15; }
-            90% { opacity: 0.15; }
-            100% { transform: translateY(-100px) scale(1); opacity: 0; }
-        }
-
-        /* Header */
-        .header {
-            position: relative;
-            z-index: 10;
-            text-align: center;
-            padding: 60px 20px 40px;
-        }
-
-        .header h1 {
-            font-family: 'Press Start 2P', cursive;
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            background: linear-gradient(135deg, #00f0ff, #b400ff, #ff006a);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: none;
-            margin-bottom: 12px;
-            animation: glow 3s ease-in-out infinite alternate;
-        }
-
-        @keyframes glow {
-            from { filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.4)); }
-            to { filter: drop-shadow(0 0 20px rgba(180, 0, 255, 0.6)); }
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            color: #888;
-            font-weight: 400;
-        }
-
-        /* Games grid */
-        .games-container {
-            position: relative;
-            z-index: 10;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 24px;
-        }
-
-        .game-card {
-            background: linear-gradient(145deg, #1a1a2e, #16162a);
-            border: 1px solid #2a2a4a;
-            border-radius: 16px;
-            padding: 28px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .game-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 3px;
-            background: var(--card-accent);
-            opacity: 0.8;
-        }
-
-        .game-card:hover {
-            transform: translateY(-4px);
-            border-color: var(--card-accent);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px color-mix(in srgb, var(--card-accent) 20%, transparent);
-        }
-
-        .game-card .emoji {
-            font-size: 2.5rem;
-            margin-bottom: 12px;
-            display: block;
-        }
-
-        .game-card h2 {
-            font-family: 'Press Start 2P', cursive;
-            font-size: 0.9rem;
-            color: #fff;
-            margin-bottom: 8px;
-            line-height: 1.5;
-        }
-
-        .game-card .version {
-            display: inline-block;
-            font-size: 0.7rem;
-            font-family: 'Press Start 2P', cursive;
-            color: var(--card-accent);
-            background: color-mix(in srgb, var(--card-accent) 15%, transparent);
-            padding: 4px 10px;
-            border-radius: 20px;
-            margin-bottom: 14px;
-        }
-
-        .game-card .description {
-            font-size: 0.9rem;
-            color: #999;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-
-        .game-card .play-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: var(--card-accent);
-            color: #0a0a0f;
-            font-weight: 700;
-            font-size: 0.85rem;
-            border-radius: 8px;
-            text-decoration: none;
-            transition: all 0.2s;
-        }
-
-        .game-card .play-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 16px color-mix(in srgb, var(--card-accent) 40%, transparent);
-        }
-
-        .game-card .play-btn.coming-soon {
-            background: #333;
-            color: #888;
-            cursor: default;
-            pointer-events: none;
-        }
-
-        /* Footer */
-        .footer {
-            position: relative;
-            z-index: 10;
-            text-align: center;
-            padding: 60px 20px 30px;
-            color: #555;
-            font-size: 0.85rem;
-        }
-
-        .footer a {
-            color: #00f0ff;
-            text-decoration: none;
-        }
-
-        /* Responsive */
-        @media (max-width: 640px) {
-            .games-container {
-                grid-template-columns: 1fr;
-            }
-            .header { padding: 40px 20px 30px; }
-        }
-    </style>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/home.css?v=2">
 </head>
 <body>
-    <!-- Animated bubbles -->
-    <div class="bubbles" id="bubbles"></div>
-
-    <div class="header">
-        <h1>PatGames</h1>
-        <p>A collection of browser games. Pick one and play!</p>
+    <div class="bg" aria-hidden="true">
+        <div class="bg-grid"></div>
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="orb orb-c"></div>
+        <div class="bg-scan"></div>
     </div>
 
-    <div class="games-container">
-        <!-- Tycoon Town -->
-        <div class="game-card" style="--card-accent: #ffc94a;">
-            <span class="emoji">🏙️</span>
-            <h2>Tycoon Town</h2>
-            <span class="version">v1.0 · NEW</span>
-            <p class="description">Monopoly-style property game: buy streets, build houses and hotels, trade and auction. Play online with up to 6 friends on different computers (room code), or vs bots on one device.</p>
-            <a href="games/tycoon-town/" class="play-btn">▶ PLAY</a>
+    <nav class="nav" id="top">
+        <a href="#top" class="logo" aria-label="PatGames home"><span class="logo-pad">🎮</span><span class="logo-text">PatGames</span></a>
+        <div class="nav-links">
+            <a href="#games">Games</a>
+            <a href="#requests">Requests</a>
+        </div>
+        <div class="nav-actions">
+            <button class="btn btn-ghost" id="randomBtn" type="button" title="Play a random game">🎲 <span class="hide-sm">Random</span></button>
+            <button class="btn btn-cta" type="button" data-open-request>💡 <span class="hide-sm">Request a game</span><span class="show-sm">Request</span></button>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-copy">
+            <span class="eyebrow"><span class="dot"></span> Free · no downloads · play with friends</span>
+            <h1 class="title" aria-label="PatGames">
+                <span class="title-pat">PAT</span><span class="title-games">GAMES</span>
+            </h1>
+            <p class="lede">A collection of browser games made for playing together — online rooms, couch multiplayer, and idle games that keep going while you're away.</p>
+            <div class="hero-cta">
+                <a class="btn btn-big btn-primary" href="#games">▶ Browse games</a>
+                <button class="btn btn-big btn-outline" type="button" data-open-request>💡 Ask for an update</button>
+            </div>
+            <div class="stats" id="stats"></div>
         </div>
 
-        <!-- Beat Battle -->
-        <div class="game-card" style="--card-accent: #ff3fbf;">
-            <span class="emoji">🎤</span>
-            <h2>Beat Battle</h2>
-            <span class="version">v1.0</span>
-            <p class="description">Friday Night Funkin'-style rhythm battles: JAX vs VEX on a neon rooftop. 3 songs, 3 difficulties, solo vs CPU, local 2-player and online 1v1 with a room code.</p>
-            <a href="games/beat-battle/" class="play-btn">▶ PLAY</a>
-        </div>
+        <a class="spotlight" id="spotlight" href="games/tycoon-town/" aria-label="Play Tycoon Town">
+            <div class="spot-media">
+                <img src="assets/thumbs/tycoon-town.jpg" alt="Tycoon Town game board" width="640" height="400">
+                <span class="ribbon">NEW</span>
+            </div>
+            <div class="spot-body">
+                <div class="spot-kicker">Just released · v1.0</div>
+                <h2>Tycoon Town</h2>
+                <p>Buy streets, build hotels, and trade your way to the top. Up to 6 friends on different computers with a room code.</p>
+                <div class="spot-foot">
+                    <span class="pill pill-online">● Online 2–6P</span>
+                    <span class="play-chip">Play now →</span>
+                </div>
+            </div>
+        </a>
+    </header>
 
-        <!-- Spin Rev -->
-        <div class="game-card" style="--card-accent: #00f0ff;">
-            <span class="emoji">🌀</span>
-            <h2>Spin Rev</h2>
-            <span class="version">v1.2</span>
-            <p class="description">150 spinners revealed as you buy, bulk buying, bigger text, performance settings, pets, rebirths and on-device profiles.</p>
-            <a href="games/spin-rev/" class="play-btn">▶ PLAY</a>
+    <section class="recent" id="recentWrap" hidden>
+        <div class="section-inner">
+            <h3 class="mini-title">Jump back in</h3>
+            <div class="recent-row" id="recent"></div>
         </div>
+    </section>
 
-        <!-- Tag -->
-        <div class="game-card" style="--card-accent: #ff006a;">
-            <span class="emoji">🏃</span>
-            <h2>Tag</h2>
-            <span class="version">v1.0</span>
-            <p class="description">Fast-paced local multiplayer tag game. Up to 4 players using WAS, IJL, Arrow Keys, and GVB controls. Chase and evade!</p>
-            <a href="games/tag/" class="play-btn">▶ PLAY</a>
+    <main id="games" class="section">
+        <div class="section-inner">
+            <div class="section-head">
+                <div>
+                    <h2 class="section-title"><span>01</span> All games</h2>
+                    <p class="section-sub">Pick one and play. Tap ☆ to favorite.</p>
+                </div>
+                <label class="search">
+                    <span aria-hidden="true">🔍</span>
+                    <input id="search" type="search" placeholder="Search games…" aria-label="Search games" autocomplete="off">
+                </label>
+            </div>
+            <div class="chips" id="filters" role="tablist" aria-label="Filter games"></div>
+            <div class="grid" id="grid"></div>
+            <p class="empty" id="emptyGames" hidden>No games match that. <button class="link" type="button" data-open-request data-kind="new">Request it?</button></p>
         </div>
+    </main>
 
-        <!-- Block Breaker Idle -->
-        <div class="game-card" style="--card-accent: #b400ff;">
-            <span class="emoji">🧱</span>
-            <h2>Block Breaker Idle</h2>
-            <span class="version">v1.1</span>
-            <p class="description">The Big Break Update: 9 ball types, 27 upgrades with bulk buying, missions, achievements, wave events, bosses, overdrive and a performance mode.</p>
-            <a href="games/block-breaker/" class="play-btn">🎮 PLAY NOW</a>
-        </div>
+    <section id="requests" class="section section-band">
+        <div class="section-inner">
+            <div class="section-head">
+                <div>
+                    <h2 class="section-title"><span>02</span> Request board</h2>
+                    <p class="section-sub">Ask for a game update or a brand-new game. Everyone can see the board — vote ▲ for the ones you want most.</p>
+                </div>
+                <button class="btn btn-cta btn-big" type="button" data-open-request>＋ New request</button>
+            </div>
 
-        <!-- Survivor Zombie -->
-        <div class="game-card" style="--card-accent: #00ff88;">
-            <span class="emoji">🧟</span>
-            <h2>Survivor Zombie</h2>
-            <span class="version">v1.0</span>
-            <p class="description">Online co-op survival. Chop trees, mine stone, build walls, and survive endless zombie nights with friends!</p>
-            <a href="games/survivor-zombie/" class="play-btn">▶ PLAY</a>
-        </div>
+            <div class="board-bar">
+                <div class="seg" role="tablist" aria-label="Sort requests">
+                    <button type="button" class="seg-btn on" data-sort="top">🔥 Top</button>
+                    <button type="button" class="seg-btn" data-sort="new">🆕 Newest</button>
+                </div>
+                <div class="chips chips-sm" id="reqFilters"></div>
+                <span class="board-count" id="boardCount"></span>
+            </div>
 
-        <!-- Dog Clicker -->
-        <div class="game-card" style="--card-accent: #ffcc00;">
-            <span class="emoji">🐕</span>
-            <h2>Dog Clicker</h2>
-            <span class="version">v1.0</span>
-            <p class="description">Click the dog, earn treats! Buy kibble, tennis balls, squeaky toys, and build a dog empire. Who's a good boy?</p>
-            <a href="games/clicker/" class="play-btn">▶ PLAY</a>
+            <div id="adminBar" class="admin-bar" hidden>🛠 Admin mode — you can set status, reply, and hide requests. <button class="link" type="button" id="adminOff">Exit admin</button></div>
+            <div class="board" id="board">
+                <div class="board-loading"><span class="spinner"></span> Loading requests…</div>
+            </div>
         </div>
+    </section>
 
-        <!-- Backrooms: No-Clip Room -->
-        <div class="game-card" style="--card-accent: #e8c547;">
-            <span class="emoji">🚪</span>
-            <h2>Backrooms: No-Clip Room</h2>
-            <span class="version">v1.0</span>
-            <p class="description">Online co-op horror. Descend the yellow levels with friends, manage your flashlight and sanity, revive downed players, and outrun 12 different entities.</p>
-            <a href="games/backrooms/" class="play-btn">▶ PLAY</a>
+    <footer class="footer">
+        <div class="footer-inner">
+            <div class="logo logo-sm"><span class="logo-pad">🎮</span><span class="logo-text">PatGames</span></div>
+            <p>© 2026 PatGames · <a href="https://github.com/odptxbt50">GitHub</a> · <a href="#requests">Request board</a></p>
         </div>
+    </footer>
+
+    <button class="fab" type="button" data-open-request aria-label="Request a game">💡</button>
+
+    <!-- Request modal -->
+    <div class="modal" id="reqModal" hidden>
+        <div class="modal-backdrop" data-close></div>
+        <form class="modal-card" id="reqForm" novalidate>
+            <button class="modal-x" type="button" data-close aria-label="Close">✕</button>
+            <h3 class="modal-title">💡 Make a request</h3>
+            <p class="modal-sub">Your request shows up on the public board for everyone.</p>
+
+            <div class="kind-toggle" role="radiogroup" aria-label="Request type">
+                <label class="kind"><input type="radio" name="kind" value="update" checked aria-label="Update a game"><span>🛠 Update a game<small>New features, fixes, levels</small></span></label>
+                <label class="kind"><input type="radio" name="kind" value="new" aria-label="New game idea"><span>✨ New game idea<small>Something PatGames doesn't have</small></span></label>
+            </div>
+
+            <label class="field" id="gameField">
+                <span>Which game?</span>
+                <select name="game" id="gameSelect" aria-label="Which game"></select>
+            </label>
+            <label class="field">
+                <span>Title <em class="count" data-for="title">0/70</em></span>
+                <input name="title" maxlength="70" required placeholder="e.g. Add a hard mode to Beat Battle" aria-label="Title">
+            </label>
+            <label class="field">
+                <span>Details <em>(optional)</em> <em class="count" data-for="details">0/500</em></span>
+                <textarea name="details" rows="4" maxlength="500" placeholder="What should it have? How should it work?" aria-label="Details"></textarea>
+            </label>
+            <label class="field">
+                <span>Your name <em>(optional, no real names)</em></span>
+                <input name="author" maxlength="20" placeholder="Anonymous" aria-label="Your name">
+            </label>
+            <p class="form-note">Be nice. No links, no personal info. Spam gets removed.</p>
+            <p class="form-error" id="formError" role="alert" hidden></p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+                <button type="submit" class="btn btn-cta btn-big" id="submitBtn">Post request</button>
+            </div>
+        </form>
     </div>
 
-    <div class="footer">
-        <p>© 2026 PatGames &middot; <a href="https://github.com/odptxbt50">GitHub</a></p>
-    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script>
-        // Generate animated bubbles
-        const bubblesContainer = document.getElementById('bubbles');
-        const colors = ['#00f0ff', '#b400ff', '#ff006a', '#00ff88', '#ffcc00'];
-
-        for (let i = 0; i < 25; i++) {
-            const bubble = document.createElement('div');
-            bubble.className = 'bubble';
-            const size = Math.random() * 80 + 20;
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            bubble.style.cssText = `
-                width: ${size}px;
-                height: ${size}px;
-                left: ${Math.random() * 100}%;
-                background: ${color};
-                animation-duration: ${Math.random() * 10 + 8}s;
-                animation-delay: ${Math.random() * 10}s;
-            `;
-            bubblesContainer.appendChild(bubble);
-        }
-    </script>
+    <script src="assets/home.js?v=2"></script>
 </body>
 </html>
-<!-- trigger rebuild -->
